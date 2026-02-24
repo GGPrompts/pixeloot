@@ -1,8 +1,6 @@
 import { world } from '../world';
 import { game } from '../../Game';
-
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
+import { SCREEN_W, SCREEN_H } from '../../core/constants';
 
 const players = world.with('position', 'player');
 

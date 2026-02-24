@@ -5,9 +5,9 @@ import { inventory } from '../core/Inventory';
 import { activateMap } from '../core/MapDevice';
 import type { MapItem } from '../loot/MapItem';
 
+import { SCREEN_W, SCREEN_H } from '../core/constants';
+
 // Layout
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
 const PANEL_W = 420;
 const PANEL_H = 440;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;

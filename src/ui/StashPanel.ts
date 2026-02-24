@@ -14,9 +14,9 @@ import { stash } from '../core/Stash';
 import { world } from '../ecs/world';
 import { BaseItem, Rarity, Slot } from '../loot/ItemTypes';
 
+import { SCREEN_W, SCREEN_H } from '../core/constants';
+
 // Layout constants
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
 const PANEL_W = 600;
 const PANEL_H = 620;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;

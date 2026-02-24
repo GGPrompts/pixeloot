@@ -1,6 +1,7 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
+import { SCREEN_W } from '../core/constants';
 
 const BAR_WIDTH = 400;
 const BAR_HEIGHT = 20;
@@ -57,7 +58,7 @@ function createBar(): void {
   container.addChild(phaseText);
 
   // Position at top center of screen
-  container.position.set((1280 - BAR_WIDTH) / 2, BAR_Y);
+  container.position.set((SCREEN_W - BAR_WIDTH) / 2, BAR_Y);
   container.visible = false;
 
   game.hudLayer.addChild(container);

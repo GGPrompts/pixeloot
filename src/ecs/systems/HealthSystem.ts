@@ -5,6 +5,7 @@ import { InputManager } from '../../core/InputManager';
 import { spawnInitialEnemies } from '../../entities/EnemySpawner';
 import { getComputedStats } from '../../core/ComputedStats';
 import { sfxPlayer } from '../../audio/SFXManager';
+import { SCREEN_W, SCREEN_H } from '../../core/constants';
 
 const POTION_COOLDOWN = 8; // seconds
 const POTION_HEAL_PERCENT = 0.3; // 30% of max HP
@@ -117,7 +118,7 @@ function triggerDeath(player: PlayerEntity): void {
 
   // Screen flash
   deathOverlay = new Graphics();
-  deathOverlay.rect(0, 0, 1280, 720).fill({ color: 0xffffff });
+  deathOverlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0xffffff });
   flashAlpha = 0.5;
   deathOverlay.alpha = flashAlpha;
   game.hudLayer.addChild(deathOverlay);

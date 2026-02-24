@@ -2,9 +2,7 @@ import { world } from '../world';
 import { game } from '../../Game';
 import { despawnProjectile } from '../../entities/Projectile';
 import type { Entity } from '../world';
-
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
+import { SCREEN_W, SCREEN_H } from '../../core/constants';
 
 const projectiles = world.with('projectile', 'position', 'velocity', 'lifetime');
 const enemyProjectiles = world.with('enemyProjectile', 'position', 'velocity', 'lifetime');

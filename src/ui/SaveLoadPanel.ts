@@ -4,8 +4,8 @@ import { InputManager } from '../core/InputManager';
 import { saveGame, loadGame, listSaves, deleteSave, exportSave, importSave, AUTOSAVE_NAME } from '../save/SaveManager';
 import type { SaveSlot } from '../save/Database';
 
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
+import { SCREEN_W, SCREEN_H } from '../core/constants';
+
 const PANEL_W = 520;
 const PANEL_H = 440;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;

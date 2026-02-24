@@ -9,9 +9,9 @@ import { BaseItem, Rarity } from '../loot/ItemTypes';
 import { GEM_BONUSES, GEM_COLORS, Gem } from '../loot/Gems';
 import { markStatsDirty } from '../core/ComputedStats';
 
+import { SCREEN_W, SCREEN_H } from '../core/constants';
+
 // Layout constants
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
 const PANEL_W = 720;
 const PANEL_H = 520;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;

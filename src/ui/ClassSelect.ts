@@ -4,8 +4,8 @@ import { skillSystem } from '../core/SkillSystem';
 import { rangerSkills } from '../entities/classes/Ranger';
 import { mageSkills } from '../entities/classes/Mage';
 
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
+import { SCREEN_W, SCREEN_H } from '../core/constants';
+
 const PANEL_W = 420;
 const PANEL_H = 260;
 const BTN_W = 160;

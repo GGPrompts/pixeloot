@@ -9,8 +9,7 @@ const BORDER_COLOR = 0x00ffff;
 const BG_COLOR = 0x111122;
 const BG_ALPHA = 0.85;
 
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
+import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 let container: Container;
 let slots: SlotUI[] = [];

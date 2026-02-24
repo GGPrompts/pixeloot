@@ -3,9 +3,10 @@ import { world } from '../ecs/world';
 import { game } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { isInTown } from '../core/TownManager';
+import { SCREEN_W } from '../core/constants';
 
 const MAP_SIZE = 150;
-const MAP_X = 1280 - MAP_SIZE - 10; // 10px padding from right edge
+const MAP_X = SCREEN_W - MAP_SIZE - 10; // 10px padding from right edge
 const MAP_Y = 24; // below the mute/volume text
 const BG_COLOR = 0x111118;
 const BG_ALPHA = 0.75;

@@ -38,12 +38,7 @@ import { applyTheme, getActiveTheme } from './core/ZoneThemes';
 import { musicPlayer } from './audio/MusicPlayer';
 import { enterTown, isInTown } from './core/TownManager';
 import { checkNPCClick, updateComingSoonText } from './entities/NPC';
-
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
-const TILE_SIZE = 32;
-const LOGIC_FPS = 60;
-const LOGIC_STEP = 1 / LOGIC_FPS;
+import { SCREEN_W, SCREEN_H, TILE_SIZE, LOGIC_FPS, LOGIC_STEP } from './core/constants';
 
 export class Game {
   public app: Application;
