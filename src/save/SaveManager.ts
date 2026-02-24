@@ -1,6 +1,7 @@
-import { db, type SaveSlot, type PlayerStateData, type InventoryData, type WorldStateData } from './Database';
+import { db, type SaveSlot, type PlayerStateData, type InventoryData, type WorldStateData, type StashData } from './Database';
 import { world } from '../ecs/world';
 import { inventory } from '../core/Inventory';
+import { stash } from '../core/Stash';
 import { skillSystem } from '../core/SkillSystem';
 import { game } from '../Game';
 import { getClassSkillsByName } from '../ui/ClassSelect';
@@ -66,10 +67,16 @@ export async function saveGame(slotName?: string): Promise<void> {
     waveNumber: game.waveSystem.currentWave,
   };
 
+  const stashData: StashData = {
+    saveId: saveId as number,
+    stash: stash.serialize(),
+  };
+
   await Promise.all([
     db.playerState.add(playerState),
     db.inventoryState.add(inventoryData),
     db.worldState.add(worldState),
+    db.stashState.add(stashData),
   ]);
 }
 
@@ -78,10 +85,11 @@ export async function saveGame(slotName?: string): Promise<void> {
  * Restores player entity, inventory, class, and wave number.
  */
 export async function loadGame(saveId: number): Promise<void> {
-  const [playerState, inventoryData, worldState] = await Promise.all([
+  const [playerState, inventoryData, worldState, stashData] = await Promise.all([
     db.playerState.get(saveId),
     db.inventoryState.get(saveId),
     db.worldState.get(saveId),
+    db.stashState.get(saveId),
   ]);
 
   if (!playerState) throw new Error(`No player state for save ${saveId}`);
@@ -122,6 +130,11 @@ export async function loadGame(saveId: number): Promise<void> {
   if (worldState) {
     game.waveSystem.currentWave = worldState.waveNumber;
   }
+
+  // Restore stash
+  if (stashData) {
+    stash.deserialize(stashData.stash);
+  }
 }
 
 /** List all save slots, most recent first. */
@@ -136,21 +149,23 @@ export async function deleteSave(saveId: number): Promise<void> {
     db.playerState.delete(saveId),
     db.inventoryState.delete(saveId),
     db.worldState.delete(saveId),
+    db.stashState.delete(saveId),
   ]);
 }
 
 /** Export a save as a JSON string. */
 export async function exportSave(saveId: number): Promise<string> {
-  const [slot, playerState, inventoryData, worldState] = await Promise.all([
+  const [slot, playerState, inventoryData, worldState, stashData] = await Promise.all([
     db.saves.get(saveId),
     db.playerState.get(saveId),
     db.inventoryState.get(saveId),
     db.worldState.get(saveId),
+    db.stashState.get(saveId),
   ]);
 
   if (!slot) throw new Error(`Save ${saveId} not found`);
 
-  return JSON.stringify({ slot, playerState, inventoryData, worldState }, null, 2);
+  return JSON.stringify({ slot, playerState, inventoryData, worldState, stashData }, null, 2);
 }
 
 /** Import a save from a JSON string. */
@@ -160,6 +175,7 @@ export async function importSave(json: string): Promise<void> {
     playerState: PlayerStateData;
     inventoryData: InventoryData;
     worldState: WorldStateData;
+    stashData?: StashData;
   };
 
   // Strip old id so a new one is assigned
@@ -172,11 +188,18 @@ export async function importSave(json: string): Promise<void> {
   data.inventoryData.saveId = saveId;
   data.worldState.saveId = saveId;
 
-  await Promise.all([
+  const promises: Promise<unknown>[] = [
     db.playerState.add(data.playerState),
     db.inventoryState.add(data.inventoryData),
     db.worldState.add(data.worldState),
-  ]);
+  ];
+
+  if (data.stashData) {
+    data.stashData.saveId = saveId;
+    promises.push(db.stashState.add(data.stashData));
+  }
+
+  await Promise.all(promises);
 }
 
 /** Auto-save to the special autosave slot. */

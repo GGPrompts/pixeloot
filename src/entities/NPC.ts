@@ -11,6 +11,7 @@ import { openVendorPanel } from '../ui/VendorPanel';
 import { openCraftingPanel } from '../ui/CraftingPanel';
 import { toggleClassSelect } from '../ui/ClassSelect';
 import { openMapDevicePanel } from '../ui/MapDeviceUI';
+import { openStashPanel } from '../ui/StashPanel';
 
 const TILE_SIZE = 32;
 
@@ -63,7 +64,7 @@ const NPC_DEFS: NPCDef[] = [
     tileOffsetY: 2,
     color: 0xdddddd,
     shape: 'square',
-    action: () => showComingSoon(),
+    action: () => openStashPanel(),
   },
 ];
 

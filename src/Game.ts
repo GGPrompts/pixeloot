@@ -29,6 +29,7 @@ import { updateSaveLoadPanel, isSaveLoadPanelOpen } from './ui/SaveLoadPanel';
 import { updateMapDeviceUI, isMapDeviceOpen } from './ui/MapDeviceUI';
 import { updateVendorPanel, isVendorOpen } from './ui/VendorPanel';
 import { updateCraftingPanel, isCraftingPanelOpen } from './ui/CraftingPanel';
+import { updateStashPanel, isStashOpen } from './ui/StashPanel';
 import { updateLootFilterPanel } from './ui/LootFilterPanel';
 import { lootFilterSystem } from './ecs/systems/LootFilterSystem';
 import { getAutoSave, loadGame } from './save/SaveManager';
@@ -261,6 +262,7 @@ export class Game {
     if (isMapDeviceOpen()) return;
     if (isVendorOpen()) return;
     if (isCraftingPanelOpen()) return;
+    if (isStashOpen()) return;
 
     // NPC click interaction in town (rising edge of left mouse)
     if (isInTown()) {
@@ -312,6 +314,7 @@ export class Game {
     updateMapDeviceUI();
     updateVendorPanel();
     updateCraftingPanel();
+    updateStashPanel();
     lootFilterSystem();
     updateLootFilterPanel(dt);
     updateComingSoonText(dt);
