@@ -67,9 +67,9 @@ export class InputManager {
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
-    canvas.addEventListener('mousemove', this.onMouseMove);
-    canvas.addEventListener('mousedown', this.onMouseDown);
-    window.addEventListener('mouseup', this.onMouseUp);
+    canvas.addEventListener('pointermove', this.onMouseMove);
+    canvas.addEventListener('pointerdown', this.onMouseDown);
+    window.addEventListener('pointerup', this.onMouseUp);
     window.addEventListener('blur', this.onBlur);
 
     // Prevent browser context menu so RMB works as a skill input
@@ -141,9 +141,9 @@ export class InputManager {
   destroy(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    this.canvas.removeEventListener('mousemove', this.onMouseMove);
-    this.canvas.removeEventListener('mousedown', this.onMouseDown);
-    window.removeEventListener('mouseup', this.onMouseUp);
+    this.canvas.removeEventListener('pointermove', this.onMouseMove);
+    this.canvas.removeEventListener('pointerdown', this.onMouseDown);
+    window.removeEventListener('pointerup', this.onMouseUp);
     window.removeEventListener('blur', this.onBlur);
     InputManager._instance = null;
   }
