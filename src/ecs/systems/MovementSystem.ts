@@ -5,7 +5,7 @@ const SCREEN_W = 1280;
 const SCREEN_H = 720;
 const MARGIN = 12;
 
-const movers = world.with('position', 'velocity', 'speed');
+const allMovers = world.with('position', 'velocity');
 const players = world.with('position', 'velocity', 'speed', 'player');
 
 /**
@@ -30,12 +30,14 @@ export function movementSystem(dt: number): void {
   }
 
   // Apply velocity to position for all movers
-  for (const entity of movers) {
+  for (const entity of allMovers) {
     entity.position.x += entity.velocity.x * dt;
     entity.position.y += entity.velocity.y * dt;
 
-    // Clamp to screen bounds
-    entity.position.x = Math.max(MARGIN, Math.min(SCREEN_W - MARGIN, entity.position.x));
-    entity.position.y = Math.max(MARGIN, Math.min(SCREEN_H - MARGIN, entity.position.y));
+    // Clamp non-projectile entities to screen bounds
+    if (!entity.projectile) {
+      entity.position.x = Math.max(MARGIN, Math.min(SCREEN_W - MARGIN, entity.position.x));
+      entity.position.y = Math.max(MARGIN, Math.min(SCREEN_H - MARGIN, entity.position.y));
+    }
   }
 }
