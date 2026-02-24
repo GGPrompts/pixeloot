@@ -17,9 +17,10 @@ import { enemyHealthBarSystem } from './ecs/systems/EnemyHealthBarSystem';
 import { updateHUD } from './ui/HUD';
 import { updateStatPanel } from './ui/StatPanel';
 import { skillSystem } from './core/SkillSystem';
-import { rangerSkills } from './entities/classes/Ranger';
 import { world } from './ecs/world';
 import { statusEffectSystem } from './ecs/systems/StatusEffectSystem';
+import { initHotbar, updateHotbar } from './ui/SkillHotbar';
+import { showClassSelect, isClassSelectVisible, toggleClassSelect } from './ui/ClassSelect';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -41,6 +42,8 @@ export class Game {
   private fpsTimer = 0;
   private frameCount = 0;
   private logicAccumulator = 0;
+  private prevCPressed = false;
+  private gameplayStarted = false;
 
   private constructor(app: Application) {
     this.app = app;
@@ -88,8 +91,13 @@ export class Game {
     // Create player entity
     createPlayer();
 
-    // Set Ranger as default class
-    skillSystem.setClass(rangerSkills);
+    // Initialize skill hotbar UI
+    initHotbar();
+
+    // Show class selection screen before gameplay starts
+    showClassSelect(() => {
+      this.gameplayStarted = true;
+    });
 
     // Spawn initial enemies
     spawnInitialEnemies(5);
@@ -157,6 +165,18 @@ export class Game {
 
   /** Called at a fixed 60 Hz rate for deterministic game logic. */
   private fixedUpdate(dt: number): void {
+    // Check for 'C' key toggle (class select) - edge detect
+    const cDown = InputManager.instance.isPressed('KeyC');
+    if (cDown && !this.prevCPressed) {
+      if (this.gameplayStarted) {
+        toggleClassSelect();
+      }
+    }
+    this.prevCPressed = cDown;
+
+    // Pause gameplay while class select is open
+    if (isClassSelectVisible()) return;
+
     // Skill system: tick cooldowns and check key input
     skillSystem.tickSkills(dt);
     const playerEntities = world.with('player', 'position').entities;
@@ -185,6 +205,7 @@ export class Game {
     enemyHealthBarSystem();
     updateHUD();
     updateStatPanel();
+    updateHotbar();
 
     // FPS counter — update display every 500 ms
     this.frameCount++;

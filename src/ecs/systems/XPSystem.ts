@@ -12,6 +12,10 @@ export function xpToNextLevel(level: number): number {
 /** Base XP values by enemy type. Extend as new enemies are added. */
 const BASE_XP: Record<string, number> = {
   rusher: 15,
+  swarm: 5,
+  tank: 40,
+  sniper: 25,
+  flanker: 20,
 };
 
 /**

@@ -33,7 +33,7 @@ export function movementSystem(dt: number): void {
   // Apply velocity to position for all movers
   for (const entity of allMovers) {
     // Projectiles skip wall collision (handled by ProjectileSystem)
-    if (entity.projectile) {
+    if (entity.projectile || entity.enemyProjectile) {
       entity.position.x += entity.velocity.x * dt;
       entity.position.y += entity.velocity.y * dt;
       continue;

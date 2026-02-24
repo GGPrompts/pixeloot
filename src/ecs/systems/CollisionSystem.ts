@@ -10,6 +10,7 @@ const CONTACT_RADIUS = 20;
 const INVULN_DURATION = 1; // seconds
 
 const projectiles = world.with('projectile', 'position', 'damage');
+const enemyProjectiles = world.with('enemyProjectile', 'position', 'damage');
 const enemies = world.with('enemy', 'position', 'health');
 const enemiesWithDamage = world.with('enemy', 'position', 'damage');
 const players = world.with('player', 'position', 'health');
@@ -90,8 +91,8 @@ export function collisionSystem(dt: number): void {
     // Spawn death particles before removing
     spawnDeathParticles(enemy.position.x, enemy.position.y);
 
-    // Grant XP to player
-    grantXP(getEnemyXP('rusher'));
+    // Grant XP to player based on enemy type
+    grantXP(getEnemyXP(enemy.enemyType ?? 'rusher'));
 
     if (enemy.sprite) {
       enemy.sprite.removeFromParent();
@@ -136,5 +137,28 @@ export function collisionSystem(dt: number): void {
 
       break; // Only one hit per frame
     }
+  }
+
+  // --- Enemy Projectile vs Player ---
+  const enemyProjsToDespawn: typeof enemyProjectiles.entities[number][] = [];
+  for (const proj of enemyProjectiles) {
+    const dx = proj.position.x - player.position.x;
+    const dy = proj.position.y - player.position.y;
+    const distSq = dx * dx + dy * dy;
+
+    if (distSq < HIT_RADIUS * HIT_RADIUS) {
+      player.health.current -= proj.damage;
+      spawnDamageNumber(player.position.x, player.position.y - 10, proj.damage, 0xff44ff);
+
+      if (player.health.current <= 0) {
+        player.health.current = 0;
+      }
+
+      enemyProjsToDespawn.push(proj);
+    }
+  }
+
+  for (const proj of enemyProjsToDespawn) {
+    despawnProjectile(proj);
   }
 }

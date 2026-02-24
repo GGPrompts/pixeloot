@@ -1,14 +1,32 @@
 import { world } from '../ecs/world';
 import { game } from '../Game';
-import { spawnRusher } from './Enemy';
+import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker } from './Enemy';
 
 const MIN_PLAYER_DIST = 200;
 
 /**
- * Spawns a batch of Rusher enemies at random floor tiles.
- * Ensures each spawn is at least MIN_PLAYER_DIST pixels from the player.
+ * Finds a valid spawn position at least MIN_PLAYER_DIST from the player.
+ * Returns null if no valid position found within attempt limit.
  */
-export function spawnInitialEnemies(count: number): void {
+function findSpawnPosition(px: number, py: number, maxAttempts = 20): { x: number; y: number } | null {
+  for (let i = 0; i < maxAttempts; i++) {
+    const tile = game.tileMap.getRandomFloorTile();
+    const pos = game.tileMap.tileToWorld(tile.x, tile.y);
+    const dx = pos.x - px;
+    const dy = pos.y - py;
+    if (Math.sqrt(dx * dx + dy * dy) >= MIN_PLAYER_DIST) {
+      return pos;
+    }
+  }
+  return null;
+}
+
+/**
+ * Spawns the initial set of enemies: a mix of all enemy types.
+ * The count parameter is ignored in favor of the fixed composition.
+ * 3 Rushers, 4-6 Swarm (as a pack), 1 Tank, 1 Sniper, 1 Flanker.
+ */
+export function spawnInitialEnemies(_count?: number): void {
   const players = world.with('player', 'position');
   const player = players.entities[0];
   if (!player) return;
@@ -16,22 +34,32 @@ export function spawnInitialEnemies(count: number): void {
   const px = player.position.x;
   const py = player.position.y;
 
-  let spawned = 0;
-  let attempts = 0;
-  const maxAttempts = count * 20;
+  // 3 Rushers
+  for (let i = 0; i < 3; i++) {
+    const pos = findSpawnPosition(px, py);
+    if (pos) spawnRusher(pos.x, pos.y);
+  }
 
-  while (spawned < count && attempts < maxAttempts) {
-    attempts++;
-    const tile = game.tileMap.getRandomFloorTile();
-    const pos = game.tileMap.tileToWorld(tile.x, tile.y);
-
-    const dx = pos.x - px;
-    const dy = pos.y - py;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist >= MIN_PLAYER_DIST) {
-      spawnRusher(pos.x, pos.y);
-      spawned++;
+  // 4 Swarm in a pack (clustered near one point)
+  const swarmCenter = findSpawnPosition(px, py);
+  if (swarmCenter) {
+    const packSize = 4;
+    for (let i = 0; i < packSize; i++) {
+      const offsetX = (Math.random() - 0.5) * 40;
+      const offsetY = (Math.random() - 0.5) * 40;
+      spawnSwarm(swarmCenter.x + offsetX, swarmCenter.y + offsetY);
     }
   }
+
+  // 1 Tank
+  const tankPos = findSpawnPosition(px, py);
+  if (tankPos) spawnTank(tankPos.x, tankPos.y);
+
+  // 1 Sniper
+  const sniperPos = findSpawnPosition(px, py);
+  if (sniperPos) spawnSniper(sniperPos.x, sniperPos.y);
+
+  // 1 Flanker
+  const flankerPos = findSpawnPosition(px, py);
+  if (flankerPos) spawnFlanker(flankerPos.x, flankerPos.y);
 }

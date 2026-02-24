@@ -10,6 +10,8 @@ export type Entity = {
   sprite?: Container;
   player?: true;
   enemy?: true;
+  enemyType?: string;
+  enemyProjectile?: true;
   projectile?: true;
   damage?: number;
   health?: { current: number; max: number };
@@ -30,6 +32,9 @@ export type Entity = {
   stats?: { dexterity: number; intelligence: number; vitality: number; focus: number };
   statusEffects?: StatusEffect[]; // active status effects on this entity
   stunImmunity?: number;         // seconds of stun immunity remaining
+  aiTimer?: number;               // general-purpose AI cooldown timer
+  aiState?: string;               // AI behavior state (e.g. 'circling', 'dashing')
+  explodeOnDeath?: { radius: number; damage: number }; // AoE explosion when projectile dies
 };
 
 export const world = new World<Entity>();
