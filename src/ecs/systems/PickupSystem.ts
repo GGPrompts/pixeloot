@@ -5,6 +5,7 @@ import { Rarity } from '../../loot/ItemTypes';
 import { inventory } from '../../core/Inventory';
 import { getComputedStats } from '../../core/ComputedStats';
 import { GEM_COLORS } from '../../loot/Gems';
+import { sfxPlayer } from '../../audio/SFXManager';
 
 const PICKUP_RADIUS = 32;
 const PICKUP_RADIUS_SQ = PICKUP_RADIUS * PICKUP_RADIUS;
@@ -79,6 +80,14 @@ export function pickupSystem(_dt: number): void {
       const item = pickup.lootDrop.item;
       const color = RARITY_COLORS[item.rarity] ?? 0xcccccc;
       spawnPickupText(pickup.position.x, pickup.position.y - 10, item.name, color);
+      // Play rarity-appropriate pickup SFX
+      const raritySfx: Record<number, string> = {
+        [Rarity.Normal]: 'pickup_normal',
+        [Rarity.Magic]: 'pickup_magic',
+        [Rarity.Rare]: 'pickup_rare',
+        [Rarity.Unique]: 'pickup_unique',
+      };
+      sfxPlayer.play(raritySfx[item.rarity] ?? 'pickup_normal');
       // TODO: add item to player inventory (inventory UI is a separate task)
       console.log('[Loot] Picked up:', item.name, `(${Rarity[item.rarity]})`, item);
     }
@@ -93,6 +102,7 @@ export function pickupSystem(_dt: number): void {
         `Map T${mapItem.tier}`,
         tierColor,
       );
+      sfxPlayer.play('pickup_map');
     }
 
     if (pickup.gemDrop) {
@@ -100,11 +110,13 @@ export function pickupSystem(_dt: number): void {
       inventory.addGem(gem);
       const gemColor = GEM_COLORS[gem.type] ?? 0xeeeeff;
       spawnPickupText(pickup.position.x, pickup.position.y - 10, `${gem.name} Gem`, gemColor);
+      sfxPlayer.play('pickup_gem');
     }
 
     if (pickup.goldDrop !== undefined) {
       const amount = Math.round(pickup.goldDrop * getComputedStats().goldMultiplier);
       spawnPickupText(pickup.position.x, pickup.position.y - 10, `+${amount} gold`, 0xffd700);
+      sfxPlayer.play('pickup_gold');
       // Add gold to player
       if (player.gold !== undefined) {
         player.gold += amount;

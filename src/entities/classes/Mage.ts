@@ -6,6 +6,8 @@ import { game } from '../../Game';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { spawnDeathParticles } from '../DeathParticles';
 import { applyStatus, StatusType } from '../../core/StatusEffects';
+import { shake } from '../../ecs/systems/CameraSystem';
+import { spawnHitSparks } from '../HitSparks';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
@@ -475,6 +477,10 @@ const meteor: SkillDef = {
 
         if (elapsed >= METEOR_DELAY) {
           impacted = true;
+
+          // Screen shake on meteor impact
+          shake(0.5, 10);
+          spawnHitSparks(tx, ty, 'fire');
 
           // Deal damage to all enemies in radius
           for (const enemy of enemies) {

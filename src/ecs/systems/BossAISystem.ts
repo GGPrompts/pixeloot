@@ -2,6 +2,8 @@ import { Graphics } from 'pixi.js';
 import { world } from '../world';
 import { game } from '../../Game';
 import { spawnRusher, spawnSwarm } from '../../entities/Enemy';
+import { spawnBossTelegraph } from '../../entities/BossTelegraph';
+import { shake } from './CameraSystem';
 
 const bosses = world.with('boss', 'enemy', 'position', 'velocity', 'speed', 'health', 'sprite');
 const players = world.with('player', 'position');
@@ -34,6 +36,10 @@ const BOSS_PROJ_RADIUS = 5;
 const BOSS_PROJ_LIFETIME = 3;
 const BOSS_PROJ_COLOR = 0xff4400;
 
+// ── Telegraph settings ──────────────────────────────────────────────
+const CHARGE_TELEGRAPH_DURATION = 0.6; // seconds warning before charge
+const CHARGE_TELEGRAPH_RADIUS = 36;
+
 // Per-boss state stored outside ECS to avoid polluting Entity
 interface BossState {
   burstTimer: number;
@@ -44,6 +50,7 @@ interface BossState {
   chargeDir: { x: number; y: number };
   phase2Entered: boolean;
   pulseTime: number;
+  telegraphing: boolean; // true while showing charge telegraph
 }
 
 const bossStates = new WeakMap<object, BossState>();
@@ -60,6 +67,7 @@ function getState(boss: (typeof bosses.entities)[number]): BossState {
       chargeDir: { x: 0, y: 0 },
       phase2Entered: false,
       pulseTime: 0,
+      telegraphing: false,
     };
     bossStates.set(boss, s);
   }
@@ -149,6 +157,8 @@ export function bossAISystem(dt: number): void {
       // Enrage: increase speed
       boss.speed = 100;
       if (boss.baseSpeed !== undefined) boss.baseSpeed = 100;
+      // Screen shake on phase transition
+      shake(0.5, 8);
     } else if (hpRatio <= PHASE2_THRESHOLD && currentPhase < 2) {
       currentPhase = 2;
       boss.bossPhase = 2;
@@ -156,6 +166,8 @@ export function bossAISystem(dt: number): void {
       if (!state.phase2Entered) {
         state.phase2Entered = true;
         spawnAddsAroundBoss(boss.position.x, boss.position.y, bossLevel, 'swarm', 4);
+        // Screen shake on phase transition
+        shake(0.4, 6);
       }
     }
 
@@ -199,6 +211,9 @@ export function bossAISystem(dt: number): void {
       continue;
     }
 
+    // Skip normal AI while telegraph is playing
+    if (state.telegraphing) continue;
+
     // ── Timers ────────────────────────────────────────────────────
     state.burstTimer -= dt;
     state.chargeTimer -= dt;
@@ -209,16 +224,27 @@ export function bossAISystem(dt: number): void {
       fireBurst(boss.position.x, boss.position.y, player.position.x, player.position.y, burstCount);
     }
 
-    // Charge dash
+    // Charge dash - now with telegraph warning
     if (state.chargeTimer <= 0) {
       state.chargeTimer = chargeInterval;
       const dx = player.position.x - boss.position.x;
       const dy = player.position.y - boss.position.y;
       const len = Math.sqrt(dx * dx + dy * dy);
       if (len > 0) {
-        state.charging = true;
-        state.chargeDuration = CHARGE_DURATION;
-        state.chargeDir = { x: dx / len, y: dy / len };
+        // Show telegraph at player's current position, then charge
+        state.telegraphing = true;
+        const targetX = player.position.x;
+        const targetY = player.position.y;
+        const dirX = dx / len;
+        const dirY = dy / len;
+
+        spawnBossTelegraph(targetX, targetY, CHARGE_TELEGRAPH_RADIUS, CHARGE_TELEGRAPH_DURATION)
+          .then(() => {
+            state.telegraphing = false;
+            state.charging = true;
+            state.chargeDuration = CHARGE_DURATION;
+            state.chargeDir = { x: dirX, y: dirY };
+          });
       }
     }
 

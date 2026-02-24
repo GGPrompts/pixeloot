@@ -4,6 +4,7 @@ import { game } from '../../Game';
 import { InputManager } from '../../core/InputManager';
 import { spawnInitialEnemies } from '../../entities/EnemySpawner';
 import { getComputedStats } from '../../core/ComputedStats';
+import { sfxPlayer } from '../../audio/SFXManager';
 
 const POTION_COOLDOWN = 8; // seconds
 const POTION_HEAL_PERCENT = 0.3; // 30% of max HP
@@ -46,6 +47,7 @@ export function healthSystem(dt: number): void {
   ) {
     world.addComponent(player, 'potionCooldown', POTION_COOLDOWN);
     world.addComponent(player, 'hotTimer', POTION_DURATION);
+    sfxPlayer.play('potion_use');
     hotAccumulator = 0;
     const totalHeal = player.health.max * POTION_HEAL_PERCENT;
     const totalTicks = POTION_DURATION / POTION_TICK_INTERVAL;
@@ -104,6 +106,7 @@ export function healthSystem(dt: number): void {
 type PlayerEntity = (typeof players.entities)[number];
 
 function triggerDeath(player: PlayerEntity): void {
+  sfxPlayer.play('player_death');
   world.addComponent(player, 'dead', true as const);
   world.addComponent(player, 'inputDisabled', true as const);
 

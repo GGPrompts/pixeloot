@@ -1,5 +1,6 @@
 import { InputManager } from './InputManager';
 import { getComputedStats } from './ComputedStats';
+import { sfxPlayer } from '../audio/SFXManager';
 
 export interface SkillDef {
   name: string;
@@ -67,6 +68,9 @@ class SkillSystem {
     if (skill.cooldownRemaining > 0) return false;
 
     skill.def.execute(playerPos, mousePos);
+    // Play cast SFX based on class
+    const castSfx = this._activeClass === 'mage' ? 'cast_mage' : 'cast_ranger';
+    sfxPlayer.play(castSfx);
     // Apply cooldown reduction from gear + focus stat (capped at 40%)
     const cdr = getComputedStats().cooldownReduction;
     skill.cooldownRemaining = skill.def.cooldown * (1 - cdr);

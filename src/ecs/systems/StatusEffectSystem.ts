@@ -7,11 +7,18 @@ import {
   STATUS_PRIORITY,
 } from '../../core/StatusEffects';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
+import { spawnBurnParticle, spawnChillParticle, spawnShockParticle } from '../../entities/StatusParticles';
 
 const BURN_DAMAGE = 5;
 const BURN_TICK_INTERVAL = 0.5;
 
+/** Interval between spawning ambient status particles (seconds). */
+const STATUS_PARTICLE_INTERVAL = 0.15;
+
 const affected = world.with('statusEffects');
+
+// Per-entity particle timer stored outside ECS to avoid polluting Entity
+const particleTimers = new WeakMap<object, number>();
 
 /**
  * Processes all entities with statusEffects each fixed update.
@@ -21,6 +28,7 @@ const affected = world.with('statusEffects');
  * - Ticks DoT (Burn)
  * - Manages stun immunity timers
  * - Applies visual tints to sprites
+ * - Spawns ambient status effect particles
  *
  * Should be called in fixedUpdate BEFORE movementSystem so that
  * speed changes take effect in the same frame.
@@ -77,6 +85,27 @@ export function statusEffectSystem(dt: number): void {
     // ── Remove expired effects ──────────────────────────────────
     for (const type of expiredTypes) {
       removeStatus(entity, type);
+    }
+
+    // ── Spawn ambient status particles ────────────────────────
+    if (entity.position) {
+      let timer = particleTimers.get(entity) ?? 0;
+      timer -= dt;
+
+      if (timer <= 0) {
+        timer = STATUS_PARTICLE_INTERVAL;
+
+        // Spawn particle for the highest-priority active effect
+        if (hasStatus(entity, StatusType.Burn)) {
+          spawnBurnParticle(entity.position.x, entity.position.y);
+        } else if (hasStatus(entity, StatusType.Shock)) {
+          spawnShockParticle(entity.position.x, entity.position.y);
+        } else if (hasStatus(entity, StatusType.Chill) || hasStatus(entity, StatusType.Slow)) {
+          spawnChillParticle(entity.position.x, entity.position.y);
+        }
+      }
+
+      particleTimers.set(entity, timer);
     }
 
     // ── Recalculate speed from baseSpeed + modifiers ────────────

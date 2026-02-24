@@ -3,6 +3,7 @@ import { world } from '../world';
 import { game } from '../../Game';
 import { scaleXP } from '../../core/MonsterScaling';
 import { getComputedStats } from '../../core/ComputedStats';
+import { sfxPlayer } from '../../audio/SFXManager';
 
 const players = world.with('player', 'xp', 'level', 'statPoints', 'stats');
 
@@ -41,8 +42,9 @@ export function grantXP(amount: number): void {
     player.level += 1;
     player.statPoints += 3;
 
-    // Visual feedback
+    // Visual + audio feedback
     spawnLevelUpText(player.position!.x, player.position!.y);
+    sfxPlayer.play('level_up');
 
     needed = xpToNextLevel(player.level);
   }

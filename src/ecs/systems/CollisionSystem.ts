@@ -11,12 +11,18 @@ import { spawnMapDrop } from '../../entities/MapDrop';
 import { spawnGemDrop } from '../../entities/GemDrop';
 import { getComputedStats } from '../../core/ComputedStats';
 import { spawnMiniSplitter } from '../../entities/Enemy';
+import { sfxPlayer } from '../../audio/SFXManager';
+import { spawnHitSparks } from '../../entities/HitSparks';
+import { shake } from './CameraSystem';
 
 /** Apply armor damage reduction to incoming damage. */
 function reduceDamage(rawDamage: number): number {
   const dr = getComputedStats().damageReduction;
   return Math.max(1, Math.round(rawDamage * (1 - dr)));
 }
+
+/** Threshold for "heavy damage" screen shake (20% of max HP). */
+const HEAVY_DMG_RATIO = 0.2;
 
 const HIT_RADIUS = 16;
 const CONTACT_RADIUS = 20;
@@ -105,6 +111,8 @@ export function collisionSystem(dt: number): void {
         // Deal damage
         enemy.health.current -= dmg;
         spawnDamageNumber(enemy.position.x, enemy.position.y - 10, dmg, 0xffffff);
+        spawnHitSparks(enemy.position.x, enemy.position.y, 'physical');
+        sfxPlayer.play('hit_physical');
 
         // Apply knockback if projectile has knockbackOnHit
         if (proj.knockbackOnHit && proj.position) {
@@ -158,6 +166,7 @@ export function collisionSystem(dt: number): void {
 
     // Spawn death particles before removing
     spawnDeathParticles(enemy.position.x, enemy.position.y);
+    sfxPlayer.play('enemy_death');
 
     // Grant XP to player based on enemy type and level
     grantXP(getEnemyXP(enemy.enemyType ?? 'rusher', enemy.level ?? 1));
@@ -253,7 +262,19 @@ export function collisionSystem(dt: number): void {
       const reducedContactDmg = reduceDamage(enemy.damage);
       player.health.current -= reducedContactDmg;
       spawnDamageNumber(player.position.x, player.position.y - 10, reducedContactDmg, 0xff3333);
+      spawnHitSparks(player.position.x, player.position.y, 'physical');
+      sfxPlayer.play('hit_physical');
       world.addComponent(player, 'invulnTimer', INVULN_DURATION);
+
+      // Screen shake on heavy damage (>20% max HP)
+      if (player.health.max > 0 && reducedContactDmg / player.health.max >= HEAVY_DMG_RATIO) {
+        shake(0.3, 6);
+      }
+
+      // Boss contact: always shake
+      if (enemy.boss) {
+        shake(0.4, 8);
+      }
 
       // Fire enchanted modifier: enemies apply Burn on contact
       if (hasModifier('fire_enchanted')) {
@@ -280,6 +301,13 @@ export function collisionSystem(dt: number): void {
       const reducedProjDmg = reduceDamage(proj.damage);
       player.health.current -= reducedProjDmg;
       spawnDamageNumber(player.position.x, player.position.y - 10, reducedProjDmg, 0xff44ff);
+      spawnHitSparks(player.position.x, player.position.y, 'fire');
+      sfxPlayer.play('hit_magic');
+
+      // Screen shake on heavy projectile damage (>20% max HP)
+      if (player.health.max > 0 && reducedProjDmg / player.health.max >= HEAVY_DMG_RATIO) {
+        shake(0.3, 6);
+      }
 
       if (player.health.current <= 0) {
         player.health.current = 0;
