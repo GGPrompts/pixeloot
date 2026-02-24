@@ -8,8 +8,10 @@ import { cameraSystem } from './ecs/systems/CameraSystem';
 import { projectileSystem } from './ecs/systems/ProjectileSystem';
 import { collisionSystem } from './ecs/systems/CollisionSystem';
 import { firingSystem } from './ecs/systems/FiringSystem';
+import { aiSystem } from './ecs/systems/AISystem';
 import { generateDungeon } from './map/DungeonGenerator';
 import { TileMap } from './map/TileMap';
+import { spawnInitialEnemies } from './entities/EnemySpawner';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -75,6 +77,9 @@ export class Game {
     // Create player entity
     createPlayer();
 
+    // Spawn initial enemies
+    spawnInitialEnemies(5);
+
     // Start game loop
     this.startLoop();
   }
@@ -135,6 +140,7 @@ export class Game {
   /** Called at a fixed 60 Hz rate for deterministic game logic. */
   private fixedUpdate(dt: number): void {
     firingSystem(dt);
+    aiSystem(dt);
     movementSystem(dt);
     projectileSystem(dt);
     collisionSystem(dt);

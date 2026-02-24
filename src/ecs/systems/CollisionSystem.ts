@@ -1,21 +1,28 @@
 import { world } from '../world';
 import { despawnProjectile } from '../../entities/Projectile';
+import { spawnDeathParticles } from '../../entities/DeathParticles';
 
 const HIT_RADIUS = 16;
+const CONTACT_RADIUS = 20;
+const INVULN_DURATION = 1; // seconds
 
 const projectiles = world.with('projectile', 'position', 'damage');
 const enemies = world.with('enemy', 'position', 'health');
+const enemiesWithDamage = world.with('enemy', 'position', 'damage');
+const players = world.with('player', 'position', 'health');
 
 /**
  * Checks projectile-enemy collisions using simple distance checks.
  * Deals damage and despawns projectiles on hit.
- * Removes enemies at zero health.
+ * Removes enemies at zero health with death particles.
+ * Also checks enemy-player contact damage with invulnerability window.
  * Called from fixedUpdate at 60 Hz.
  */
-export function collisionSystem(_dt: number): void {
+export function collisionSystem(dt: number): void {
   const projectilesToDespawn: typeof projectiles.entities[number][] = [];
   const enemiesToRemove: typeof enemies.entities[number][] = [];
 
+  // --- Projectile vs Enemy ---
   for (const proj of projectiles) {
     for (const enemy of enemies) {
       const dx = proj.position.x - enemy.position.x;
@@ -49,9 +56,50 @@ export function collisionSystem(_dt: number): void {
   }
 
   for (const enemy of enemiesToRemove) {
+    // Spawn death particles before removing
+    spawnDeathParticles(enemy.position.x, enemy.position.y);
+
     if (enemy.sprite) {
       enemy.sprite.removeFromParent();
     }
     world.remove(enemy);
+  }
+
+  // --- Enemy vs Player contact damage ---
+  if (players.entities.length === 0) return;
+  const player = players.entities[0];
+
+  // Tick down invulnerability timer
+  if (player.invulnTimer !== undefined && player.invulnTimer > 0) {
+    player.invulnTimer -= dt;
+
+    // Flash the player sprite during invulnerability
+    if (player.sprite) {
+      player.sprite.alpha = Math.sin(player.invulnTimer * 20) > 0 ? 0.3 : 1;
+    }
+
+    if (player.invulnTimer <= 0) {
+      player.invulnTimer = 0;
+      if (player.sprite) player.sprite.alpha = 1;
+    }
+    return; // Skip contact checks while invulnerable
+  }
+
+  for (const enemy of enemiesWithDamage) {
+    const dx = enemy.position.x - player.position.x;
+    const dy = enemy.position.y - player.position.y;
+    const distSq = dx * dx + dy * dy;
+
+    if (distSq < CONTACT_RADIUS * CONTACT_RADIUS) {
+      player.health.current -= enemy.damage;
+      world.addComponent(player, 'invulnTimer', INVULN_DURATION);
+
+      if (player.health.current <= 0) {
+        player.health.current = 0;
+        // Player death handling can be added later
+      }
+
+      break; // Only one hit per frame
+    }
   }
 }

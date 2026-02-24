@@ -12,6 +12,7 @@ export type Entity = {
   damage?: number;
   health?: { current: number; max: number };
   lifetime?: number;
+  invulnTimer?: number;
 };
 
 export const world = new World<Entity>();

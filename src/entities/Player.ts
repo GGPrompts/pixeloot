@@ -31,6 +31,7 @@ export function createPlayer(): Entity {
     velocity: { x: 0, y: 0 },
     speed: 200,
     player: true as const,
+    health: { current: 100, max: 100 },
     sprite: g,
   });
 
