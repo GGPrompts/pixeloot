@@ -1,4 +1,12 @@
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { InputManager } from './core/InputManager';
+import { createPlayer } from './entities/Player';
+import { movementSystem } from './ecs/systems/MovementSystem';
+import { spriteSyncSystem } from './ecs/systems/SpriteSync';
+import { playerFacingSystem } from './ecs/systems/PlayerFacingSystem';
+import { cameraSystem } from './ecs/systems/CameraSystem';
+import { generateDungeon } from './map/DungeonGenerator';
+import { TileMap } from './map/TileMap';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -14,6 +22,7 @@ export class Game {
   public entityLayer: Container;
   public effectLayer: Container;
   public hudLayer: Container;
+  public tileMap!: TileMap;
 
   private fpsText: Text;
   private fpsTimer = 0;
@@ -38,6 +47,13 @@ export class Game {
     // Draw grid on world layer
     this.drawGrid();
 
+    // Generate dungeon and render walls on world layer (grid shows through floor tiles)
+    const dungeonW = Math.floor(SCREEN_W / TILE_SIZE);
+    const dungeonH = Math.floor(SCREEN_H / TILE_SIZE);
+    const dungeonData = generateDungeon(dungeonW, dungeonH);
+    this.tileMap = new TileMap(dungeonData);
+    this.tileMap.render(this.worldLayer);
+
     // Create FPS counter on hud layer
     this.fpsText = new Text({
       text: 'FPS: --',
@@ -49,6 +65,12 @@ export class Game {
     });
     this.fpsText.position.set(8, 8);
     this.hudLayer.addChild(this.fpsText);
+
+    // Initialize input manager
+    InputManager.init(app.canvas as HTMLCanvasElement);
+
+    // Create player entity
+    createPlayer();
 
     // Start game loop
     this.startLoop();
@@ -108,12 +130,17 @@ export class Game {
   }
 
   /** Called at a fixed 60 Hz rate for deterministic game logic. */
-  private fixedUpdate(_dt: number): void {
-    // Future: ECS system ticks, physics, AI, etc.
+  private fixedUpdate(dt: number): void {
+    movementSystem(dt);
   }
 
   /** Called every render frame for visual-only work. */
   private frameUpdate(dt: number): void {
+    // ECS visual systems
+    spriteSyncSystem();
+    playerFacingSystem();
+    cameraSystem();
+
     // FPS counter — update display every 500 ms
     this.frameCount++;
     this.fpsTimer += dt;
