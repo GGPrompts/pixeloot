@@ -1,6 +1,6 @@
 # Pixeloot - Game Design Document
 
-> A browser-based neon ARPG with tight balance, meaningful loot, and old-school social trading.
+> A browser-based pixel art ARPG with tight balance, meaningful loot, and old-school social trading.
 
 ## Design Pillars
 
@@ -9,7 +9,7 @@
 3. **Mechanical depth over number inflation** - Weapon affixes change *how* you fight (projectile speed, pierce count, spread angle), not just how hard you hit.
 4. **Respect the player's time** - No slog to endgame. Monster scaling from level 1 means every zone is the real game.
 5. **Simple systems, deep decisions** - Universal health potion. No crit. No leech. Build identity comes from skill choices and gear synergies.
-6. **Old-school social** - In-person trading. You meet people, chat, build trust. No silent auction house. The community *is* the economy.
+6. **Old-school social** - Chat-based trading. You meet people, negotiate, build trust. No silent auction house. The community *is* the economy.
 
 ---
 
@@ -17,44 +17,62 @@
 
 ```
 Enter Map → Kill Monsters → Collect Loot → Upgrade Gear → Harder Maps
-                                              ↓
-                                     Chat → Trade → Show Off
+                                ↓                ↓
+                            Salvage          Chat → Trade → Show Off
+                                ↓
+                        Craft / Reroll
 ```
 
 ---
 
 ## Art Direction
 
-### Geometry Wars Aesthetic
+### Two-Phase Visual Strategy
+
+**Phase 1 (Prototyping): Geometry Wars Style**
 - **Dark background** with subtle grid or particle field
 - **Neon vector-style enemies** - bright, glowing, distinct silhouettes
-- **Clear hitboxes** - what you see is what you hit (and what hits you)
+- **Clear hitboxes** - geometric primitives show exact collision boundaries
 - **Glow/bloom effects** on projectiles, explosions, pickups
-- **Color-coded enemy types** - each enemy shape/color = different behavior at a glance
-- **Canvas 2D rendering** with glow filters (`shadowBlur`, additive compositing)
-- No sprite sheets needed for v1 - geometric primitives with glow look great immediately
+- **Color-coded enemy types** - each shape/color = different behavior at a glance
+- Purpose: nail the gameplay feel with perfect visual clarity before investing in art
 
-### Color Language
-| Element | Color |
-|---------|-------|
-| Player (Ranger) | Cyan / Teal |
-| Player (Mage) | Purple / Violet |
-| Basic enemies | Red / Orange |
-| Fast enemies | Yellow |
-| Tank enemies | Green |
-| Ranged enemies | Magenta |
-| Boss enemies | White with multi-color glow |
-| Loot drops | Rarity color (white/blue/yellow/orange) |
-| Health | Red |
-| Mana/Resource | Blue |
-| Gold | Gold/Amber |
-| Danger zones | Red pulse/flash |
+**Phase 2 (Production): Pixel Art Skin**
+- Layer pixel art sprites on top of the proven hitbox geometry
+- Top-down perspective, 32x32 tile size
+- Rich palettes per zone theme (dark dungeon, lush forest, fire caves, etc.)
+- Pixel art UI panels (inventory, skill bar, minimap)
+- The geometry hitboxes remain underneath - pixel art is the costume, not the collision
+
+**Colorblind Accessibility**
+- Enemy types distinguished by **shape AND color** (never color alone)
+- Shapes are readable at a glance even in monochrome
+- Optional high-contrast mode that adds extra border/pattern distinction
+- Loot rarity uses glow intensity + icon markers in addition to color
+
+### Color Language (Phase 1)
+| Element | Color | Shape |
+|---------|-------|-------|
+| Player (Ranger) | Cyan / Teal | Arrow/chevron |
+| Player (Mage) | Purple / Violet | Circle with inner glow |
+| Rusher enemies | Red | Triangle (pointing at player) |
+| Swarm enemies | Orange | Small circles |
+| Tank enemies | Green | Large hexagon |
+| Ranged enemies | Magenta | Diamond |
+| Fast enemies | Yellow | Crescent |
+| Boss enemies | White + multi-glow | Large, unique per zone |
+| Loot drops | Rarity color | Star burst |
+| Health | Red | - |
+| Mana/Resource | Blue | - |
+| Gold | Gold/Amber | - |
+| Danger zones | Red pulse/flash | - |
 
 ### UI
-- Dark panel UI with neon accent borders
+- Dark panel UI with accent borders (neon in Phase 1, pixel art frames in Phase 2)
 - Clean readable font for stats (monospace for numbers)
 - Minimal HUD: health bar, mana bar, skill hotbar, minimap
-- Inventory grid with glow on rarity colors
+- Inventory grid with rarity glow + icon markers
+- **Loot filter** (toggle what drops are shown/highlighted by rarity and affix type)
 
 ---
 
@@ -102,10 +120,11 @@ Start with two ranged classes to avoid melee collision complexity. Each has a di
 | **Focus** | Mana pool, mana regen, cooldown reduction |
 
 ### Health & Potions
-- **One health potion** on a shared cooldown (e.g., 8 seconds)
-- Heals a fixed percentage of max HP (e.g., 40%)
+- **One health potion** on a shared cooldown (8 seconds)
+- Heals **30% of max HP** over 2 seconds (heal-over-time, not instant)
 - Same for every player - no potion management, no flask piano
-- Creates tension: do you play aggressive and risk the cooldown, or play safe?
+- HoT prevents binary "immortal vs dead" - you can still die during the heal if you take heavy damage
+- Creates tension: do you pop it early and waste healing, or risk waiting?
 
 ---
 
@@ -144,14 +163,14 @@ Start with two ranged classes to avoid melee collision complexity. Each has a di
 
 ### Affix Design
 
-**Core principle:** Tight rolls. A good roll is ~30-50% better than a bad roll, not 10x.
+**Core principle:** Tight rolls with mechanical variety. A good roll is ~30-50% better than a bad roll, not 10x. Excitement comes from *conditional* and *conversion* affixes, not bigger numbers.
 
 **Offensive Affixes:**
 | Affix | Example Roll Range | Notes |
 |-------|-------------------|-------|
 | Flat damage | +8 to +15 | |
 | Attack speed | +3% to +8% | |
-| Projectile speed | +5% to +12% | Faster = harder to dodge for enemies |
+| Projectile speed | +5% to +12% | Faster = harder for enemies to dodge |
 | Projectile count | +1 | Rare, powerful |
 | Pierce count | +1 to +2 | Arrows/bolts pass through N extra enemies |
 | Spread angle | -5% to -12% | Tighter grouping on multi-shot |
@@ -179,6 +198,21 @@ Start with two ranged classes to avoid melee collision complexity. Each has a di
 | Knockback on hit | +5% to +12% |
 | Mana regen | +1 to +3 per second |
 
+**Conditional Affixes (chase items):**
+These are the loot excitement layer - rare affixes that change *behavior*, not just numbers:
+
+| Affix | Example |
+|-------|---------|
+| Kill bonus | "Kills grant +15% movement speed for 3s" |
+| Elemental conversion | "30% of damage dealt as fire" |
+| Low-health bonus | "Below 40% HP: +20% attack speed" |
+| Full-mana bonus | "At full mana: +10% damage" |
+| Skill enhancement | "Multi Shot fires +2 arrows" |
+| On-hit effect | "Hits have 8% chance to slow for 1s" |
+| Breakpoint unlock | "With 50+ Dexterity: arrows ricochet once" |
+
+These are rarer than standard affixes and only appear on Rare+ items. They don't break the math (no multiplicative scaling) but they create build identity and chase goals.
+
 **Unique Items:**
 - Fixed special effect that's build-defining
 - Examples:
@@ -189,6 +223,96 @@ Start with two ranged classes to avoid melee collision complexity. Each has a di
   - "Enemies you kill explode for 10% of their max HP"
   - "Teleport leaves a Frost Nova at your departure point"
 - Stats on uniques are fixed (no rolling) but the effect is worth the trade-off vs a well-rolled rare
+
+---
+
+## Crafting & Salvage
+
+### Philosophy
+Bad drops should always feel like progress, not trash. Every item has a use beyond vendoring.
+
+### Salvage
+- **Break down** any item at the Salvage NPC (or portable salvage kit)
+- Yields **materials** based on rarity:
+  - Normal → Scrap (common)
+  - Magic → Essence (uncommon)
+  - Rare → Crystal (rare)
+  - Unique → Prism (very rare, also obtained from bosses)
+
+### Crafting Recipes
+| Action | Cost | Effect |
+|--------|------|--------|
+| **Reroll affixes** | Crystals | Reroll all random affixes on a Rare item (keeps rarity) |
+| **Upgrade rarity** | Essences → Crystals | Normal → Magic → Rare (random affixes added) |
+| **Add socket** | Prism | Add a socket to an item (max 1 socket per item) |
+| **Socket gems** | Found gems | Insert a gem into a socketed item for a fixed bonus |
+
+### Gems (Socket System)
+Simple, fixed bonuses when socketed:
+| Gem | Bonus |
+|-----|-------|
+| Ruby | +Flat damage |
+| Sapphire | +Max mana |
+| Emerald | +Health regen |
+| Topaz | +Movement speed |
+| Diamond | +All resistances |
+| Onyx | +Gold find |
+
+Gems drop from bosses and high-tier maps. Can be removed and reused (costs gold).
+
+---
+
+## Status Effects
+
+### Framework
+Clear, consistent rules for all status effects in the game:
+
+| Effect | What it Does | Duration | Stacking |
+|--------|-------------|----------|----------|
+| **Slow** | -30% movement speed | 2s | Refreshes duration, doesn't stack intensity |
+| **Chill** | -20% movement speed, -15% attack speed | 3s | Refreshes duration |
+| **Burn** | Damage over time (flat per tick) | 3s | Refreshes duration, new source replaces old |
+| **Shock** | Next hit taken deals +25% damage | 4s or until triggered | Refreshes duration |
+| **Stun** | Cannot move or attack | 0.5s | Cannot re-stun for 3s after (diminishing returns) |
+| **Knockback** | Pushed away from source | Instant | N/A |
+| **Mark** | Takes +15% damage from all sources | 5s | Single instance, refreshes |
+
+### Immunity Rules
+- **Bosses** are immune to Stun (can be Slowed at half effectiveness)
+- **Stun diminishing returns**: 3-second immunity window after each stun
+- **Players** can build resistance to reduce duration of negative effects
+- **Elemental resistance** reduces damage from Burn but doesn't prevent the status
+
+---
+
+## Defensive Formulas
+
+### Armor
+Damage reduction follows a **diminishing returns curve** so armor is always useful but never reaches immunity:
+
+```
+Damage Reduction % = Armor / (Armor + K)
+where K = 100 + (10 * Monster Level)
+```
+
+Example at level 20 (K = 300):
+- 100 Armor → 25% reduction
+- 200 Armor → 40% reduction
+- 300 Armor → 50% reduction
+- 600 Armor → 67% reduction
+
+Always useful to stack more, but returns diminish. No armor cap needed.
+
+### Resistances
+- Each element has a separate resistance percentage
+- **Cap: 75%** (can't become immune)
+- Monsters in higher-tier maps deal more elemental damage, making resistance feel necessary without being mandatory in early maps
+- Resistance reduces damage AND duration of the associated status effect
+
+### Dodge
+- Chance to completely avoid a hit
+- **Cap: 25%** (prevents dodge from being the only defensive stat)
+- Calculated per-hit, purely random (no pseudo-random)
 
 ---
 
@@ -204,8 +328,8 @@ The game is about **where you stand**, not just what buttons you press. Enemies 
 - **Mixed waves** → Priority targeting (kill the ranged enemy in back while kiting melee)
 
 ### Enemy Behaviors
-| Type | Shape | Color | Behavior |
-|------|-------|-------|----------|
+| Type | Shape (Phase 1) | Color | Behavior |
+|------|-----------------|-------|----------|
 | **Rusher** | Triangle (pointing at player) | Red | Charges straight at player, fast |
 | **Swarm** | Small circles | Orange | Moves in packs, weak individually |
 | **Tank** | Large hexagon | Green | Slow, high HP, body-blocks for others |
@@ -234,8 +358,16 @@ Damage = (Base Weapon Damage + Flat Damage Bonuses) * (1 + Sum of % Damage Bonus
 No crit multiplier. No penetration. No "more" vs "increased" distinction. What you see is what you get.
 
 ### Monster Scaling
-- Monsters scale to **player level** in every zone
-- Map modifiers add difficulty and reward:
+Monsters have a **base level per map tier**, plus scaling based on player level:
+
+```
+Monster Level = max(Map Base Level, Player Level - 2) + Map Tier Bonus
+```
+
+- **Map Base Level** prevents trivializing early content at high level
+- **Player Level - 2** keeps monsters close but slightly below (upgrades always feel impactful)
+- **Map Tier Bonus** (+0 to +5) makes higher-tier maps genuinely harder, not just more modifiers
+- Map modifiers add difficulty and reward on top:
   - "Monsters have +20% health"
   - "Monsters are extra fast"
   - "Fire enchanted monsters"
@@ -243,7 +375,7 @@ No crit multiplier. No penetration. No "more" vs "increased" distinction. What y
   - "Extra Swarm enemies"
   - "Boss has 2 extra phases"
 - Higher-tier maps = more modifiers stacked = better loot
-- Map tier determines the **quantity and rarity bonus** of drops, not the monster level
+- Map tier determines the **quantity and rarity bonus** of drops
 
 ### Death
 - Lose a percentage of gold on death (5-10%)
@@ -275,7 +407,7 @@ Each theme changes the visual palette (background color, grid tint, particle eff
 
 ### Town Hub
 - Safe zone between maps
-- NPCs: Vendor (buy/sell), Stash, Skill Trainer, Map Device
+- NPCs: Vendor (buy/sell), Stash, Skill Trainer, Map Device, Salvage NPC
 - Chat panel docked at bottom of screen (persistent across town & maps)
 
 ---
@@ -284,7 +416,7 @@ Each theme changes the visual palette (background color, grid tint, particle eff
 
 ### Currency
 - **Gold** - single currency for everything
-- Gold sinks: respec, stash tabs, vendor items, death penalty, map crafting
+- Gold sinks: respec, stash tabs, vendor items, death penalty, map crafting, gem removal, crafting fees
 
 ### Chat Channels
 Persistent chat panel at the bottom of the screen - visible whether you're in town or clearing a map. This is the social backbone.
@@ -299,6 +431,7 @@ Persistent chat panel at the bottom of the screen - visible whether you're in to
 - Players can **link items** in chat (hover to see stats)
 - Click a player's name to **whisper** (private message)
 - Right-click a player's name to **request trade**
+- **Report / mute** options for moderation
 
 ### Trading
 Old-school style, like D2 chat channels:
@@ -347,15 +480,25 @@ Client-side games can't prevent all cheating, but we can:
 - **Language**: Vanilla JavaScript (ES6 modules)
 - **State**: Game state in memory, persistent save to IndexedDB
 - **Maps**: Procedural generation via seeded RNG
-- **Art**: Geometric primitives with neon glow (no sprite sheets needed)
+- **Art**: Geometric primitives with neon glow (Phase 1), pixel art sprites (Phase 2)
 - **Audio**: Web Audio API for sound effects, background music
 - **Hosting**: GitHub Pages (static files, zero build step)
+
+### Performance Strategy
+Canvas 2D glow effects (`shadowBlur`) are expensive. Mitigations:
+- **Pre-render glow sprites** to offscreen canvases (render once, stamp many times)
+- **Object pooling** for projectiles, particles, enemies (no GC thrash)
+- **Spatial partitioning** (grid or quadtree) for collision detection
+- **Fixed timestep** game loop (decouple logic from render FPS)
+- **Particle budget** - hard cap on active particles, oldest fade first
+- **Culling** - don't render off-screen entities
+- **Profile early** - track frame time from M1, don't optimize blind
 
 ### Server (v2 - Social Layer)
 - **Backend**: Lightweight (Supabase, Firebase, or custom Node.js)
 - **Database**: Player accounts, item registry, trade logs, chat
 - **Auth**: Simple account system (email or OAuth)
-- **WebSocket**: Real-time town hub (player positions, chat, trade requests)
+- **WebSocket**: Real-time chat + trade requests
 - **API**: REST endpoints for leaderboard submissions, item validation
 - **Hosting**: Free tier cloud (Supabase/Firebase/Railway)
 
@@ -375,6 +518,7 @@ Client-side games can't prevent all cheating, but we can:
 - [ ] 1 enemy type (Rusher) that chases player
 - [ ] Health bar, death, respawn
 - [ ] One procedurally generated room
+- [ ] Frame time counter (performance baseline)
 
 ### M2: Core Combat & Classes
 - [ ] Ranger class with 4 skills (Power Shot, Multi Shot, Rain of Arrows, Evasive Roll)
@@ -382,27 +526,32 @@ Client-side games can't prevent all cheating, but we can:
 - [ ] Skill hotbar UI (4 slots)
 - [ ] 4-5 enemy types with different behaviors
 - [ ] Wave spawning system with formations
-- [ ] Health potion on cooldown
+- [ ] Health potion on cooldown (HoT)
 - [ ] Boss encounter (1 boss)
+- [ ] Status effects framework (slow, burn, shock, stun, knockback)
 
 ### M3: Loot & Itemization
 - [ ] Item drop system with rarity tiers + glow colors
-- [ ] Affix generation (random rolls within ranges)
+- [ ] Affix generation (standard + conditional affixes)
 - [ ] Inventory UI with gear slots
 - [ ] Equip/compare/swap items
 - [ ] Stat calculation from equipped gear
 - [ ] Weapon types with different projectile behavior
 - [ ] Vendor NPC (buy/sell)
+- [ ] Loot filter (toggle display by rarity/type)
+- [ ] Salvage system + crafting materials
 
 ### M4: Progression & Maps
 - [ ] Experience and leveling
 - [ ] Stat point allocation
-- [ ] Monster scaling with player level
+- [ ] Monster scaling formula (base level + tier bonus)
 - [ ] Map items with modifiers
 - [ ] Map device in town
 - [ ] 3-4 zone themes
-- [ ] Town hub (single player)
+- [ ] Town hub with NPCs (vendor, stash, salvage, skill trainer)
 - [ ] Stash (shared storage)
+- [ ] Crafting recipes (reroll, upgrade, socket)
+- [ ] Gem drops + socketing
 - [ ] Save/load via IndexedDB
 
 ### M5: Polish & Content
@@ -412,8 +561,10 @@ Client-side games can't prevent all cheating, but we can:
 - [ ] Sound effects and music
 - [ ] Minimap
 - [ ] Visual effects (particles, screen shake, glow tuning)
-- [ ] Balance pass on all numbers
+- [ ] Balance pass on all numbers (damage, armor, resistances, scaling)
 - [ ] Remaining skills for both classes (6 each)
+- [ ] Colorblind / high-contrast mode
+- [ ] Pixel art layer (Phase 2 visuals)
 
 ### M6: Social Layer
 - [ ] Backend setup (auth, database)
@@ -421,6 +572,7 @@ Client-side games can't prevent all cheating, but we can:
 - [ ] Chat system with channels (General, Trading, LFG, Hardcore)
 - [ ] Item linking in chat (hover to preview stats)
 - [ ] Trade window (request from chat, both confirm)
+- [ ] Report / mute moderation tools
 - [ ] Leaderboards
 - [ ] Cloud save sync
 
@@ -433,3 +585,4 @@ Client-side games can't prevent all cheating, but we can:
 - Mobile support? (touch controls would need design work, twin-stick style could work)
 - Should maps have a timer for bonus loot (speed-clear incentive)?
 - Hardcore-only trade server vs shared?
+- Co-op: future feature? How does monster scaling work in a party?
