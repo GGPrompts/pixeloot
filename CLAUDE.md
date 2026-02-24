@@ -54,7 +54,7 @@ Item generation pipeline: `ItemGenerator` → `AffixRoller` → `NameGenerator`.
 
 ### Stats (core/ComputedStats.ts)
 
-Aggregates affixes from all equipped gear into flat + percentage bonuses. Syncs derived values (health, speed, damage) to the player entity. Fires `onGearChange()` callbacks.
+Aggregates affixes from all equipped gear into flat + percentage bonuses. Syncs derived values (health, speed, damage) to the player entity. Fires `onGearChange()` callbacks. Two distinct speed stats: **attackSpeed** (from weapons, Dexterity, gear affixes) scales the LMB primary attack cooldown only; **cooldownReduction** (from Focus stat, gear CDR affixes, capped at 40%) scales all 4 skill slot cooldowns. Cooldowns always tick, even while panels are open or in town.
 
 ### Dungeon Generation and Pathfinding (map/)
 
@@ -82,7 +82,7 @@ All UI is PixiJS-native (Container/Graphics/Text). Each panel exports an `update
 
 ### Character Classes (entities/classes/)
 
-Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Controls: LMB (primary attack, fixed), RMB (assignable), Space (movement skill, fixed), E (assignable). Players assign 2 of 4 assignable skills to RMB/E via the skill assignment panel (K key). Each `SkillDef` has `slotType` ('primary'|'movement'|'assignable') and `targetType` for input routing and range indicators.
+Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Controls: LMB (primary attack, hold-to-fire), RMB (assignable, single-press), Space (movement skill, single-press), E (assignable, single-press). Players assign 2 of 4 assignable skills to RMB/E via the skill assignment panel (K key). Each `SkillDef` has `slotType` ('primary'|'movement'|'assignable') and `targetType` for input routing and range indicators. Primary attacks have short base cooldowns (Ranger 0.4s, Mage 0.5s) scaled by attackSpeed; other skills have longer cooldowns scaled by CDR only.
 
 ### Audio (audio/)
 

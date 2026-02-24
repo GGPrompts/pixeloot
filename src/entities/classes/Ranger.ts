@@ -17,7 +17,7 @@ const enemies = world.with('enemy', 'position', 'health');
 const powerShot: SkillDef = {
   name: 'Power Shot',
   key: '1',
-  cooldown: 3,
+  cooldown: 0.4,
   slotType: 'primary',
   targetType: 'projectile',
   execute(playerPos, mousePos) {

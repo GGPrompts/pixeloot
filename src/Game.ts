@@ -298,6 +298,9 @@ export class Game {
       musicPlayer.setVolume(musicPlayer.getMasterVolume() - 0.01);
     }
 
+    // Skill system: tick cooldowns every frame (even during panels/town)
+    skillSystem.tickSkills(dt);
+
     // Pause gameplay while class select, inventory, save/load, or map device is open
     const panelOpen = isClassSelectVisible() || isInventoryOpen() || isSaveLoadPanelOpen()
       || isMapDeviceOpen() || isVendorOpen() || isCraftingPanelOpen()
@@ -308,9 +311,6 @@ export class Game {
       skillSystem.resetPrevInput();
       return;
     }
-
-    // Skill system: tick cooldowns every frame
-    skillSystem.tickSkills(dt);
 
     // NPC click interaction in town (rising edge of left mouse), skills outside town
     if (isInTown()) {

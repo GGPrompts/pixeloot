@@ -19,7 +19,7 @@ const enemies = world.with('enemy', 'position', 'health');
 const fireball: SkillDef = {
   name: 'Fireball',
   key: '1',
-  cooldown: 4,
+  cooldown: 0.5,
   slotType: 'primary',
   targetType: 'projectile',
   execute(playerPos, mousePos) {

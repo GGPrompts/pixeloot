@@ -140,8 +140,13 @@ class SkillSystem {
     skill.def.execute(playerPos, mousePos);
     const castSfx = this._activeClass === 'mage' ? 'cast_mage' : 'cast_ranger';
     sfxPlayer.play(castSfx);
-    const cdr = getComputedStats().cooldownReduction;
-    skill.cooldownRemaining = skill.def.cooldown * (1 - cdr);
+    const stats = getComputedStats();
+    let cd = skill.def.cooldown * (1 - stats.cooldownReduction);
+    // Primary attack (LMB) also scales with attack speed
+    if (slot === 'lmb') {
+      cd /= stats.attackSpeed;
+    }
+    skill.cooldownRemaining = cd;
     return true;
   }
 
