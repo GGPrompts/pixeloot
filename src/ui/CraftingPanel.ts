@@ -603,3 +603,18 @@ export function updateCraftingPanel(): void {
 export function isCraftingPanelOpen(): boolean {
   return visible;
 }
+
+/** Programmatically open the crafting panel (used by NPC click). */
+export function openCraftingPanel(): void {
+  if (!container) {
+    container = createPanel();
+    game.hudLayer.addChild(container);
+  }
+  visible = true;
+  container.visible = true;
+  selectedRecipe = null;
+  selectedCraftTargetIdx = null;
+  selectedGem = null;
+  selectedGemTargetIdx = null;
+  rebuildPanel();
+}

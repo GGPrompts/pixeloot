@@ -51,6 +51,14 @@ export const ZONE_THEMES: Record<string, ZoneTheme> = {
     wallColor: 0x051020,
     accentColor: 0x88ccff,
   },
+  town: {
+    name: 'Town',
+    backgroundColor: 0x1a2e2e,
+    gridColor: 0x44aaaa,
+    gridAlpha: 0.08,
+    wallColor: 0x0d1a1a,
+    accentColor: 0x44aaaa,
+  },
 };
 
 /** All theme keys for random selection. */

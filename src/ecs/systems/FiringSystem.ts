@@ -5,6 +5,7 @@ import { isStatPanelOpen } from '../../ui/StatPanel';
 import { inventory } from '../../core/Inventory';
 import { getWeaponBehavior, DEFAULT_WEAPON_BEHAVIOR, type WeaponBehavior } from '../../core/WeaponBehaviors';
 import { getComputedStats } from '../../core/ComputedStats';
+import { isInTown } from '../../core/TownManager';
 
 const players = world.with('position', 'player');
 
@@ -60,6 +61,7 @@ export function firingSystem(dt: number): void {
   if (!input.isMouseDown(0)) return;
   if (cooldownTimer > 0) return;
   if (isStatPanelOpen()) return;
+  if (isInTown()) return;
 
   const mouse = input.getMousePosition();
 

@@ -5,8 +5,10 @@ import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker } from '.
 import { spawnBoss } from './Boss';
 import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
-import { hasModifier, getQuantityBonus } from '../core/MapDevice';
+import { hasModifier, getQuantityBonus, isMapActive } from '../core/MapDevice';
 import { getActiveThemeKey } from '../core/ZoneThemes';
+import { enterTown, isInTown } from '../core/TownManager';
+import { musicPlayer } from '../audio/MusicPlayer';
 
 const MIN_PLAYER_DIST = 200;
 const SURROUND_DIST = 400;
@@ -254,9 +256,20 @@ export class WaveSystem {
     this.cooldownTimer = 1; // short initial delay before wave 1
   }
 
+  /** Stop the wave system (used when entering town). */
+  stop(): void {
+    this.state = 'idle';
+    this.pendingSpawns = [];
+    this.spawnTimer = 0;
+    this.cooldownTimer = 0;
+  }
+
   /** Main update — call from fixedUpdate. */
   update(dt: number): void {
     this.updateWaveText(dt);
+
+    // Don't run waves while in town
+    if (isInTown()) return;
 
     switch (this.state) {
       case 'idle':
@@ -284,6 +297,20 @@ export class WaveSystem {
       case 'active':
         // Check if all enemies are dead
         if (this.livingEnemyCount() === 0) {
+          // After a boss wave (every 5th), return to town
+          if (this.currentWave > 0 && this.currentWave % 5 === 0 && isMapActive()) {
+            musicPlayer.crossfade('town', 1000);
+            enterTown();
+            return;
+          }
+          // Play victory fanfare (MusicPlayer auto-returns to combat after it ends)
+          if (this.currentWave % 5 === 0) {
+            // Boss defeated - play victory fanfare
+            musicPlayer.play('victory');
+          } else {
+            // Normal wave clear - ensure combat music is playing
+            musicPlayer.play('combat');
+          }
           this.state = 'cooldown';
           this.cooldownTimer = WAVE_DELAY;
           // Auto-save after wave clear
@@ -391,6 +418,9 @@ export class WaveSystem {
       ?? findNearestFloor(pPos.x + SURROUND_DIST, pPos.y);
 
     spawnBoss(spawnPos.x, spawnPos.y, this.currentMonsterLevel);
+
+    // Crossfade to boss music
+    musicPlayer.crossfade('boss', 800);
 
     // No staggered spawns needed — go straight to active
     this.pendingSpawns = [];

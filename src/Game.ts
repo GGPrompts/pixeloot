@@ -33,6 +33,9 @@ import { updateLootFilterPanel } from './ui/LootFilterPanel';
 import { lootFilterSystem } from './ecs/systems/LootFilterSystem';
 import { getAutoSave, loadGame } from './save/SaveManager';
 import { applyTheme, getActiveTheme } from './core/ZoneThemes';
+import { musicPlayer } from './audio/MusicPlayer';
+import { enterTown, isInTown } from './core/TownManager';
+import { checkNPCClick, updateComingSoonText } from './entities/NPC';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -55,8 +58,11 @@ export class Game {
   private frameCount = 0;
   private logicAccumulator = 0;
   private prevCPressed = false;
+  private prevPPressed = false;
+  private prevMouseDown = false;
   private gameplayStarted = false;
   public waveSystem = new WaveSystem();
+  private muteText: Text;
 
   private constructor(app: Application) {
     this.app = app;
@@ -98,6 +104,18 @@ export class Game {
     this.fpsText.position.set(8, 8);
     this.hudLayer.addChild(this.fpsText);
 
+    // Mute indicator (top-right)
+    this.muteText = new Text({
+      text: '[P] VOL 50%',
+      style: new TextStyle({
+        fill: 0x88ff88,
+        fontSize: 12,
+        fontFamily: 'monospace',
+      }),
+    });
+    this.muteText.position.set(SCREEN_W - 120, 8);
+    this.hudLayer.addChild(this.muteText);
+
     // Initialize input manager
     InputManager.init(app.canvas as HTMLCanvasElement);
   }
@@ -110,17 +128,20 @@ export class Game {
     // Initialize skill hotbar UI
     initHotbar();
 
+    // Start menu music
+    musicPlayer.play('menu');
+
     // Check for autosave before showing class select
     this.checkAutoSave().then((loaded) => {
       if (loaded) {
-        // Autosave was loaded, skip class select and start gameplay
+        // Autosave was loaded, skip class select and enter town
         this.gameplayStarted = true;
-        this.waveSystem.start();
+        enterTown();
       } else {
-        // No autosave (or declined), show class selection
+        // No autosave (or declined), show class selection then enter town
         showClassSelect(() => {
           this.gameplayStarted = true;
-          this.waveSystem.start();
+          enterTown();
         });
       }
     });
@@ -217,6 +238,22 @@ export class Game {
     }
     this.prevCPressed = cDown;
 
+    // Music controls: P to toggle mute, +/- for volume
+    const pDown = InputManager.instance.isPressed('KeyP');
+    if (pDown && !this.prevPPressed) {
+      musicPlayer.toggleMute();
+    }
+    this.prevPPressed = pDown;
+
+    if (InputManager.instance.isPressed('Equal')) {
+      // + key (=/+)
+      musicPlayer.setVolume(musicPlayer.getMasterVolume() + 0.01);
+    }
+    if (InputManager.instance.isPressed('Minus')) {
+      // - key
+      musicPlayer.setVolume(musicPlayer.getMasterVolume() - 0.01);
+    }
+
     // Pause gameplay while class select, inventory, save/load, or map device is open
     if (isClassSelectVisible()) return;
     if (isInventoryOpen()) return;
@@ -224,6 +261,18 @@ export class Game {
     if (isMapDeviceOpen()) return;
     if (isVendorOpen()) return;
     if (isCraftingPanelOpen()) return;
+
+    // NPC click interaction in town (rising edge of left mouse)
+    if (isInTown()) {
+      const mouseDown = InputManager.instance.isMouseDown(0);
+      if (mouseDown && !this.prevMouseDown) {
+        const mouse = InputManager.instance.getMousePosition();
+        checkNPCClick(mouse.x, mouse.y);
+      }
+      this.prevMouseDown = mouseDown;
+    } else {
+      this.prevMouseDown = InputManager.instance.isMouseDown(0);
+    }
 
     // Skill system: tick cooldowns and check key input
     skillSystem.tickSkills(dt);
@@ -265,6 +314,17 @@ export class Game {
     updateCraftingPanel();
     lootFilterSystem();
     updateLootFilterPanel(dt);
+    updateComingSoonText(dt);
+
+    // Music HUD indicator
+    if (musicPlayer.isMuted()) {
+      this.muteText.text = '[P] MUTED';
+      this.muteText.style.fill = 0xff4444;
+    } else {
+      const pct = Math.round(musicPlayer.getMasterVolume() * 100);
+      this.muteText.text = `[P] VOL ${pct}%`;
+      this.muteText.style.fill = 0x88ff88;
+    }
 
     // FPS counter — update display every 500 ms
     this.frameCount++;

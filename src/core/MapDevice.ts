@@ -12,6 +12,8 @@ import { TileMap } from '../map/TileMap';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { applyTheme, getActiveTheme, ZONE_THEMES } from './ZoneThemes';
+import { exitTown, isInTown } from './TownManager';
+import { musicPlayer } from '../audio/MusicPlayer';
 
 // ── Active Map State ────────────────────────────────────────────────
 
@@ -56,6 +58,14 @@ const SCREEN_H = 720;
  * reset waves, clear enemies/loot, and teleport the player.
  */
 export function activateMap(mapItem: MapItem): void {
+  // Exit town if currently in town
+  if (isInTown()) {
+    exitTown();
+  }
+
+  // Switch to combat music
+  musicPlayer.crossfade('combat', 800);
+
   // 1. Store modifiers
   activeModifiers = [...mapItem.modifiers];
   activeQuantityBonus = mapItem.quantityBonus;

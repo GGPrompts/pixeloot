@@ -285,3 +285,8 @@ export function updateMapDeviceUI(): void {
 export function isMapDeviceOpen(): boolean {
   return visible;
 }
+
+/** Programmatically open the map device panel (used by NPC click). */
+export function openMapDevicePanel(): void {
+  showMapDevice();
+}

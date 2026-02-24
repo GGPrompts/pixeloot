@@ -632,3 +632,17 @@ export function updateVendorPanel(): void {
 export function isVendorOpen(): boolean {
   return visible;
 }
+
+/** Programmatically open the vendor panel (used by NPC click). */
+export function openVendorPanel(): void {
+  if (!container) {
+    container = createPanel();
+    game.hudLayer.addChild(container);
+  }
+  visible = true;
+  container.visible = true;
+  const stock = refreshVendorStock(getPlayerLevel());
+  vendorItems = stock.items;
+  vendorMaps = stock.maps;
+  refreshPanel();
+}
