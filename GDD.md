@@ -475,37 +475,74 @@ Client-side games can't prevent all cheating, but we can:
 
 ## Technical Architecture
 
-### Client (v1 - Single Player)
-- **Rendering**: Canvas 2D with glow effects (`shadowBlur`, additive compositing)
-- **Language**: Vanilla JavaScript (ES6 modules)
-- **State**: Game state in memory, persistent save to IndexedDB
-- **Maps**: Procedural generation via seeded RNG
-- **Art**: Geometric primitives with neon glow (Phase 1), pixel art sprites (Phase 2)
-- **Audio**: Web Audio API for sound effects, background music
-- **Hosting**: GitHub Pages (static files, zero build step)
+### Tech Stack
+| Layer | Choice | Why |
+|-------|--------|-----|
+| **Renderer** | PixiJS v8 | WebGL/WebGPU batching, filters (GlowFilter, BloomFilter), ParticleContainer (1M particles @ 60fps) |
+| **Language** | TypeScript | Type safety for item/affix/stat systems, better AI-assisted development |
+| **Build** | Vite | Near-zero config, fast HMR, native TS support, still deploys as static files |
+| **Architecture** | Hybrid ECS/OOP | miniplex ECS for mass entities (enemies, projectiles, particles); OOP for unique logic (player, bosses, UI) |
+| **Audio** | Howler.js | 7KB, audio sprites for SFX, Web Audio API with HTML5 fallback |
+| **Maps** | rot.js | TypeScript dungeon generator (BSP rooms + corridors), pathfinding, FOV |
+| **Saves** | Dexie.js (IndexedDB) | Schema versioning, bulk ops, typed queries over raw IndexedDB |
+| **Backend (v2)** | Supabase | Postgres + auth + Realtime (Broadcast for chat, Presence for online status, CDC for leaderboards) |
+| **Hosting** | GitHub Pages | Static output via GitHub Actions deploy workflow |
+
+### Client Architecture
+```
+src/
+├── main.ts              # Entry point, async app init
+├── Game.ts              # PixiJS Application, main loop, scene management
+├── core/                # Engine primitives
+│   ├── GameLoop.ts      # Fixed timestep logic + PixiJS ticker render
+│   ├── InputManager.ts  # WASD + mouse aim
+│   └── EventBus.ts      # Typed pub/sub for game events
+├── ecs/                 # miniplex ECS
+│   ├── world.ts         # World singleton
+│   ├── components/      # Position, Velocity, Health, Damage, StatusEffect...
+│   └── systems/         # Movement, Collision, Combat, Particle, StatusEffect...
+├── entities/            # Entity factories (createPlayer, createEnemy, createProjectile)
+├── scenes/              # GameScene, MenuScene, TownScene
+├── map/                 # rot.js dungeon gen, tilemap rendering, zone themes
+├── loot/                # Item generation, affix pools, rarity rolls, crafting
+├── audio/               # Howler.js wrapper, SFX sprites, music manager
+├── save/                # Dexie.js schema, save/load, export/import
+├── ui/                  # HUD, inventory, skill bar, chat panel, trade window
+├── online/              # Supabase client, auth, realtime channels (v2)
+└── types/               # Shared interfaces (Item, Affix, Enemy, Skill, etc.)
+```
 
 ### Performance Strategy
-Canvas 2D glow effects (`shadowBlur`) are expensive. Mitigations:
-- **Pre-render glow sprites** to offscreen canvases (render once, stamp many times)
-- **Object pooling** for projectiles, particles, enemies (no GC thrash)
-- **Spatial partitioning** (grid or quadtree) for collision detection
-- **Fixed timestep** game loop (decouple logic from render FPS)
-- **Particle budget** - hard cap on active particles, oldest fade first
-- **Culling** - don't render off-screen entities
-- **Profile early** - track frame time from M1, don't optimize blind
+| Concern | Solution |
+|---------|----------|
+| Glow effects | PixiJS `GlowFilter` on player/bosses only; bake glow into spritesheet textures for common enemies |
+| Bloom | `AdvancedBloomFilter` on effects layer only, with explicit `filterArea` |
+| Particles | `ParticleContainer` with lightweight `Particle` objects, not Sprites. Budget cap, oldest fade first |
+| Projectiles | Object pool (pre-allocate, recycle). Never `new` in game loop |
+| Collision | Spatial hash grid (PixiJS `@pixi/spatial-hash` or custom). O(1) neighbor lookup vs O(n²) |
+| Rendering | Texture atlases for batch rendering. Group by blend mode. `cullable = true` for off-screen entities |
+| Scene graph | `isRenderGroup: true` on world/entity/HUD layers (GPU-side transform caching) |
+| Game loop | Fixed timestep for logic, variable render. Frame time counter from M1 |
+| Profiling | Track frame time from day one. Profile before optimizing |
 
-### Server (v2 - Social Layer)
-- **Backend**: Lightweight (Supabase, Firebase, or custom Node.js)
-- **Database**: Player accounts, item registry, trade logs, chat
-- **Auth**: Simple account system (email or OAuth)
-- **WebSocket**: Real-time chat + trade requests
-- **API**: REST endpoints for leaderboard submissions, item validation
-- **Hosting**: Free tier cloud (Supabase/Firebase/Railway)
+### Server Architecture (v2 - Social Layer)
+| Feature | Supabase Service | Notes |
+|---------|-----------------|-------|
+| **Auth** | Supabase Auth | Anonymous sign-in for frictionless start → Discord OAuth upgrade to persist |
+| **Chat** | Realtime Broadcast | One channel per chat room (general, trading, lfg, hardcore). Private channels via RLS |
+| **Trading** | Postgres RPC | Atomic item swap via server-side function. RLS on inventory table |
+| **Leaderboards** | Postgres + CDC | Realtime subscriptions push score updates to all clients |
+| **Item Registry** | Postgres | Server-generated item IDs + creation signatures for anti-cheat |
+| **Presence** | Realtime Presence | "Who's online" in town hub, 10 state keys per user |
+
+**Free tier ceiling**: ~200 concurrent WebSocket connections, 500MB database, 50K MAU. Enough for development and early access. Pro ($25/mo) bumps to 500 connections.
 
 ### Save System
-- **Local**: IndexedDB for single-player progress (gear, level, stash, map inventory)
-- **Cloud sync** (v2): Upload save to server for cross-device play
-- **Export/Import**: JSON save file as fallback
+- **Dexie.js** with schema versioning (handles game updates gracefully)
+- Object stores: `saves` (metadata/slots), `playerState` (inventory, stats, skills), `worldState` (map progress, stash), `settings`
+- Save on checkpoints: town entry, map clear, manual save
+- **Cloud sync** (v2): upload save to Supabase on logout/checkpoint
+- **Export/Import**: JSON file as fallback (for backup or device transfer)
 
 ---
 
