@@ -5,7 +5,7 @@ import { xpToNextLevel } from '../ecs/systems/XPSystem';
 import { Colors, Fonts, FontSize, drawPixelBorder } from './UITheme';
 
 const BAR_X = 8;
-const BAR_Y = 30;
+const BAR_Y = 42;
 const BAR_W = 320;
 const BAR_H = 24;
 const XP_BAR_H = 14;

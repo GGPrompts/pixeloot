@@ -25,7 +25,7 @@ const GEAR_START_Y = 64;
 
 const BACKPACK_COLS = 4;
 const BACKPACK_ROWS = 5;
-const BACKPACK_SLOT_SIZE = 56;
+const BACKPACK_SLOT_SIZE = 68;
 const BACKPACK_GAP = 5;
 const BACKPACK_X = 290;
 const BACKPACK_Y = 64;
@@ -110,7 +110,7 @@ function createPanel(): Container {
     slotContainer.position.set(slotX, slotY);
 
     const slotBg = new Graphics();
-    drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5);
+    drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5, undefined, GEAR_SLOT_SIZE);
     slotContainer.addChild(slotBg);
 
     const labelText = new Text({
@@ -228,7 +228,7 @@ function refreshSlots(): void {
       const color = getRarityColor(item.rarity);
 
       slotBg.clear();
-      drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5, color);
+      drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5, color, GEAR_SLOT_SIZE);
 
       const nameText = new Text({
         text: abbreviate(item.name, 20),
@@ -272,7 +272,7 @@ function refreshSlots(): void {
     } else {
       labelText.visible = true;
       slotBg.clear();
-      drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5);
+      drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5, undefined, GEAR_SLOT_SIZE);
     }
   }
 

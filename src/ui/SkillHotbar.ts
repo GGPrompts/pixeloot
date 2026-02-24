@@ -3,7 +3,7 @@ import { game } from '../Game';
 import { skillSystem } from '../core/SkillSystem';
 import { Colors, Fonts, FontSize, drawPixelBorder } from './UITheme';
 
-const SLOT_SIZE = 68;
+const SLOT_SIZE = 80;
 const SLOT_GAP = 8;
 const SLOT_COUNT = 6;
 

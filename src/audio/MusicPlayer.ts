@@ -30,8 +30,10 @@ class MusicPlayer {
   private contextResumed = false;
   private crossfadeTimer: ReturnType<typeof setInterval> | null = null;
 
+  private pendingTrack: string | null = null;
+
   constructor() {
-    // Auto-resume AudioContext on first user interaction (browser requirement)
+    // Defer music playback until first user interaction (browser autoplay policy)
     const resumeHandler = () => {
       this.contextResumed = true;
       if (this.currentPlayer) {
@@ -39,6 +41,11 @@ class MusicPlayer {
         if (ctx && ctx.state === 'suspended') {
           ctx.resume();
         }
+      }
+      // If play() was called before user gesture, start it now
+      if (this.pendingTrack && !this.currentPlayer) {
+        this.play(this.pendingTrack);
+        this.pendingTrack = null;
       }
       document.removeEventListener('click', resumeHandler);
       document.removeEventListener('keydown', resumeHandler);
@@ -58,6 +65,13 @@ class MusicPlayer {
     const songData = TRACKS[trackName];
     if (!songData) {
       console.warn(`MusicPlayer: unknown track "${trackName}"`);
+      return;
+    }
+
+    // Defer playback until user has interacted (browser autoplay policy)
+    if (!this.contextResumed) {
+      this.pendingTrack = trackName;
+      this.currentTrack = trackName;
       return;
     }
 
@@ -115,6 +129,13 @@ class MusicPlayer {
     const songData = TRACKS[trackName];
     if (!songData) {
       console.warn(`MusicPlayer: unknown track "${trackName}"`);
+      return;
+    }
+
+    // Defer until user has interacted
+    if (!this.contextResumed) {
+      this.pendingTrack = trackName;
+      this.currentTrack = trackName;
       return;
     }
 

@@ -27,7 +27,7 @@ const PANEL_H = 780;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const SLOT_SIZE = 56;
+const SLOT_SIZE = 68;
 const SLOT_GAP = 5;
 
 const STASH_COLS = 4;
@@ -48,12 +48,12 @@ const TAB_BTN_X = 20;
 
 const SEARCH_BAR_X = 430;
 const SEARCH_BAR_Y = 58;
-const SEARCH_BAR_W = 200;
+const SEARCH_BAR_W = 270;
 const SEARCH_BAR_H = 34;
 
-const SORT_BTN_X = 640;
+const SORT_BTN_X = 710;
 const SORT_BTN_Y = 58;
-const SORT_BTN_W = 100;
+const SORT_BTN_W = 90;
 const SORT_BTN_H = 34;
 
 const SLOT_NAME_MAP: Record<Slot, string> = {

@@ -23,11 +23,11 @@ import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
 const PANEL_W = 700;
-const PANEL_H = 760;
+const PANEL_H = 820;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const SLOT_SIZE = 56;
+const SLOT_SIZE = 68;
 const SLOT_GAP = 5;
 const VENDOR_COLS = 4;
 const BACKPACK_COLS = 4;
@@ -36,7 +36,7 @@ const BACKPACK_ROWS = 5;
 const VENDOR_GRID_X = 20;
 const VENDOR_GRID_Y = 90;
 const BACKPACK_GRID_X = 20;
-const BACKPACK_GRID_Y = 420;
+const BACKPACK_GRID_Y = 470;
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Weapon]: 'Weapon',

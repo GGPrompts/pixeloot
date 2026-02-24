@@ -31,7 +31,13 @@ export class InputManager {
     this.canvas = canvas;
 
     this.onKeyDown = (e: KeyboardEvent) => {
-      if (this._textInputActive) return;
+      if (this._textInputActive) {
+        // Always allow Escape through so panels can be closed
+        if (e.code === 'Escape') {
+          this.pressed.add(e.code);
+        }
+        return;
+      }
       if (e.code in MOVEMENT_KEYS || e.code === 'Tab') e.preventDefault();
       this.pressed.add(e.code);
     };

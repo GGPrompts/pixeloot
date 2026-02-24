@@ -116,12 +116,14 @@ export function drawSlotBg(
   y: number,
   size: number,
   rarityColor?: number,
+  height?: number,
 ): void {
-  g.rect(x, y, size, size).fill({ color: Colors.slotBg, alpha: 0.85 });
+  const h = height ?? size;
+  g.rect(x, y, size, h).fill({ color: Colors.slotBg, alpha: 0.85 });
   if (rarityColor) {
-    drawPixelBorder(g, x, y, size, size, { borderWidth: 2, highlight: rarityColor, shadow: rarityColor });
+    drawPixelBorder(g, x, y, size, h, { borderWidth: 2, highlight: rarityColor, shadow: rarityColor });
   } else {
-    g.rect(x, y, size, size).stroke({ width: 2, color: Colors.borderMid });
+    g.rect(x, y, size, h).stroke({ width: 2, color: Colors.borderMid });
   }
 }
 
