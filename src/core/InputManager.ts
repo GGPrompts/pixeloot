@@ -22,9 +22,10 @@ export class InputManager {
 
   private onKeyDown: (e: KeyboardEvent) => void;
   private onKeyUp: (e: KeyboardEvent) => void;
-  private onMouseMove: (e: MouseEvent) => void;
-  private onMouseDown: (e: MouseEvent) => void;
-  private onMouseUp: (e: MouseEvent) => void;
+  private onPointerMove: (e: PointerEvent) => void;
+  private onPointerDown: (e: PointerEvent) => void;
+  private onPointerUp: (e: PointerEvent) => void;
+  private onContextMenu: (e: Event) => void;
   private onBlur: () => void;
 
   private constructor(canvas: HTMLCanvasElement) {
@@ -46,18 +47,25 @@ export class InputManager {
       this.pressed.delete(e.code);
     };
 
-    this.onMouseMove = (e: MouseEvent) => {
+    this.onPointerMove = (e: PointerEvent) => {
       const rect = this.canvas.getBoundingClientRect();
       this.mouse.x = ((e.clientX - rect.left) / rect.width) * SCREEN_W;
       this.mouse.y = ((e.clientY - rect.top) / rect.height) * SCREEN_H;
     };
 
-    this.onMouseDown = (e: MouseEvent) => {
+    this.onPointerDown = (e: PointerEvent) => {
       this.mouseButtons.add(e.button);
+      // Capture pointer so we always get the matching pointerup on this element,
+      // even if the cursor leaves the canvas (prevents stuck buttons)
+      this.canvas.setPointerCapture(e.pointerId);
     };
 
-    this.onMouseUp = (e: MouseEvent) => {
+    this.onPointerUp = (e: PointerEvent) => {
       this.mouseButtons.delete(e.button);
+    };
+
+    this.onContextMenu = (e: Event) => {
+      e.preventDefault();
     };
 
     this.onBlur = () => {
@@ -67,13 +75,13 @@ export class InputManager {
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
-    canvas.addEventListener('pointermove', this.onMouseMove);
-    canvas.addEventListener('pointerdown', this.onMouseDown);
-    window.addEventListener('pointerup', this.onMouseUp);
+    canvas.addEventListener('pointermove', this.onPointerMove);
+    canvas.addEventListener('pointerdown', this.onPointerDown);
+    canvas.addEventListener('pointerup', this.onPointerUp);
     window.addEventListener('blur', this.onBlur);
 
     // Prevent browser context menu so RMB works as a skill input
-    window.addEventListener('contextmenu', (e) => e.preventDefault());
+    window.addEventListener('contextmenu', this.onContextMenu);
   }
 
   static init(canvas: HTMLCanvasElement): InputManager {
@@ -141,10 +149,11 @@ export class InputManager {
   destroy(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    this.canvas.removeEventListener('pointermove', this.onMouseMove);
-    this.canvas.removeEventListener('pointerdown', this.onMouseDown);
-    window.removeEventListener('pointerup', this.onMouseUp);
+    this.canvas.removeEventListener('pointermove', this.onPointerMove);
+    this.canvas.removeEventListener('pointerdown', this.onPointerDown);
+    this.canvas.removeEventListener('pointerup', this.onPointerUp);
     window.removeEventListener('blur', this.onBlur);
+    window.removeEventListener('contextmenu', this.onContextMenu);
     InputManager._instance = null;
   }
 }
