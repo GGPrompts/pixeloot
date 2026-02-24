@@ -456,6 +456,42 @@ Old-school style, like D2 chat channels:
 
 ---
 
+## Music & Audio
+
+### Music: ChipPlayer JSON Engine
+Reuse the chiptune playback engine from htmlstyleguides (`music/audio-tracker/playback-engine.js`):
+- **`ChipPlayer`** - standalone IIFE, no DOM, pure Web Audio API synthesis
+- Songs stored as compact **JSON files** - zero audio file downloads
+- Supports: square, triangle, sawtooth, sine, pulse, noise, pluck (Karplus-Strong), FM synthesis
+- ADSR envelopes, biquad filters, 4-channel architecture
+- Lookahead scheduler (100ms ahead, 25ms ticks) for glitch-free playback
+- 50+ existing songs from the htmlstyleguides library available as starting pool
+
+### Song Plan
+| Context | Style | Mood |
+|---------|-------|------|
+| Town hub | Calm, melodic | Safe, social |
+| The Grid (tutorial) | Simple, building | Learning |
+| Neon Wastes | Intense, driving | Danger |
+| Reactor Core | Heavy, percussive | Heat |
+| Frozen Array | Ethereal, slow | Cold, eerie |
+| Boss fight | Fast, aggressive | Climactic |
+| Victory / level up | Triumphant fanfare | Reward |
+| Death | Short, somber | Loss |
+| Inventory / menu | Ambient, low-key | Contemplative |
+
+### SFX: Howler.js
+Audio sprites for all game sound effects (hits, casts, pickups, UI clicks, enemy deaths). See TECH-REFERENCE.md Howler section.
+
+### Dynamic Music (Future)
+Since music is JSON-driven, future possibilities include:
+- Speed up tempo during boss enrage phases
+- Add extra percussion channels as wave intensity increases
+- Shift to minor key when player health is low
+- Crossfade between zone themes at map transitions
+
+---
+
 ## Anti-Cheat
 
 ### Philosophy
@@ -482,7 +518,8 @@ Client-side games can't prevent all cheating, but we can:
 | **Language** | TypeScript | Type safety for item/affix/stat systems, better AI-assisted development |
 | **Build** | Vite | Near-zero config, fast HMR, native TS support, still deploys as static files |
 | **Architecture** | Hybrid ECS/OOP | miniplex ECS for mass entities (enemies, projectiles, particles); OOP for unique logic (player, bosses, UI) |
-| **Audio** | Howler.js | 7KB, audio sprites for SFX, Web Audio API with HTML5 fallback |
+| **SFX** | Howler.js | 7KB, audio sprites for SFX, Web Audio API with HTML5 fallback |
+| **Music** | ChipPlayer (from htmlstyleguides) | JSON chiptune playback engine, zero audio files, 50+ existing songs |
 | **Maps** | rot.js | TypeScript dungeon generator (BSP rooms + corridors), pathfinding, FOV |
 | **Saves** | Dexie.js (IndexedDB) | Schema versioning, bulk ops, typed queries over raw IndexedDB |
 | **Backend (v2)** | Supabase | Postgres + auth + Realtime (Broadcast for chat, Presence for online status, CDC for leaderboards) |
@@ -595,7 +632,9 @@ src/
 - [ ] Remaining zone themes (5-8 total)
 - [ ] More enemy types and bosses
 - [ ] Unique items (8-12)
-- [ ] Sound effects and music
+- [ ] SFX via Howler.js audio sprites
+- [ ] Music via ChipPlayer JSON engine (port from htmlstyleguides)
+- [ ] Compose zone-specific chiptune tracks
 - [ ] Minimap
 - [ ] Visual effects (particles, screen shake, glow tuning)
 - [ ] Balance pass on all numbers (damage, armor, resistances, scaling)
