@@ -5,6 +5,9 @@ import { movementSystem } from './ecs/systems/MovementSystem';
 import { spriteSyncSystem } from './ecs/systems/SpriteSync';
 import { playerFacingSystem } from './ecs/systems/PlayerFacingSystem';
 import { cameraSystem } from './ecs/systems/CameraSystem';
+import { projectileSystem } from './ecs/systems/ProjectileSystem';
+import { collisionSystem } from './ecs/systems/CollisionSystem';
+import { firingSystem } from './ecs/systems/FiringSystem';
 import { generateDungeon } from './map/DungeonGenerator';
 import { TileMap } from './map/TileMap';
 
@@ -131,7 +134,10 @@ export class Game {
 
   /** Called at a fixed 60 Hz rate for deterministic game logic. */
   private fixedUpdate(dt: number): void {
+    firingSystem(dt);
     movementSystem(dt);
+    projectileSystem(dt);
+    collisionSystem(dt);
   }
 
   /** Called every render frame for visual-only work. */

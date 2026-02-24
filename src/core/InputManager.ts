@@ -14,11 +14,14 @@ export class InputManager {
 
   private pressed = new Set<string>();
   private mouse = { x: 0, y: 0 };
+  private mouseButtons = new Set<number>();
   private canvas: HTMLCanvasElement;
 
   private onKeyDown: (e: KeyboardEvent) => void;
   private onKeyUp: (e: KeyboardEvent) => void;
   private onMouseMove: (e: MouseEvent) => void;
+  private onMouseDown: (e: MouseEvent) => void;
+  private onMouseUp: (e: MouseEvent) => void;
   private onBlur: () => void;
 
   private constructor(canvas: HTMLCanvasElement) {
@@ -41,13 +44,24 @@ export class InputManager {
       this.mouse.y = (e.clientY - rect.top) * scaleY;
     };
 
+    this.onMouseDown = (e: MouseEvent) => {
+      this.mouseButtons.add(e.button);
+    };
+
+    this.onMouseUp = (e: MouseEvent) => {
+      this.mouseButtons.delete(e.button);
+    };
+
     this.onBlur = () => {
       this.pressed.clear();
+      this.mouseButtons.clear();
     };
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('mousemove', this.onMouseMove);
+    window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('blur', this.onBlur);
   }
 
@@ -98,10 +112,17 @@ export class InputManager {
     return this.pressed.has(code);
   }
 
+  /** Returns whether a mouse button is currently held down. 0 = left, 2 = right. */
+  isMouseDown(button = 0): boolean {
+    return this.mouseButtons.has(button);
+  }
+
   destroy(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('mousemove', this.onMouseMove);
+    window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
     window.removeEventListener('blur', this.onBlur);
     InputManager._instance = null;
   }

@@ -8,6 +8,10 @@ export type Entity = {
   sprite?: Container;
   player?: true;
   enemy?: true;
+  projectile?: true;
+  damage?: number;
+  health?: { current: number; max: number };
+  lifetime?: number;
 };
 
 export const world = new World<Entity>();
