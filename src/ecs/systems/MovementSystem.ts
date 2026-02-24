@@ -20,8 +20,13 @@ export function movementSystem(dt: number): void {
 
   // Set velocity on player entities based on input
   for (const entity of players) {
-    entity.velocity.x = move.x * entity.speed;
-    entity.velocity.y = move.y * entity.speed;
+    if (entity.inputDisabled) {
+      entity.velocity.x = 0;
+      entity.velocity.y = 0;
+    } else {
+      entity.velocity.x = move.x * entity.speed;
+      entity.velocity.y = move.y * entity.speed;
+    }
   }
 
   // Apply velocity to position for all movers

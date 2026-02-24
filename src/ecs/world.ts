@@ -1,5 +1,5 @@
 import { World } from 'miniplex';
-import type { Container } from 'pixi.js';
+import type { Container, Graphics } from 'pixi.js';
 
 export type Entity = {
   position?: { x: number; y: number };
@@ -13,6 +13,12 @@ export type Entity = {
   health?: { current: number; max: number };
   lifetime?: number;
   invulnTimer?: number;
+  gold?: number;
+  potionCooldown?: number;
+  hotTimer?: number; // heal-over-time remaining seconds
+  dead?: true;
+  inputDisabled?: true;
+  enemyHealthBar?: Graphics;
 };
 
 export const world = new World<Entity>();

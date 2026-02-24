@@ -17,9 +17,11 @@ export function createPlayer(): Entity {
     .closePath()
     .fill({ color: 0x00ffff });
 
-  // Position at center of screen
-  const startX = 640;
-  const startY = 360;
+  // Position at dungeon spawn point
+  const spawnTile = game.tileMap.spawn;
+  const spawnPos = game.tileMap.tileToWorld(spawnTile.x, spawnTile.y);
+  const startX = spawnPos.x;
+  const startY = spawnPos.y;
   g.position.set(startX, startY);
 
   // Add sprite to render layer
@@ -32,6 +34,7 @@ export function createPlayer(): Entity {
     speed: 200,
     player: true as const,
     health: { current: 100, max: 100 },
+    gold: 0,
     sprite: g,
   });
 

@@ -22,6 +22,7 @@ export function firingSystem(dt: number): void {
   const mouse = input.getMousePosition();
 
   for (const player of players) {
+    if (player.inputDisabled) break;
     fireProjectile(player.position.x, player.position.y, mouse.x, mouse.y);
     cooldownTimer = FIRE_COOLDOWN;
     break; // Only fire from first player

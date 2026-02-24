@@ -12,6 +12,9 @@ import { aiSystem } from './ecs/systems/AISystem';
 import { generateDungeon } from './map/DungeonGenerator';
 import { TileMap } from './map/TileMap';
 import { spawnInitialEnemies } from './entities/EnemySpawner';
+import { healthSystem } from './ecs/systems/HealthSystem';
+import { enemyHealthBarSystem } from './ecs/systems/EnemyHealthBarSystem';
+import { updateHUD } from './ui/HUD';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -144,6 +147,7 @@ export class Game {
     movementSystem(dt);
     projectileSystem(dt);
     collisionSystem(dt);
+    healthSystem(dt);
   }
 
   /** Called every render frame for visual-only work. */
@@ -152,6 +156,8 @@ export class Game {
     spriteSyncSystem();
     playerFacingSystem();
     cameraSystem();
+    enemyHealthBarSystem();
+    updateHUD();
 
     // FPS counter — update display every 500 ms
     this.frameCount++;

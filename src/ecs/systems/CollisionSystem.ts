@@ -1,6 +1,7 @@
 import { world } from '../world';
 import { despawnProjectile } from '../../entities/Projectile';
 import { spawnDeathParticles } from '../../entities/DeathParticles';
+import { spawnDamageNumber } from '../../ui/DamageNumbers';
 
 const HIT_RADIUS = 16;
 const CONTACT_RADIUS = 20;
@@ -32,6 +33,7 @@ export function collisionSystem(dt: number): void {
       if (distSq < HIT_RADIUS * HIT_RADIUS) {
         // Deal damage
         enemy.health.current -= proj.damage;
+        spawnDamageNumber(enemy.position.x, enemy.position.y - 10, proj.damage, 0xffffff);
         projectilesToDespawn.push(proj);
 
         // Flash effect on the enemy sprite
@@ -92,6 +94,7 @@ export function collisionSystem(dt: number): void {
 
     if (distSq < CONTACT_RADIUS * CONTACT_RADIUS) {
       player.health.current -= enemy.damage;
+      spawnDamageNumber(player.position.x, player.position.y - 10, enemy.damage, 0xff3333);
       world.addComponent(player, 'invulnTimer', INVULN_DURATION);
 
       if (player.health.current <= 0) {
