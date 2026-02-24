@@ -21,6 +21,8 @@ export interface MapItem {
   quantityBonus: number;
   /** +% better drop chance. */
   rarityBonus: number;
+  /** Zone theme key applied when this map is activated. */
+  theme?: string;
 }
 
 // ── Modifier Pool ───────────────────────────────────────────────────

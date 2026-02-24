@@ -22,6 +22,10 @@ export enum WeaponType {
   Orb,
 }
 
+export interface ItemSocket {
+  gem?: import('./Gems').Gem;
+}
+
 export interface BaseItem {
   id: string;
   name: string;
@@ -32,6 +36,7 @@ export interface BaseItem {
   affixes: Affix[];
   uniqueEffect?: string;
   weaponType?: WeaponType;
+  socket?: ItemSocket;
 }
 
 export interface BaseStats {

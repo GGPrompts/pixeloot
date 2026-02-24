@@ -11,6 +11,7 @@ import { generateDungeon } from '../map/DungeonGenerator';
 import { TileMap } from '../map/TileMap';
 import { world } from '../ecs/world';
 import { game } from '../Game';
+import { applyTheme, getActiveTheme, ZONE_THEMES } from './ZoneThemes';
 
 // ── Active Map State ────────────────────────────────────────────────
 
@@ -61,10 +62,16 @@ export function activateMap(mapItem: MapItem): void {
   activeRarityBonus = mapItem.rarityBonus;
   mapActive = true;
 
-  // 2. Clear all enemies, enemy projectiles, and loot from the world
+  // 2. Apply zone theme
+  const themeKey = mapItem.theme ?? 'the_grid';
+  applyTheme(themeKey);
+  const theme = getActiveTheme();
+  game.app.renderer.background.color = theme.backgroundColor;
+
+  // 3. Clear all enemies, enemy projectiles, and loot from the world
   clearEntities();
 
-  // 3. Generate new dungeon with a different size for variety
+  // 4. Generate new dungeon with a different size for variety
   const baseW = Math.floor(SCREEN_W / TILE_SIZE);
   const baseH = Math.floor(SCREEN_H / TILE_SIZE);
   // Vary size slightly based on tier
@@ -75,21 +82,21 @@ export function activateMap(mapItem: MapItem): void {
     Math.max(15, dungeonH),
   );
 
-  // 4. Replace the tile map
+  // 5. Replace the tile map
   // Remove old world layer children and re-draw
   game.worldLayer.removeChildren();
   drawGrid();
   game.tileMap = new TileMap(dungeonData);
-  game.tileMap.render(game.worldLayer);
+  game.tileMap.render(game.worldLayer, theme.wallColor);
 
-  // 5. Update scaling config with tier bonus
+  // 6. Update scaling config with tier bonus
   // The wave system will pick this up via getActiveScalingConfig()
 
-  // 6. Reset wave system
+  // 7. Reset wave system
   game.waveSystem.currentWave = 0;
   game.waveSystem.start();
 
-  // 7. Teleport player to new spawn
+  // 8. Teleport player to new spawn
   const players = world.with('player', 'position');
   if (players.entities.length > 0) {
     const player = players.entities[0];
@@ -146,13 +153,14 @@ function clearEntities(): void {
 }
 
 function drawGrid(): void {
+  const theme = getActiveTheme();
   const g = new Graphics();
 
   for (let x = 0; x <= SCREEN_W; x += TILE_SIZE) {
-    g.moveTo(x, 0).lineTo(x, SCREEN_H).stroke({ width: 1, color: 0x00ffff, alpha: 0.06 });
+    g.moveTo(x, 0).lineTo(x, SCREEN_H).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
   }
   for (let y = 0; y <= SCREEN_H; y += TILE_SIZE) {
-    g.moveTo(0, y).lineTo(SCREEN_W, y).stroke({ width: 1, color: 0x00ffff, alpha: 0.06 });
+    g.moveTo(0, y).lineTo(SCREEN_W, y).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
   }
 
   game.worldLayer.addChild(g);

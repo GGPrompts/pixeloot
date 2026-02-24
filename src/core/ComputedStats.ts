@@ -1,5 +1,6 @@
 import { inventory, type EquipSlots } from './Inventory';
 import type { BaseItem } from '../loot/ItemTypes';
+import { GEM_BONUSES } from '../loot/Gems';
 import {
   getProjectileSpeedMultiplier,
   getDamageMultiplier,
@@ -74,6 +75,13 @@ function aggregateAffixes(items: (BaseItem | null)[]): AffixTotals {
     for (const affix of item.affixes) {
       if (affix.stat in totals) {
         totals[affix.stat as keyof AffixTotals] += affix.value;
+      }
+    }
+    // Add gem socket bonuses
+    if (item.socket?.gem) {
+      const bonus = GEM_BONUSES[item.socket.gem.type];
+      if (bonus && bonus.stat in totals) {
+        totals[bonus.stat as keyof AffixTotals] += bonus.value;
       }
     }
   }

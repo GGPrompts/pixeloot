@@ -8,6 +8,7 @@ import { rollDrops } from '../../loot/DropTable';
 import { spawnItemDrop, spawnGoldDrop } from '../../entities/LootDrop';
 import { hasModifier } from '../../core/MapDevice';
 import { spawnMapDrop } from '../../entities/MapDrop';
+import { spawnGemDrop } from '../../entities/GemDrop';
 import { getComputedStats } from '../../core/ComputedStats';
 
 /** Apply armor damage reduction to incoming damage. */
@@ -149,6 +150,15 @@ export function collisionSystem(dt: number): void {
         enemy.position.x + (Math.random() - 0.5) * 20,
         enemy.position.y + (Math.random() - 0.5) * 20,
         drops.mapItem,
+      );
+    }
+
+    // Spawn gem drop if rolled
+    if (drops.gem) {
+      spawnGemDrop(
+        enemy.position.x + (Math.random() - 0.5) * 20,
+        enemy.position.y + (Math.random() - 0.5) * 20,
+        drops.gem,
       );
     }
 

@@ -27,7 +27,12 @@ import { showClassSelect, isClassSelectVisible, toggleClassSelect } from './ui/C
 import { updateInventoryPanel, isInventoryOpen } from './ui/InventoryPanel';
 import { updateSaveLoadPanel, isSaveLoadPanelOpen } from './ui/SaveLoadPanel';
 import { updateMapDeviceUI, isMapDeviceOpen } from './ui/MapDeviceUI';
+import { updateVendorPanel, isVendorOpen } from './ui/VendorPanel';
+import { updateCraftingPanel, isCraftingPanelOpen } from './ui/CraftingPanel';
+import { updateLootFilterPanel } from './ui/LootFilterPanel';
+import { lootFilterSystem } from './ecs/systems/LootFilterSystem';
 import { getAutoSave, loadGame } from './save/SaveManager';
+import { applyTheme, getActiveTheme } from './core/ZoneThemes';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -68,6 +73,9 @@ export class Game {
     app.stage.addChild(this.effectLayer);
     app.stage.addChild(this.hudLayer);
 
+    // Apply default theme ("The Grid")
+    applyTheme('the_grid');
+
     // Draw grid on world layer
     this.drawGrid();
 
@@ -76,7 +84,7 @@ export class Game {
     const dungeonH = Math.floor(SCREEN_H / TILE_SIZE);
     const dungeonData = generateDungeon(dungeonW, dungeonH);
     this.tileMap = new TileMap(dungeonData);
-    this.tileMap.render(this.worldLayer);
+    this.tileMap.render(this.worldLayer, getActiveTheme().wallColor);
 
     // Create FPS counter on hud layer
     this.fpsText = new Text({
@@ -163,18 +171,19 @@ export class Game {
     return g;
   }
 
-  /** Draws a subtle cyan grid covering the viewport. */
+  /** Draws a grid covering the viewport using the active zone theme colors. */
   private drawGrid(): void {
+    const theme = getActiveTheme();
     const g = new Graphics();
 
     // Vertical lines
     for (let x = 0; x <= SCREEN_W; x += TILE_SIZE) {
-      g.moveTo(x, 0).lineTo(x, SCREEN_H).stroke({ width: 1, color: 0x00ffff, alpha: 0.06 });
+      g.moveTo(x, 0).lineTo(x, SCREEN_H).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
     }
 
     // Horizontal lines
     for (let y = 0; y <= SCREEN_H; y += TILE_SIZE) {
-      g.moveTo(0, y).lineTo(SCREEN_W, y).stroke({ width: 1, color: 0x00ffff, alpha: 0.06 });
+      g.moveTo(0, y).lineTo(SCREEN_W, y).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
     }
 
     this.worldLayer.addChild(g);
@@ -213,6 +222,8 @@ export class Game {
     if (isInventoryOpen()) return;
     if (isSaveLoadPanelOpen()) return;
     if (isMapDeviceOpen()) return;
+    if (isVendorOpen()) return;
+    if (isCraftingPanelOpen()) return;
 
     // Skill system: tick cooldowns and check key input
     skillSystem.tickSkills(dt);
@@ -250,6 +261,10 @@ export class Game {
     updateInventoryPanel();
     updateSaveLoadPanel();
     updateMapDeviceUI();
+    updateVendorPanel();
+    updateCraftingPanel();
+    lootFilterSystem();
+    updateLootFilterPanel(dt);
 
     // FPS counter — update display every 500 ms
     this.frameCount++;

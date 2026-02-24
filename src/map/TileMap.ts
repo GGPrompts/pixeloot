@@ -57,13 +57,13 @@ export class TileMap {
   }
 
   /** Render walls onto a parent container. Floor tiles are left transparent so the grid shows through. */
-  render(parent: Container): void {
+  render(parent: Container, wallColor: number = 0x0d0d1a): void {
     this.gfx.clear();
 
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
         if (this.tiles[y][x] === 1) {
-          this.gfx.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE).fill({ color: 0x0d0d1a });
+          this.gfx.rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE).fill({ color: wallColor });
         }
       }
     }

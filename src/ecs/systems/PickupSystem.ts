@@ -4,6 +4,7 @@ import { game } from '../../Game';
 import { Rarity } from '../../loot/ItemTypes';
 import { inventory } from '../../core/Inventory';
 import { getComputedStats } from '../../core/ComputedStats';
+import { GEM_COLORS } from '../../loot/Gems';
 
 const PICKUP_RADIUS = 32;
 const PICKUP_RADIUS_SQ = PICKUP_RADIUS * PICKUP_RADIUS;
@@ -92,6 +93,13 @@ export function pickupSystem(_dt: number): void {
         `Map T${mapItem.tier}`,
         tierColor,
       );
+    }
+
+    if (pickup.gemDrop) {
+      const gem = pickup.gemDrop.gem;
+      inventory.addGem(gem);
+      const gemColor = GEM_COLORS[gem.type] ?? 0xeeeeff;
+      spawnPickupText(pickup.position.x, pickup.position.y - 10, `${gem.name} Gem`, gemColor);
     }
 
     if (pickup.goldDrop !== undefined) {

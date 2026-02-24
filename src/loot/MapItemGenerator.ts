@@ -1,4 +1,5 @@
 import { MapItem, MapModifier, MAP_MODIFIER_POOL } from './MapItem';
+import { randomThemeKey } from '../core/ZoneThemes';
 
 let nextMapId = 0;
 
@@ -28,5 +29,6 @@ export function generateMapItem(tier: number): MapItem {
     modifiers,
     quantityBonus: clampedTier * 10,
     rarityBonus: clampedTier * 5,
+    theme: randomThemeKey(),
   };
 }

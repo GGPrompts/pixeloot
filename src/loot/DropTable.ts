@@ -3,6 +3,7 @@ import { generateItem } from './ItemGenerator';
 import type { MapItem } from './MapItem';
 import { generateMapItem } from './MapItemGenerator';
 import { getRarityBonus } from '../core/MapDevice';
+import { Gem, generateGem, GEM_DROP_CHANCE } from './Gems';
 
 /** Drop chance per enemy type (0-1) */
 const ITEM_DROP_CHANCE: Record<string, number> = {
@@ -64,7 +65,7 @@ function rollRegularMapTier(): number {
 export function rollDrops(
   enemyType: string,
   monsterLevel: number,
-): { items: BaseItem[]; gold: number; mapItem?: MapItem } {
+): { items: BaseItem[]; gold: number; mapItem?: MapItem; gem?: Gem } {
   // Gold always drops, scaled by level
   const gold = randomInt(GOLD_BASE_MIN, GOLD_BASE_MAX) + Math.floor(monsterLevel * 1.5);
 
@@ -99,5 +100,11 @@ export function rollDrops(
     }
   }
 
-  return { items, gold, mapItem };
+  // Gem drop (~3% chance from any enemy)
+  let gem: Gem | undefined;
+  if (Math.random() < GEM_DROP_CHANCE) {
+    gem = generateGem();
+  }
+
+  return { items, gold, mapItem, gem };
 }

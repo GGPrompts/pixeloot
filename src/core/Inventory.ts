@@ -1,5 +1,6 @@
 import { BaseItem, Slot } from '../loot/ItemTypes';
 import type { MapItem } from '../loot/MapItem';
+import type { Gem } from '../loot/Gems';
 import { markStatsDirty } from './ComputedStats';
 
 export interface EquipSlots {
@@ -40,6 +41,9 @@ export class Inventory {
   /** Map items stored separately from gear. */
   maps: MapItem[] = [];
 
+  /** Gems stored separately from gear. */
+  gems: Gem[] = [];
+
   /** Optional callback fired after any equip/unequip to sync entity stats. */
   onGearChange: (() => void) | null = null;
 
@@ -51,6 +55,16 @@ export class Inventory {
   /** Remove a map item by id. */
   removeMap(mapId: string): void {
     this.maps = this.maps.filter((m) => m.id !== mapId);
+  }
+
+  /** Add a gem to the gem stash. */
+  addGem(gem: Gem): void {
+    this.gems.push(gem);
+  }
+
+  /** Remove a gem by id. */
+  removeGem(gemId: string): void {
+    this.gems = this.gems.filter((g) => g.id !== gemId);
   }
 
   /** Add an item to the first empty backpack slot. Returns false if full. */

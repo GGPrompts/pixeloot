@@ -6,6 +6,7 @@ import { spawnBoss } from './Boss';
 import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
 import { hasModifier, getQuantityBonus } from '../core/MapDevice';
+import { getActiveThemeKey } from '../core/ZoneThemes';
 
 const MIN_PLAYER_DIST = 200;
 const SURROUND_DIST = 400;
@@ -339,6 +340,31 @@ export class WaveSystem {
     if (qtyBonus > 0) {
       for (const entry of modifiedEnemies) {
         entry.count = Math.round(entry.count * (1 + qtyBonus / 100));
+      }
+    }
+
+    // Zone theme spawn adjustments
+    const themeKey = getActiveThemeKey();
+    if (themeKey === 'neon_wastes') {
+      // Neon Wastes: +20% more flanker/swarm spawns
+      for (const entry of modifiedEnemies) {
+        if (entry.type === 'flanker' || entry.type === 'swarm') {
+          entry.count = Math.round(entry.count * 1.2);
+        }
+      }
+    } else if (themeKey === 'reactor_core') {
+      // Reactor Core: slightly more rushers (aggressive theme)
+      for (const entry of modifiedEnemies) {
+        if (entry.type === 'rusher') {
+          entry.count = Math.round(entry.count * 1.15);
+        }
+      }
+    } else if (themeKey === 'frozen_array') {
+      // Frozen Array: slightly more snipers/tanks (defensive theme)
+      for (const entry of modifiedEnemies) {
+        if (entry.type === 'sniper' || entry.type === 'tank') {
+          entry.count = Math.round(entry.count * 1.15);
+        }
       }
     }
 
