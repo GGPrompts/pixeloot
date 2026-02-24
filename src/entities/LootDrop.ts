@@ -2,13 +2,7 @@ import { Graphics, Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { BaseItem, Rarity } from '../loot/ItemTypes';
-
-const RARITY_COLORS: Record<Rarity, number> = {
-  [Rarity.Normal]: 0xcccccc,
-  [Rarity.Magic]: 0x4444ff,
-  [Rarity.Rare]: 0xffff00,
-  [Rarity.Unique]: 0xff8800,
-};
+import { RARITY_COLORS, Fonts, FontSize } from '../ui/UITheme';
 
 /**
  * Spawn an item drop entity at the given position.
@@ -62,8 +56,8 @@ export function spawnGoldDrop(x: number, y: number, amount: number): void {
     text: `${amount}`,
     style: new TextStyle({
       fill: 0xffd700,
-      fontSize: 9,
-      fontFamily: 'monospace',
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
       fontWeight: 'bold',
       stroke: { color: 0x000000, width: 2 },
     }),

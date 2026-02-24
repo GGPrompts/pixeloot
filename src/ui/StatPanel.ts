@@ -4,9 +4,12 @@ import { game } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { applyStatEffects } from '../ecs/systems/StatEffects';
 import { getComputedStats, type FinalStats } from '../core/ComputedStats';
+import {
+  Colors, Fonts, FontSize, drawPanelBg, drawDivider, makeCloseButton,
+} from './UITheme';
 
-const PANEL_W = 320;
-const PANEL_H = 520;
+const PANEL_W = 360;
+const PANEL_H = 560;
 const STAT_NAMES = ['dexterity', 'intelligence', 'vitality', 'focus'] as const;
 const STAT_LABELS: Record<string, string> = {
   dexterity: 'DEX',
@@ -27,7 +30,6 @@ let panel: Container | null = null;
 let visible = false;
 let tabWasPressed = false;
 
-// UI elements that need updating
 let titleText: Text;
 let pointsText: Text;
 const statValueTexts: Text[] = [];
@@ -42,40 +44,38 @@ function createPanel(): Container {
   const px = (screenW - PANEL_W) / 2;
   const py = (screenH - PANEL_H) / 2;
 
-  // Semi-transparent dark background
+  // Panel background with 3D border
   const bg = new Graphics();
-  bg.rect(px, py, PANEL_W, PANEL_H).fill({ color: 0x111122, alpha: 0.92 });
-  bg.rect(px, py, PANEL_W, PANEL_H).stroke({ width: 2, color: 0x6666aa });
+  drawPanelBg(bg, px, py, PANEL_W, PANEL_H);
   container.addChild(bg);
 
   // Title
   titleText = new Text({
     text: 'STATS - Lv.1',
     style: new TextStyle({
-      fill: 0xffd700,
-      fontSize: 18,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.accentGold,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
     }),
   });
-  titleText.position.set(px + 16, py + 12);
+  titleText.position.set(px + 16, py + 16);
   container.addChild(titleText);
 
   // Available points
   pointsText = new Text({
     text: 'Points: 0',
     style: new TextStyle({
-      fill: 0x44ff44,
-      fontSize: 14,
-      fontFamily: 'monospace',
+      fill: Colors.accentLime,
+      fontSize: FontSize.lg,
+      fontFamily: Fonts.body,
     }),
   });
-  pointsText.position.set(px + 16, py + 38);
+  pointsText.position.set(px + 16, py + 42);
   container.addChild(pointsText);
 
   // Stat rows
-  const startY = py + 70;
-  const rowHeight = 46;
+  const startY = py + 74;
+  const rowHeight = 50;
 
   for (let i = 0; i < STAT_NAMES.length; i++) {
     const statName = STAT_NAMES[i];
@@ -85,10 +85,9 @@ function createPanel(): Container {
     const label = new Text({
       text: STAT_LABELS[statName],
       style: new TextStyle({
-        fill: 0xccccff,
-        fontSize: 16,
-        fontFamily: 'monospace',
-        fontWeight: 'bold',
+        fill: Colors.accentCyan,
+        fontSize: 10,
+        fontFamily: Fonts.display,
       }),
     });
     label.position.set(px + 20, rowY);
@@ -98,106 +97,91 @@ function createPanel(): Container {
     const desc = new Text({
       text: STAT_DESCRIPTIONS[statName],
       style: new TextStyle({
-        fill: 0x888899,
-        fontSize: 11,
-        fontFamily: 'monospace',
+        fill: Colors.textMuted,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
       }),
     });
-    desc.position.set(px + 20, rowY + 18);
+    desc.position.set(px + 20, rowY + 20);
     container.addChild(desc);
 
     // Stat value
     const valText = new Text({
       text: '0',
       style: new TextStyle({
-        fill: 0xffffff,
-        fontSize: 16,
-        fontFamily: 'monospace',
+        fill: Colors.textPrimary,
+        fontSize: FontSize.xl,
+        fontFamily: Fonts.body,
       }),
     });
-    valText.position.set(px + 210, rowY);
+    valText.position.set(px + 230, rowY);
     container.addChild(valText);
     statValueTexts.push(valText);
 
-    // [+] button
+    // [+] button with 3D border
     const btn = new Graphics();
-    const btnX = px + 250;
+    const btnX = px + 278;
     const btnY = rowY - 2;
-    const btnSize = 24;
-    btn.rect(btnX, btnY, btnSize, btnSize).fill({ color: 0x335533 });
-    btn.rect(btnX, btnY, btnSize, btnSize).stroke({ width: 1, color: 0x44ff44 });
+    const btnSize = 28;
+    btn.rect(btnX, btnY, btnSize, btnSize).fill({ color: 0x1a2e1a });
+    btn.rect(btnX, btnY, btnSize, btnSize).stroke({ width: 2, color: Colors.accentLime });
     container.addChild(btn);
     statBtnGraphics.push(btn);
 
     const btnLabel = new Text({
       text: '+',
       style: new TextStyle({
-        fill: 0x44ff44,
-        fontSize: 16,
-        fontFamily: 'monospace',
+        fill: Colors.accentLime,
+        fontSize: FontSize.xl,
+        fontFamily: Fonts.body,
         fontWeight: 'bold',
       }),
     });
-    btnLabel.position.set(btnX + 7, btnY + 2);
+    btnLabel.position.set(btnX + 8, btnY + 2);
     container.addChild(btnLabel);
 
-    // Make button interactive
     btn.eventMode = 'static';
     btn.cursor = 'pointer';
     btn.hitArea = { contains: (x: number, y: number) => x >= btnX && x <= btnX + btnSize && y >= btnY && y <= btnY + btnSize };
     btn.on('pointerdown', () => allocateStat(statName));
   }
 
-  // ── Divider ──
+  // Divider
   const dividerY = startY + STAT_NAMES.length * rowHeight + 4;
-  const divider = new Graphics();
-  divider.moveTo(px + 16, dividerY).lineTo(px + PANEL_W - 16, dividerY).stroke({ width: 1, color: 0x444466 });
-  container.addChild(divider);
+  const divGfx = new Graphics();
+  drawDivider(divGfx, px + 16, dividerY, PANEL_W - 32);
+  container.addChild(divGfx);
 
-  // ── Computed Stats Section ──
+  // Computed Stats Section
   const computedTitle = new Text({
     text: 'COMPUTED STATS',
     style: new TextStyle({
-      fill: 0xaaaacc,
-      fontSize: 13,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.textSecondary,
+      fontSize: 10,
+      fontFamily: Fonts.display,
     }),
   });
-  computedTitle.position.set(px + 16, dividerY + 6);
+  computedTitle.position.set(px + 16, dividerY + 10);
   container.addChild(computedTitle);
 
   computedStatsText = new Text({
     text: '',
     style: new TextStyle({
-      fill: 0xcccccc,
-      fontSize: 11,
-      fontFamily: 'monospace',
-      lineHeight: 16,
+      fill: Colors.textPrimary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
+      lineHeight: 20,
     }),
   });
-  computedStatsText.position.set(px + 16, dividerY + 24);
+  computedStatsText.position.set(px + 16, dividerY + 30);
   container.addChild(computedStatsText);
 
   // Close button
-  const hint = new Text({
-    text: '[X] close',
-    style: new TextStyle({
-      fill: 0x666688,
-      fontSize: 12,
-      fontFamily: 'monospace',
-    }),
-  });
-  hint.position.set(px + PANEL_W - 80, py + 14);
-  hint.eventMode = 'static';
-  hint.cursor = 'pointer';
-  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
-  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
-  hint.on('pointertap', () => {
+  const closeBtn = makeCloseButton(px + PANEL_W - 50, py + 16, () => {
     visible = false;
     if (panel) panel.visible = false;
   });
-  container.addChild(hint);
+  container.addChild(closeBtn);
 
   container.visible = false;
   return container;
@@ -206,15 +190,12 @@ function createPanel(): Container {
 function formatComputedStats(stats: FinalStats): string {
   const lines: string[] = [];
 
-  // Offensive
   lines.push(`DMG: ${stats.damage}    ATK SPD: x${stats.attackSpeed.toFixed(2)}`);
   lines.push(`PROJ SPD: x${stats.projectileSpeed.toFixed(2)}  CRIT: ${(stats.critChance * 100).toFixed(1)}%`);
 
-  // Defensive
   lines.push(`MAX HP: ${stats.maxHP}  ARMOR: ${stats.armor}`);
   lines.push(`DR: ${(stats.damageReduction * 100).toFixed(1)}%  REGEN: ${stats.hpRegen.toFixed(1)}/s`);
 
-  // Utility
   lines.push(`MOVE: ${Math.round(stats.moveSpeed)}  CDR: ${(stats.cooldownReduction * 100).toFixed(1)}%`);
   lines.push(`XP: x${stats.xpMultiplier.toFixed(2)}  GOLD: x${stats.goldMultiplier.toFixed(2)}`);
 
@@ -229,9 +210,7 @@ function allocateStat(stat: typeof STAT_NAMES[number]): void {
   player.statPoints -= 1;
   player.stats[stat] += 1;
 
-  // Apply stat effects immediately
   applyStatEffects(player);
-
   refreshValues();
 }
 
@@ -243,30 +222,24 @@ function refreshValues(): void {
   pointsText.text = `Points: ${player.statPoints}`;
 
   if (player.statPoints > 0) {
-    pointsText.style.fill = 0x44ff44;
+    pointsText.style.fill = Colors.accentLime;
   } else {
-    pointsText.style.fill = 0x888888;
+    pointsText.style.fill = Colors.textMuted;
   }
 
   for (let i = 0; i < STAT_NAMES.length; i++) {
     statValueTexts[i].text = `${player.stats[STAT_NAMES[i]]}`;
-    // Dim buttons when no points
     statBtnGraphics[i].alpha = player.statPoints > 0 ? 1 : 0.3;
   }
 
-  // Update computed stats display
   const computed = getComputedStats();
   computedStatsText.text = formatComputedStats(computed);
 }
 
-/**
- * Call every frame to handle Tab toggle and refresh displayed values.
- */
 export function updateStatPanel(): void {
   const input = InputManager.instance;
   const tabPressed = input.isPressed('Tab');
 
-  // Toggle on rising edge of Tab press
   if (tabPressed && !tabWasPressed) {
     visible = !visible;
 
@@ -282,16 +255,11 @@ export function updateStatPanel(): void {
   }
   tabWasPressed = tabPressed;
 
-  // Update values while visible
   if (visible && panel) {
     refreshValues();
   }
 }
 
-/**
- * Returns true if the stat panel is currently open.
- * Used to disable game input while the panel is open.
- */
 export function isStatPanelOpen(): boolean {
   return visible;
 }

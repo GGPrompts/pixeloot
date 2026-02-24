@@ -8,39 +8,28 @@ import { RECIPES, craft, Recipe } from '../loot/Crafting';
 import { BaseItem, Rarity } from '../loot/ItemTypes';
 import { GEM_BONUSES, GEM_COLORS, Gem } from '../loot/Gems';
 import { markStatsDirty } from '../core/ComputedStats';
+import {
+  Colors, Fonts, FontSize, RARITY_COLORS,
+  abbreviate, drawPanelBg, drawSlotBg, drawPixelBorder, makeCloseButton,
+} from './UITheme';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 720;
-const PANEL_H = 520;
+const PANEL_W = 780;
+const PANEL_H = 580;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-// Rarity colors
-const RARITY_COLORS: Record<Rarity, number> = {
-  [Rarity.Normal]: 0xcccccc,
-  [Rarity.Magic]: 0x4488ff,
-  [Rarity.Rare]: 0xffff00,
-  [Rarity.Unique]: 0xff8800,
-};
-
-const RARITY_NAMES: Record<Rarity, string> = {
-  [Rarity.Normal]: 'Normal',
-  [Rarity.Magic]: 'Magic',
-  [Rarity.Rare]: 'Rare',
-  [Rarity.Unique]: 'Unique',
-};
-
 // Section positions (relative to PANEL_X, PANEL_Y)
-const SECTION_LEFT_X = 16;       // salvage section
-const SECTION_RIGHT_X = 370;     // crafting section
-const MATERIALS_Y = 42;
-const SALVAGE_Y = 90;
-const CRAFT_Y = 90;
-const GEM_Y = 340;
+const SECTION_LEFT_X = 16;
+const SECTION_RIGHT_X = 400;
+const MATERIALS_Y = 48;
+const SALVAGE_Y = 96;
+const CRAFT_Y = 96;
+const GEM_Y = 370;
 
-const SLOT_SIZE = 36;
+const SLOT_SIZE = 44;
 const SLOT_GAP = 4;
 const SLOTS_PER_ROW = 4;
 
@@ -49,7 +38,6 @@ let visible = false;
 let prevKPressed = false;
 let prevEscPressed = false;
 
-// State for crafting workflow
 let selectedRecipe: Recipe | null = null;
 let selectedCraftTargetIdx: number | null = null;
 let selectedGem: Gem | null = null;
@@ -74,62 +62,48 @@ function createPanel(): Container {
 function rebuildPanel(): void {
   if (!container) return;
 
-  // Clear everything
   container.removeChildren();
 
   // Background
   const bg = new Graphics();
-  bg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).fill({ color: 0x111122, alpha: 0.95 });
-  bg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).stroke({ width: 2, color: 0x6666aa });
+  drawPanelBg(bg, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
   container.addChild(bg);
 
   // Title
   const title = new Text({
     text: 'CRAFTING',
     style: new TextStyle({
-      fill: 0xffd700,
-      fontSize: 18,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.accentGold,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
     }),
   });
-  title.position.set(PANEL_X + 16, PANEL_Y + 12);
+  title.position.set(PANEL_X + 16, PANEL_Y + 16);
   container.addChild(title);
 
   // Close button
-  const hint = new Text({
-    text: '[X] close',
-    style: new TextStyle({ fill: 0x666688, fontSize: 11, fontFamily: 'monospace' }),
-  });
-  hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 16);
-  hint.eventMode = 'static';
-  hint.cursor = 'pointer';
-  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
-  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
-  hint.on('pointertap', () => {
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => {
     visible = false;
     if (container) container.visible = false;
   });
-  container.addChild(hint);
+  container.addChild(closeBtn);
 
   // Feedback text
   feedbackText = new Text({
     text: '',
-    style: new TextStyle({ fill: 0x66ff66, fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold' }),
+    style: new TextStyle({
+      fill: Colors.accentLime,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
+      fontWeight: 'bold',
+    }),
   });
-  feedbackText.position.set(PANEL_X + PANEL_W / 2 - 100, PANEL_Y + PANEL_H - 22);
+  feedbackText.position.set(PANEL_X + PANEL_W / 2 - 100, PANEL_Y + PANEL_H - 26);
   container.addChild(feedbackText);
 
-  // --- Materials display ---
   buildMaterialsDisplay();
-
-  // --- Left side: Salvage ---
   buildSalvageSection();
-
-  // --- Right side: Crafting ---
   buildCraftingSection();
-
-  // --- Bottom: Gem socketing ---
   buildGemSection();
 }
 
@@ -137,7 +111,11 @@ function buildMaterialsDisplay(): void {
   if (!container) return;
   const matLabel = new Text({
     text: 'Materials:',
-    style: new TextStyle({ fill: 0xaaaacc, fontSize: 11, fontFamily: 'monospace' }),
+    style: new TextStyle({
+      fill: Colors.textSecondary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
+    }),
   });
   matLabel.position.set(PANEL_X + SECTION_LEFT_X, PANEL_Y + MATERIALS_Y);
   container.addChild(matLabel);
@@ -148,17 +126,24 @@ function buildMaterialsDisplay(): void {
   for (const mat of matTypes) {
     const text = new Text({
       text: `${MATERIAL_NAMES[mat]}: ${inv[mat]}`,
-      style: new TextStyle({ fill: MATERIAL_COLORS[mat], fontSize: 11, fontFamily: 'monospace' }),
+      style: new TextStyle({
+        fill: MATERIAL_COLORS[mat],
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
+      }),
     });
     text.position.set(PANEL_X + SECTION_LEFT_X + offsetX, PANEL_Y + MATERIALS_Y);
     container.addChild(text);
     offsetX += 120;
   }
 
-  // Gem count
   const gemCountText = new Text({
     text: `Gems: ${inventory.gems.length}`,
-    style: new TextStyle({ fill: 0xeeeeff, fontSize: 11, fontFamily: 'monospace' }),
+    style: new TextStyle({
+      fill: Colors.textPrimary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
+    }),
   });
   gemCountText.position.set(PANEL_X + SECTION_LEFT_X + offsetX, PANEL_Y + MATERIALS_Y);
   container.addChild(gemCountText);
@@ -168,57 +153,77 @@ function buildSalvageSection(): void {
   if (!container) return;
 
   const sectionLabel = new Text({
-    text: 'SALVAGE (click to salvage)',
-    style: new TextStyle({ fill: 0xff6666, fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold' }),
+    text: 'SALVAGE',
+    style: new TextStyle({
+      fill: Colors.accentRed,
+      fontSize: 10,
+      fontFamily: Fonts.display,
+    }),
   });
   sectionLabel.position.set(PANEL_X + SECTION_LEFT_X, PANEL_Y + SALVAGE_Y - 4);
   container.addChild(sectionLabel);
 
-  // Render backpack items as clickable salvage targets
+  const hint = new Text({
+    text: '(click to salvage)',
+    style: new TextStyle({
+      fill: Colors.textMuted,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.body,
+    }),
+  });
+  hint.position.set(PANEL_X + SECTION_LEFT_X + 100, PANEL_Y + SALVAGE_Y);
+  container.addChild(hint);
+
   const backpack = inventory.backpack;
   for (let i = 0; i < backpack.length; i++) {
     const col = i % SLOTS_PER_ROW;
     const row = Math.floor(i / SLOTS_PER_ROW);
     const sx = PANEL_X + SECTION_LEFT_X + col * (SLOT_SIZE + SLOT_GAP);
-    const sy = PANEL_Y + SALVAGE_Y + 20 + row * (SLOT_SIZE + SLOT_GAP);
+    const sy = PANEL_Y + SALVAGE_Y + 24 + row * (SLOT_SIZE + SLOT_GAP);
 
     const slotBg = new Graphics();
     const item = backpack[i];
 
     if (item) {
       const color = RARITY_COLORS[item.rarity];
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).fill({ color: 0x1a0a0a, alpha: 0.8 });
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).stroke({ width: 2, color });
+      drawSlotBg(slotBg, 0, 0, SLOT_SIZE, color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 5),
-        style: new TextStyle({ fill: color, fontSize: 8, fontFamily: 'monospace', fontWeight: 'bold' }),
+        text: abbreviate(item.name, 8),
+        style: new TextStyle({
+          fill: color,
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
+          fontWeight: 'bold',
+        }),
       });
       nameText.position.set(2, 2);
       slotBg.addChild(nameText);
 
       const levelText = new Text({
         text: `L${item.level}`,
-        style: new TextStyle({ fill: 0x888899, fontSize: 7, fontFamily: 'monospace' }),
+        style: new TextStyle({
+          fill: Colors.textMuted,
+          fontSize: FontSize.xs,
+          fontFamily: Fonts.body,
+        }),
       });
-      levelText.position.set(2, 24);
+      levelText.position.set(2, 28);
       slotBg.addChild(levelText);
 
-      // Socket indicator
       if (item.socket) {
         const socketText = new Text({
           text: item.socket.gem ? 'G' : 'O',
           style: new TextStyle({
-            fill: item.socket.gem ? GEM_COLORS[item.socket.gem.type] : 0x444466,
-            fontSize: 8,
-            fontFamily: 'monospace',
+            fill: item.socket.gem ? GEM_COLORS[item.socket.gem.type] : Colors.textMuted,
+            fontSize: FontSize.xs,
+            fontFamily: Fonts.body,
           }),
         });
-        socketText.position.set(28, 2);
+        socketText.position.set(34, 2);
         slotBg.addChild(socketText);
       }
 
-      // Click to salvage
       slotBg.eventMode = 'static';
       slotBg.cursor = 'pointer';
       const idx = i;
@@ -231,8 +236,7 @@ function buildSalvageSection(): void {
         rebuildPanel();
       });
     } else {
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).fill({ color: 0x0a0a15, alpha: 0.5 });
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).stroke({ width: 1, color: 0x222233 });
+      drawSlotBg(slotBg, 0, 0, SLOT_SIZE);
     }
 
     slotBg.position.set(sx, sy);
@@ -245,7 +249,11 @@ function buildCraftingSection(): void {
 
   const sectionLabel = new Text({
     text: 'CRAFT',
-    style: new TextStyle({ fill: 0x66ccff, fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold' }),
+    style: new TextStyle({
+      fill: Colors.accentCyan,
+      fontSize: 10,
+      fontFamily: Fonts.display,
+    }),
   });
   sectionLabel.position.set(PANEL_X + SECTION_RIGHT_X, PANEL_Y + CRAFT_Y - 4);
   container.addChild(sectionLabel);
@@ -253,15 +261,19 @@ function buildCraftingSection(): void {
   // Recipe buttons
   for (let r = 0; r < RECIPES.length; r++) {
     const recipe = RECIPES[r];
-    const by = PANEL_Y + CRAFT_Y + 20 + r * 44;
+    const by = PANEL_Y + CRAFT_Y + 24 + r * 48;
     const bx = PANEL_X + SECTION_RIGHT_X;
 
     const isSelected = selectedRecipe === recipe;
     const canAfford = materials.has(recipe.cost);
 
     const btn = new Graphics();
-    btn.rect(0, 0, 330, 38).fill({ color: isSelected ? 0x222244 : 0x0e0e1a, alpha: 0.9 });
-    btn.rect(0, 0, 330, 38).stroke({ width: isSelected ? 2 : 1, color: canAfford ? 0x6666aa : 0x333344 });
+    btn.rect(0, 0, 360, 42).fill({ color: isSelected ? 0x1a2a4e : Colors.slotBg, alpha: 0.9 });
+    if (isSelected) {
+      drawPixelBorder(btn, 0, 0, 360, 42, { borderWidth: 2, highlight: Colors.accentCyan, shadow: Colors.borderShadow });
+    } else {
+      btn.rect(0, 0, 360, 42).stroke({ width: 1, color: canAfford ? Colors.borderMid : 0x222233 });
+    }
     btn.position.set(bx, by);
     btn.eventMode = 'static';
     btn.cursor = canAfford ? 'pointer' : 'default';
@@ -269,9 +281,9 @@ function buildCraftingSection(): void {
     const nameText = new Text({
       text: recipe.name,
       style: new TextStyle({
-        fill: canAfford ? 0xeeeeff : 0x555566,
-        fontSize: 12,
-        fontFamily: 'monospace',
+        fill: canAfford ? Colors.textPrimary : Colors.textMuted,
+        fontSize: FontSize.base,
+        fontFamily: Fonts.body,
         fontWeight: 'bold',
       }),
     });
@@ -280,14 +292,18 @@ function buildCraftingSection(): void {
 
     const descText = new Text({
       text: recipe.description,
-      style: new TextStyle({ fill: canAfford ? 0x999999 : 0x444444, fontSize: 9, fontFamily: 'monospace' }),
+      style: new TextStyle({
+        fill: canAfford ? Colors.textSecondary : Colors.textMuted,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
+      }),
     });
-    descText.position.set(8, 22);
+    descText.position.set(8, 24);
     btn.addChild(descText);
 
     btn.on('pointertap', () => {
       if (!canAfford) {
-        showFeedback('Not enough materials!', 0xff4444);
+        showFeedback('Not enough materials!', Colors.accentRed);
         return;
       }
       if (selectedRecipe === recipe) {
@@ -303,13 +319,17 @@ function buildCraftingSection(): void {
     container.addChild(btn);
   }
 
-  // If a recipe is selected, show target item selection
+  // Target item selection
   if (selectedRecipe) {
     const targetLabel = new Text({
       text: 'Select target item:',
-      style: new TextStyle({ fill: 0xaaaacc, fontSize: 11, fontFamily: 'monospace' }),
+      style: new TextStyle({
+        fill: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
+      }),
     });
-    targetLabel.position.set(PANEL_X + SECTION_RIGHT_X, PANEL_Y + CRAFT_Y + 160);
+    targetLabel.position.set(PANEL_X + SECTION_RIGHT_X, PANEL_Y + CRAFT_Y + 180);
     container.addChild(targetLabel);
 
     const backpack = inventory.backpack;
@@ -321,27 +341,35 @@ function buildCraftingSection(): void {
       if (!selectedRecipe.canApply(item)) continue;
 
       const sx = PANEL_X + SECTION_RIGHT_X + col * (SLOT_SIZE + SLOT_GAP);
-      const sy = PANEL_Y + CRAFT_Y + 178 + row * (SLOT_SIZE + SLOT_GAP);
+      const sy = PANEL_Y + CRAFT_Y + 200 + row * (SLOT_SIZE + SLOT_GAP);
 
       const isTarget = selectedCraftTargetIdx === i;
       const color = RARITY_COLORS[item.rarity];
 
       const slotBg = new Graphics();
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).fill({ color: isTarget ? 0x222244 : 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).stroke({ width: isTarget ? 2 : 1, color });
+      drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isTarget ? Colors.accentCyan : color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 5),
-        style: new TextStyle({ fill: color, fontSize: 8, fontFamily: 'monospace', fontWeight: 'bold' }),
+        text: abbreviate(item.name, 8),
+        style: new TextStyle({
+          fill: color,
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
+          fontWeight: 'bold',
+        }),
       });
       nameText.position.set(2, 2);
       slotBg.addChild(nameText);
 
       const lvText = new Text({
         text: `L${item.level}`,
-        style: new TextStyle({ fill: 0x888899, fontSize: 7, fontFamily: 'monospace' }),
+        style: new TextStyle({
+          fill: Colors.textMuted,
+          fontSize: FontSize.xs,
+          fontFamily: Fonts.body,
+        }),
       });
-      lvText.position.set(2, 24);
+      lvText.position.set(2, 28);
       slotBg.addChild(lvText);
 
       slotBg.eventMode = 'static';
@@ -365,19 +393,24 @@ function buildCraftingSection(): void {
     // Craft button
     if (selectedCraftTargetIdx !== null) {
       const craftBtn = new Graphics();
-      const cbx = PANEL_X + SECTION_RIGHT_X + 240;
-      const cby = PANEL_Y + CRAFT_Y + 160;
-      craftBtn.rect(0, 0, 80, 28).fill({ color: 0x225522, alpha: 0.9 });
-      craftBtn.rect(0, 0, 80, 28).stroke({ width: 2, color: 0x44aa44 });
+      const cbx = PANEL_X + SECTION_RIGHT_X + 260;
+      const cby = PANEL_Y + CRAFT_Y + 180;
+      craftBtn.rect(0, 0, 90, 32).fill({ color: 0x1a2e1a, alpha: 0.9 });
+      drawPixelBorder(craftBtn, 0, 0, 90, 32, { borderWidth: 2, highlight: Colors.accentLime, shadow: Colors.borderShadow });
       craftBtn.position.set(cbx, cby);
       craftBtn.eventMode = 'static';
       craftBtn.cursor = 'pointer';
 
       const craftLabel = new Text({
         text: 'CRAFT',
-        style: new TextStyle({ fill: 0x66ff66, fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold' }),
+        style: new TextStyle({
+          fill: Colors.accentLime,
+          fontSize: FontSize.base,
+          fontFamily: Fonts.body,
+          fontWeight: 'bold',
+        }),
       });
-      craftLabel.position.set(14, 6);
+      craftLabel.position.set(18, 6);
       craftBtn.addChild(craftLabel);
 
       craftBtn.on('pointertap', () => {
@@ -389,11 +422,11 @@ function buildCraftingSection(): void {
         if (result) {
           inventory.backpack[selectedCraftTargetIdx] = result;
           markStatsDirty();
-          showFeedback(`Crafted: ${selectedRecipe.name}!`, 0x66ff66);
+          showFeedback(`Crafted: ${selectedRecipe.name}!`, Colors.accentLime);
           selectedRecipe = null;
           selectedCraftTargetIdx = null;
         } else {
-          showFeedback('Craft failed - check materials/requirements', 0xff4444);
+          showFeedback('Craft failed - check materials/requirements', Colors.accentRed);
         }
         rebuildPanel();
       });
@@ -408,7 +441,11 @@ function buildGemSection(): void {
 
   const sectionLabel = new Text({
     text: 'GEM SOCKETING',
-    style: new TextStyle({ fill: 0xcc66ff, fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold' }),
+    style: new TextStyle({
+      fill: 0xCC66FF,
+      fontSize: 10,
+      fontFamily: Fonts.display,
+    }),
   });
   sectionLabel.position.set(PANEL_X + SECTION_LEFT_X, PANEL_Y + GEM_Y);
   container.addChild(sectionLabel);
@@ -416,44 +453,64 @@ function buildGemSection(): void {
   if (inventory.gems.length === 0) {
     const noGems = new Text({
       text: 'No gems available',
-      style: new TextStyle({ fill: 0x555566, fontSize: 11, fontFamily: 'monospace' }),
+      style: new TextStyle({
+        fill: Colors.textMuted,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
+      }),
     });
-    noGems.position.set(PANEL_X + SECTION_LEFT_X, PANEL_Y + GEM_Y + 20);
+    noGems.position.set(PANEL_X + SECTION_LEFT_X, PANEL_Y + GEM_Y + 22);
     container.addChild(noGems);
   } else {
-    // Gem selection
     const gemLabel = new Text({
       text: 'Select gem:',
-      style: new TextStyle({ fill: 0xaaaacc, fontSize: 10, fontFamily: 'monospace' }),
+      style: new TextStyle({
+        fill: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
+      }),
     });
-    gemLabel.position.set(PANEL_X + SECTION_LEFT_X, PANEL_Y + GEM_Y + 18);
+    gemLabel.position.set(PANEL_X + SECTION_LEFT_X, PANEL_Y + GEM_Y + 20);
     container.addChild(gemLabel);
 
     for (let g = 0; g < inventory.gems.length; g++) {
       const gem = inventory.gems[g];
       const gx = PANEL_X + SECTION_LEFT_X + g * (SLOT_SIZE + SLOT_GAP);
-      const gy = PANEL_Y + GEM_Y + 34;
+      const gy = PANEL_Y + GEM_Y + 38;
 
       const isSelected = selectedGem?.id === gem.id;
       const color = GEM_COLORS[gem.type];
       const bonus = GEM_BONUSES[gem.type];
 
       const slotBg = new Graphics();
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).fill({ color: isSelected ? 0x221133 : 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).stroke({ width: isSelected ? 2 : 1, color });
+      drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isSelected ? color : undefined);
+      if (!isSelected) {
+        slotBg.clear();
+        slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).fill({ color: Colors.slotBg, alpha: 0.85 });
+        slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).stroke({ width: 1, color });
+      }
 
       const nameText = new Text({
-        text: gem.name.slice(0, 4),
-        style: new TextStyle({ fill: color, fontSize: 8, fontFamily: 'monospace', fontWeight: 'bold' }),
+        text: gem.name.slice(0, 6),
+        style: new TextStyle({
+          fill: color,
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
+          fontWeight: 'bold',
+        }),
       });
       nameText.position.set(2, 4);
       slotBg.addChild(nameText);
 
       const bonusText = new Text({
-        text: bonus.label.slice(0, 6),
-        style: new TextStyle({ fill: 0x888899, fontSize: 7, fontFamily: 'monospace' }),
+        text: bonus.label.slice(0, 8),
+        style: new TextStyle({
+          fill: Colors.textMuted,
+          fontSize: FontSize.xs,
+          fontFamily: Fonts.body,
+        }),
       });
-      bonusText.position.set(2, 24);
+      bonusText.position.set(2, 28);
       slotBg.addChild(bonusText);
 
       slotBg.eventMode = 'static';
@@ -474,13 +531,17 @@ function buildGemSection(): void {
     }
   }
 
-  // Socketed item selection (only show items with empty sockets)
+  // Socket target selection
   if (selectedGem) {
     const targetLabel = new Text({
       text: 'Select socketed item:',
-      style: new TextStyle({ fill: 0xaaaacc, fontSize: 10, fontFamily: 'monospace' }),
+      style: new TextStyle({
+        fill: Colors.textSecondary,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
+      }),
     });
-    targetLabel.position.set(PANEL_X + SECTION_RIGHT_X, PANEL_Y + GEM_Y + 18);
+    targetLabel.position.set(PANEL_X + SECTION_RIGHT_X, PANEL_Y + GEM_Y + 20);
     container.addChild(targetLabel);
 
     let col = 0;
@@ -489,26 +550,34 @@ function buildGemSection(): void {
       if (!item || !item.socket || item.socket.gem) continue;
 
       const sx = PANEL_X + SECTION_RIGHT_X + col * (SLOT_SIZE + SLOT_GAP);
-      const sy = PANEL_Y + GEM_Y + 34;
+      const sy = PANEL_Y + GEM_Y + 38;
       const isTarget = selectedGemTargetIdx === i;
       const color = RARITY_COLORS[item.rarity];
 
       const slotBg = new Graphics();
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).fill({ color: isTarget ? 0x221133 : 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, SLOT_SIZE, SLOT_SIZE).stroke({ width: isTarget ? 2 : 1, color });
+      drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isTarget ? Colors.accentCyan : color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 5),
-        style: new TextStyle({ fill: color, fontSize: 8, fontFamily: 'monospace', fontWeight: 'bold' }),
+        text: abbreviate(item.name, 8),
+        style: new TextStyle({
+          fill: color,
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
+          fontWeight: 'bold',
+        }),
       });
       nameText.position.set(2, 2);
       slotBg.addChild(nameText);
 
       const socketText = new Text({
         text: 'O',
-        style: new TextStyle({ fill: 0x666688, fontSize: 10, fontFamily: 'monospace' }),
+        style: new TextStyle({
+          fill: Colors.textMuted,
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
+        }),
       });
-      socketText.position.set(28, 22);
+      socketText.position.set(34, 26);
       slotBg.addChild(socketText);
 
       slotBg.eventMode = 'static';
@@ -527,19 +596,24 @@ function buildGemSection(): void {
     // Socket button
     if (selectedGemTargetIdx !== null && selectedGem) {
       const socketBtn = new Graphics();
-      const sbx = PANEL_X + SECTION_RIGHT_X + 240;
-      const sby = PANEL_Y + GEM_Y + 34;
-      socketBtn.rect(0, 0, 80, 28).fill({ color: 0x332255, alpha: 0.9 });
-      socketBtn.rect(0, 0, 80, 28).stroke({ width: 2, color: 0x9966cc });
+      const sbx = PANEL_X + SECTION_RIGHT_X + 260;
+      const sby = PANEL_Y + GEM_Y + 38;
+      socketBtn.rect(0, 0, 90, 32).fill({ color: 0x221133, alpha: 0.9 });
+      drawPixelBorder(socketBtn, 0, 0, 90, 32, { borderWidth: 2, highlight: 0x9966CC, shadow: Colors.borderShadow });
       socketBtn.position.set(sbx, sby);
       socketBtn.eventMode = 'static';
       socketBtn.cursor = 'pointer';
 
       const socketLabel = new Text({
         text: 'SOCKET',
-        style: new TextStyle({ fill: 0xcc88ff, fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold' }),
+        style: new TextStyle({
+          fill: 0xCC88FF,
+          fontSize: FontSize.base,
+          fontFamily: Fonts.body,
+          fontWeight: 'bold',
+        }),
       });
-      socketLabel.position.set(8, 6);
+      socketLabel.position.set(10, 6);
       socketBtn.addChild(socketLabel);
 
       socketBtn.on('pointertap', () => {
@@ -547,7 +621,6 @@ function buildGemSection(): void {
         const item = inventory.backpack[selectedGemTargetIdx];
         if (!item || !item.socket || item.socket.gem) return;
 
-        // Socket the gem
         item.socket.gem = selectedGem;
         inventory.removeGem(selectedGem.id);
         markStatsDirty();
@@ -564,11 +637,6 @@ function buildGemSection(): void {
   }
 }
 
-function abbreviate(name: string, maxLen: number): string {
-  if (name.length <= maxLen) return name;
-  return name.slice(0, maxLen - 1) + '.';
-}
-
 // --- Public API ---
 
 export function updateCraftingPanel(): void {
@@ -576,7 +644,6 @@ export function updateCraftingPanel(): void {
   const kDown = input.isPressed('KeyK');
   const escDown = input.isPressed('Escape');
 
-  // Close on Escape rising edge
   if (escDown && !prevEscPressed && visible) {
     visible = false;
     if (container) container.visible = false;
@@ -586,7 +653,6 @@ export function updateCraftingPanel(): void {
   }
   prevEscPressed = escDown;
 
-  // Toggle on rising edge
   if (kDown && !prevKPressed) {
     visible = !visible;
 
@@ -597,7 +663,6 @@ export function updateCraftingPanel(): void {
 
     container.visible = visible;
     if (visible) {
-      // Reset selection state
       selectedRecipe = null;
       selectedCraftTargetIdx = null;
       selectedGem = null;
@@ -608,9 +673,7 @@ export function updateCraftingPanel(): void {
 
   prevKPressed = kDown;
 
-  // Refresh while visible
   if (visible && container) {
-    // Decrement feedback timer
     if (feedbackTimer > 0) {
       feedbackTimer -= 1 / 60;
       if (feedbackTimer <= 0 && feedbackText) {
@@ -624,7 +687,6 @@ export function isCraftingPanelOpen(): boolean {
   return visible;
 }
 
-/** Programmatically open the crafting panel (used by NPC click). */
 export function openCraftingPanel(): void {
   if (!container) {
     container = createPanel();

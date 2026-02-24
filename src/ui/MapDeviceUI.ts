@@ -4,21 +4,24 @@ import { InputManager } from '../core/InputManager';
 import { inventory } from '../core/Inventory';
 import { activateMap } from '../core/MapDevice';
 import type { MapItem } from '../loot/MapItem';
+import {
+  Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder, makeCloseButton,
+} from './UITheme';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout
-const PANEL_W = 420;
-const PANEL_H = 440;
+const PANEL_W = 460;
+const PANEL_H = 480;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
 const TIER_COLORS: Record<number, number> = {
-  1: 0xcccccc,
-  2: 0x4488ff,
-  3: 0xffff00,
-  4: 0xff8800,
-  5: 0xff4444,
+  1: 0xBCBCBC,
+  2: 0x4488FF,
+  3: 0xFCBF00,
+  4: 0xFF7700,
+  5: Colors.accentRed,
 };
 
 let container: Container | null = null;
@@ -36,61 +39,45 @@ function createPanel(): Container {
 function rebuildPanel(): void {
   if (!container) return;
 
-  // Clear all children
   container.removeChildren();
 
   // Dim overlay
   const overlay = new Graphics();
   overlay.rect(0, 0, SCREEN_W, SCREEN_H).fill({ color: 0x000000, alpha: 0.5 });
-  overlay.eventMode = 'static'; // block clicks through
+  overlay.eventMode = 'static';
   container.addChild(overlay);
 
   // Panel background
   const bg = new Graphics();
-  bg.roundRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 8).fill({ color: 0x111122, alpha: 0.95 });
-  bg.roundRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 8).stroke({ width: 2, color: 0x00ffff });
+  drawPanelBg(bg, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
   container.addChild(bg);
 
   // Title
   const title = new Text({
     text: 'MAP DEVICE',
     style: new TextStyle({
-      fill: 0x00ffff,
-      fontSize: 20,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.accentCyan,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
     }),
   });
-  title.position.set(PANEL_X + 16, PANEL_Y + 14);
+  title.position.set(PANEL_X + 16, PANEL_Y + 16);
   container.addChild(title);
 
   // Close button
-  const hint = new Text({
-    text: '[X] close',
-    style: new TextStyle({
-      fill: 0x666688,
-      fontSize: 11,
-      fontFamily: 'monospace',
-    }),
-  });
-  hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
-  hint.eventMode = 'static';
-  hint.cursor = 'pointer';
-  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
-  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
-  hint.on('pointertap', () => { hideMapDevice(); });
-  container.addChild(hint);
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => { hideMapDevice(); });
+  container.addChild(closeBtn);
 
   const maps = inventory.maps;
 
-  // Always show "Training Grounds" free entry option
-  const freeY = PANEL_Y + 48;
+  // "Training Grounds" free entry button
+  const freeY = PANEL_Y + 52;
   const freeLabel = new Text({
     text: 'Free Entry:',
     style: new TextStyle({
-      fill: 0xaaaacc,
-      fontSize: 12,
-      fontFamily: 'monospace',
+      fill: Colors.textSecondary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
     }),
   });
   freeLabel.position.set(PANEL_X + 16, freeY);
@@ -99,35 +86,28 @@ function rebuildPanel(): void {
   const freeBtnW = PANEL_W - 24;
   const freeBtnH = 36;
   const freeBtnX = PANEL_X + 12;
-  const freeBtnY = freeY + 18;
+  const freeBtnY = freeY + 20;
 
   const freeBtn = new Graphics();
-  freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
-    .fill({ color: 0x0a150a, alpha: 0.9 });
-  freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
-    .stroke({ width: 1, color: 0x44aa44 });
+  freeBtn.rect(freeBtnX, freeBtnY, freeBtnW, freeBtnH).fill({ color: 0x0a150a, alpha: 0.9 });
+  drawPixelBorder(freeBtn, freeBtnX, freeBtnY, freeBtnW, freeBtnH, { borderWidth: 2, highlight: Colors.accentLime, shadow: Colors.borderShadow });
   freeBtn.eventMode = 'static';
   freeBtn.cursor = 'pointer';
 
   freeBtn.on('pointerover', () => {
     freeBtn.clear();
-    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
-      .fill({ color: 0x1a2e1a, alpha: 0.9 });
-    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
-      .stroke({ width: 2, color: 0x66ff66 });
+    freeBtn.rect(freeBtnX, freeBtnY, freeBtnW, freeBtnH).fill({ color: 0x1a2e1a, alpha: 0.9 });
+    drawPixelBorder(freeBtn, freeBtnX, freeBtnY, freeBtnW, freeBtnH, { borderWidth: 2, highlight: Colors.accentLime, shadow: Colors.borderShadow });
   });
 
   freeBtn.on('pointerout', () => {
     freeBtn.clear();
-    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
-      .fill({ color: 0x0a150a, alpha: 0.9 });
-    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
-      .stroke({ width: 1, color: 0x44aa44 });
+    freeBtn.rect(freeBtnX, freeBtnY, freeBtnW, freeBtnH).fill({ color: 0x0a150a, alpha: 0.9 });
+    drawPixelBorder(freeBtn, freeBtnX, freeBtnY, freeBtnW, freeBtnH, { borderWidth: 2, highlight: Colors.accentLime, shadow: Colors.borderShadow });
   });
 
   freeBtn.on('pointertap', () => {
     hideMapDevice();
-    // Activate a free T1 map with no modifiers
     activateMap({ id: '__free__', tier: 1, modifiers: [], quantityBonus: 0, rarityBonus: 0 });
   });
 
@@ -136,9 +116,9 @@ function rebuildPanel(): void {
   const freeBtnLabel = new Text({
     text: 'Training Grounds  (T1, no modifiers)',
     style: new TextStyle({
-      fill: 0x44ff44,
-      fontSize: 12,
-      fontFamily: 'monospace',
+      fill: Colors.accentLime,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
     }),
   });
   freeBtnLabel.position.set(freeBtnX + 12, freeBtnY + 10);
@@ -148,10 +128,10 @@ function rebuildPanel(): void {
     const emptyText = new Text({
       text: 'No maps in inventory.\nMaps drop from bosses and enemies.',
       style: new TextStyle({
-        fill: 0x666688,
-        fontSize: 11,
-        fontFamily: 'monospace',
-        lineHeight: 18,
+        fill: Colors.textMuted,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
+        lineHeight: 20,
       }),
     });
     emptyText.position.set(PANEL_X + 20, freeBtnY + freeBtnH + 16);
@@ -164,27 +144,30 @@ function rebuildPanel(): void {
   const listLabel = new Text({
     text: 'Available Maps:',
     style: new TextStyle({
-      fill: 0xaaaacc,
-      fontSize: 12,
-      fontFamily: 'monospace',
+      fill: Colors.textSecondary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
     }),
   });
   listLabel.position.set(PANEL_X + 16, listStartY);
   container.addChild(listLabel);
 
   const maxVisible = 6;
-  const itemH = 32;
+  const itemH = 34;
   for (let i = 0; i < Math.min(maps.length, maxVisible); i++) {
     const mapItem = maps[i];
-    const itemY = listStartY + 20 + i * (itemH + 4);
-    const color = TIER_COLORS[mapItem.tier] ?? 0xcccccc;
+    const itemY = listStartY + 22 + i * (itemH + 4);
+    const color = TIER_COLORS[mapItem.tier] ?? 0xBCBCBC;
     const isSelected = i === selectedMapIndex;
 
     const itemBg = new Graphics();
-    itemBg.roundRect(PANEL_X + 12, itemY, PANEL_W - 24, itemH, 4)
-      .fill({ color: isSelected ? 0x222244 : 0x0a0a15, alpha: 0.9 });
-    itemBg.roundRect(PANEL_X + 12, itemY, PANEL_W - 24, itemH, 4)
-      .stroke({ width: isSelected ? 2 : 1, color: isSelected ? color : 0x333355 });
+    itemBg.rect(PANEL_X + 12, itemY, PANEL_W - 24, itemH)
+      .fill({ color: isSelected ? 0x1a2a4e : Colors.slotBg, alpha: 0.9 });
+    if (isSelected) {
+      drawPixelBorder(itemBg, PANEL_X + 12, itemY, PANEL_W - 24, itemH, { borderWidth: 2, highlight: color, shadow: Colors.borderShadow });
+    } else {
+      itemBg.rect(PANEL_X + 12, itemY, PANEL_W - 24, itemH).stroke({ width: 1, color: Colors.borderMid });
+    }
     itemBg.eventMode = 'static';
     itemBg.cursor = 'pointer';
 
@@ -201,8 +184,8 @@ function rebuildPanel(): void {
       text: `T${mapItem.tier} Map  [${modCount} mod${modCount !== 1 ? 's' : ''}]  +${mapItem.quantityBonus}% qty  +${mapItem.rarityBonus}% rarity`,
       style: new TextStyle({
         fill: color,
-        fontSize: 11,
-        fontFamily: 'monospace',
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
         fontWeight: 'bold',
       }),
     });
@@ -213,23 +196,22 @@ function rebuildPanel(): void {
   // Details for selected map
   if (selectedMapIndex >= 0 && selectedMapIndex < maps.length) {
     const selected = maps[selectedMapIndex];
-    const detailY = listStartY + 20 + Math.min(maps.length, maxVisible) * (itemH + 4) + 10;
-    const color = TIER_COLORS[selected.tier] ?? 0xcccccc;
+    const detailY = listStartY + 22 + Math.min(maps.length, maxVisible) * (itemH + 4) + 10;
+    const color = TIER_COLORS[selected.tier] ?? 0xBCBCBC;
 
     // Separator
     const sep = new Graphics();
     sep.moveTo(PANEL_X + 16, detailY)
       .lineTo(PANEL_X + PANEL_W - 16, detailY)
-      .stroke({ width: 1, color: 0x333355 });
+      .stroke({ width: 2, color: Colors.divider });
     container.addChild(sep);
 
-    // Modifier list
     const modTitle = new Text({
       text: `Tier ${selected.tier} Map Modifiers:`,
       style: new TextStyle({
         fill: color,
-        fontSize: 13,
-        fontFamily: 'monospace',
+        fontSize: FontSize.base,
+        fontFamily: Fonts.body,
         fontWeight: 'bold',
       }),
     });
@@ -241,50 +223,49 @@ function rebuildPanel(): void {
       const modText = new Text({
         text: `  - ${mod.description}`,
         style: new TextStyle({
-          fill: 0xff6666,
-          fontSize: 11,
-          fontFamily: 'monospace',
+          fill: Colors.accentRed,
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
         }),
       });
-      modText.position.set(PANEL_X + 16, detailY + 28 + m * 16);
+      modText.position.set(PANEL_X + 16, detailY + 28 + m * 18);
       container.addChild(modText);
     }
 
-    // Bonuses
-    const bonusY = detailY + 28 + selected.modifiers.length * 16 + 8;
+    const bonusY = detailY + 28 + selected.modifiers.length * 18 + 8;
     const bonusText = new Text({
       text: `+${selected.quantityBonus}% Monster Quantity  |  +${selected.rarityBonus}% Item Rarity`,
       style: new TextStyle({
-        fill: 0x44ff44,
-        fontSize: 11,
-        fontFamily: 'monospace',
+        fill: Colors.accentLime,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
       }),
     });
     bonusText.position.set(PANEL_X + 16, bonusY);
     container.addChild(bonusText);
 
     // Activate button
-    const btnW = 140;
-    const btnH = 32;
+    const btnW = 150;
+    const btnH = 34;
     const btnX = PANEL_X + (PANEL_W - btnW) / 2;
     const btnY = bonusY + 28;
 
     const btn = new Graphics();
-    btn.roundRect(btnX, btnY, btnW, btnH, 4).fill({ color: 0x113311, alpha: 0.9 });
-    btn.roundRect(btnX, btnY, btnW, btnH, 4).stroke({ width: 2, color: 0x44ff44 });
+    btn.rect(btnX, btnY, btnW, btnH).fill({ color: 0x113311, alpha: 0.9 });
+    drawPixelBorder(btn, btnX, btnY, btnW, btnH, { borderWidth: 2, highlight: Colors.accentLime, shadow: Colors.borderShadow });
     btn.eventMode = 'static';
     btn.cursor = 'pointer';
 
     btn.on('pointerover', () => {
       btn.clear();
-      btn.roundRect(btnX, btnY, btnW, btnH, 4).fill({ color: 0x224422, alpha: 0.9 });
-      btn.roundRect(btnX, btnY, btnW, btnH, 4).stroke({ width: 2, color: 0x66ff66 });
+      btn.rect(btnX, btnY, btnW, btnH).fill({ color: 0x224422, alpha: 0.9 });
+      drawPixelBorder(btn, btnX, btnY, btnW, btnH, { borderWidth: 2, highlight: Colors.accentLime, shadow: Colors.borderShadow });
     });
 
     btn.on('pointerout', () => {
       btn.clear();
-      btn.roundRect(btnX, btnY, btnW, btnH, 4).fill({ color: 0x113311, alpha: 0.9 });
-      btn.roundRect(btnX, btnY, btnW, btnH, 4).stroke({ width: 2, color: 0x44ff44 });
+      btn.rect(btnX, btnY, btnW, btnH).fill({ color: 0x113311, alpha: 0.9 });
+      drawPixelBorder(btn, btnX, btnY, btnW, btnH, { borderWidth: 2, highlight: Colors.accentLime, shadow: Colors.borderShadow });
     });
 
     btn.on('pointertap', () => {
@@ -302,9 +283,9 @@ function rebuildPanel(): void {
     const btnLabel = new Text({
       text: 'ACTIVATE',
       style: new TextStyle({
-        fill: 0x44ff44,
-        fontSize: 14,
-        fontFamily: 'monospace',
+        fill: Colors.accentLime,
+        fontSize: FontSize.base,
+        fontFamily: Fonts.body,
         fontWeight: 'bold',
       }),
     });
@@ -333,14 +314,11 @@ function hideMapDevice(): void {
   }
 }
 
-// ── Public API ──────────────────────────────────────────────────────
-
 export function updateMapDeviceUI(): void {
   const input = InputManager.instance;
   const mDown = input.isPressed('KeyM');
   const escDown = input.isPressed('Escape');
 
-  // Close on Escape rising edge
   if (escDown && !prevEscPressed && visible) {
     hideMapDevice();
     prevEscPressed = escDown;
@@ -364,7 +342,6 @@ export function isMapDeviceOpen(): boolean {
   return visible;
 }
 
-/** Programmatically open the map device panel (used by NPC click). */
 export function openMapDevicePanel(): void {
   showMapDevice();
 }

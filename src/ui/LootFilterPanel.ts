@@ -2,13 +2,16 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { game } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { lootFilter, LootFilterConfig } from '../core/LootFilter';
+import {
+  Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder,
+} from './UITheme';
 
-const PANEL_W = 180;
+const PANEL_W = 200;
 const PANEL_X = 8;
 const PANEL_Y = 140;
-const ROW_H = 22;
-const CHECKBOX_SIZE = 14;
-const PADDING = 10;
+const ROW_H = 26;
+const CHECKBOX_SIZE = 18;
+const PADDING = 12;
 
 interface FilterRow {
   key: keyof LootFilterConfig;
@@ -17,13 +20,13 @@ interface FilterRow {
 }
 
 const ROWS: FilterRow[] = [
-  { key: 'showNormal', label: 'Normal', color: 0xcccccc },
-  { key: 'showMagic', label: 'Magic', color: 0x4444ff },
-  { key: 'showRare', label: 'Rare', color: 0xffff00 },
-  { key: 'showUnique', label: 'Unique', color: 0xff8800 },
-  { key: 'showWeapons', label: 'Weapons', color: 0xaaaacc },
-  { key: 'showArmor', label: 'Armor', color: 0xaaaacc },
-  { key: 'showJewelry', label: 'Jewelry', color: 0xaaaacc },
+  { key: 'showNormal', label: 'Normal', color: 0xBCBCBC },
+  { key: 'showMagic', label: 'Magic', color: 0x4488FF },
+  { key: 'showRare', label: 'Rare', color: 0xFCBF00 },
+  { key: 'showUnique', label: 'Unique', color: 0xFF7700 },
+  { key: 'showWeapons', label: 'Weapons', color: Colors.textSecondary },
+  { key: 'showArmor', label: 'Armor', color: Colors.textSecondary },
+  { key: 'showJewelry', label: 'Jewelry', color: Colors.textSecondary },
 ];
 
 const PANEL_H = PADDING + 24 + ROWS.length * ROW_H + PADDING;
@@ -43,18 +46,16 @@ function createPanel(): Container {
 
   // Background
   const bg = new Graphics();
-  bg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).fill({ color: 0x111122, alpha: 0.85 });
-  bg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).stroke({ width: 1, color: 0x6666aa });
+  drawPanelBg(bg, PANEL_X, PANEL_Y, PANEL_W, PANEL_H, { borderWidth: 2 });
   root.addChild(bg);
 
   // Title
   const title = new Text({
-    text: 'LOOT FILTER [Alt+F]',
+    text: 'LOOT FILTER',
     style: new TextStyle({
-      fill: 0xffd700,
-      fontSize: 12,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.accentGold,
+      fontSize: 10,
+      fontFamily: Fonts.display,
     }),
   });
   title.position.set(PANEL_X + PADDING, PANEL_Y + PADDING);
@@ -85,11 +86,11 @@ function createPanel(): Container {
       text: row.label,
       style: new TextStyle({
         fill: row.color,
-        fontSize: 12,
-        fontFamily: 'monospace',
+        fontSize: FontSize.base,
+        fontFamily: Fonts.body,
       }),
     });
-    label.position.set(PANEL_X + PADDING + CHECKBOX_SIZE + 6, rowY);
+    label.position.set(PANEL_X + PADDING + CHECKBOX_SIZE + 8, rowY);
     root.addChild(label);
   }
 
@@ -105,15 +106,19 @@ function refreshCheckboxes(): void {
     const checked = lootFilter.config[row.key];
 
     cb.clear();
-    cb.rect(0, 0, CHECKBOX_SIZE, CHECKBOX_SIZE).fill({ color: 0x0a0a15, alpha: 0.8 });
-    cb.rect(0, 0, CHECKBOX_SIZE, CHECKBOX_SIZE).stroke({ width: 1, color: checked ? 0x44ff44 : 0x444466 });
+    cb.rect(0, 0, CHECKBOX_SIZE, CHECKBOX_SIZE).fill({ color: Colors.slotBg, alpha: 0.8 });
+    drawPixelBorder(cb, 0, 0, CHECKBOX_SIZE, CHECKBOX_SIZE, {
+      borderWidth: 2,
+      highlight: checked ? Colors.accentLime : Colors.borderMid,
+      shadow: Colors.borderShadow,
+    });
 
     if (checked) {
       // Draw checkmark
-      cb.moveTo(3, 7);
-      cb.lineTo(6, 11);
-      cb.lineTo(11, 3);
-      cb.stroke({ width: 2, color: 0x44ff44 });
+      cb.moveTo(4, 9);
+      cb.lineTo(7, 14);
+      cb.lineTo(14, 4);
+      cb.stroke({ width: 2, color: Colors.accentLime });
     }
   }
 }
@@ -127,9 +132,9 @@ function showNotification(message: string): void {
   notificationText = new Text({
     text: message,
     style: new TextStyle({
-      fill: 0xffd700,
-      fontSize: 14,
-      fontFamily: 'monospace',
+      fill: Colors.accentGold,
+      fontSize: FontSize.base,
+      fontFamily: Fonts.body,
       fontWeight: 'bold',
       stroke: { color: 0x000000, width: 3 },
     }),

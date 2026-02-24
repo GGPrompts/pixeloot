@@ -1,10 +1,11 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
+import { Colors, Fonts, FontSize, drawPixelBorder } from './UITheme';
 import { SCREEN_W } from '../core/constants';
 
-const BAR_WIDTH = 400;
-const BAR_HEIGHT = 20;
+const BAR_WIDTH = 440;
+const BAR_HEIGHT = 24;
 const BAR_Y = 40;
 
 const bosses = world.with('boss', 'enemy', 'health');
@@ -20,8 +21,8 @@ function createBar(): void {
 
   // Background bar
   barBg = new Graphics();
-  barBg.roundRect(0, 0, BAR_WIDTH, BAR_HEIGHT, 4).fill({ color: 0x222222, alpha: 0.8 });
-  barBg.roundRect(0, 0, BAR_WIDTH, BAR_HEIGHT, 4).stroke({ width: 1, color: 0x888888 });
+  barBg.rect(0, 0, BAR_WIDTH, BAR_HEIGHT).fill({ color: 0x222222, alpha: 0.8 });
+  drawPixelBorder(barBg, 0, 0, BAR_WIDTH, BAR_HEIGHT, { borderWidth: 2 });
   container.addChild(barBg);
 
   // Fill bar
@@ -32,10 +33,9 @@ function createBar(): void {
   nameText = new Text({
     text: 'Dungeon Guardian',
     style: new TextStyle({
-      fill: 0xffffff,
-      fontSize: 16,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.textPrimary,
+      fontSize: 10,
+      fontFamily: Fonts.display,
       stroke: { color: 0x000000, width: 3 },
     }),
   });
@@ -47,9 +47,9 @@ function createBar(): void {
   phaseText = new Text({
     text: 'Phase 1',
     style: new TextStyle({
-      fill: 0xcccccc,
-      fontSize: 12,
-      fontFamily: 'monospace',
+      fill: Colors.textSecondary,
+      fontSize: FontSize.base,
+      fontFamily: Fonts.body,
       stroke: { color: 0x000000, width: 2 },
     }),
   });
@@ -57,7 +57,6 @@ function createBar(): void {
   phaseText.position.set(BAR_WIDTH / 2, BAR_HEIGHT + 2);
   container.addChild(phaseText);
 
-  // Position at top center of screen
   container.position.set((SCREEN_W - BAR_WIDTH) / 2, BAR_Y);
   container.visible = false;
 
@@ -68,31 +67,26 @@ function drawFill(ratio: number, phase: number): void {
   if (!barFill) return;
   barFill.clear();
 
-  const fillWidth = Math.max(0, Math.min(1, ratio)) * (BAR_WIDTH - 2);
+  const fillWidth = Math.max(0, Math.min(1, ratio)) * (BAR_WIDTH - 4);
   if (fillWidth <= 0) return;
 
-  // Color changes per phase: green -> yellow -> red
   let color: number;
   if (phase >= 3) {
-    color = 0xff3333;
+    color = Colors.accentRed;
   } else if (phase >= 2) {
-    color = 0xffaa00;
+    color = Colors.accentOrange;
   } else {
-    color = 0x44ff44;
+    color = Colors.accentLime;
   }
 
-  barFill.roundRect(1, 1, fillWidth, BAR_HEIGHT - 2, 3).fill({ color });
+  barFill.rect(2, 2, fillWidth, BAR_HEIGHT - 4).fill({ color });
 }
 
-/**
- * Update the boss health bar each frame. Call from frameUpdate.
- */
 export function updateBossHealthBar(): void {
   if (!container) {
     createBar();
   }
 
-  // Find an alive boss
   let activeBoss: (typeof bosses.entities)[number] | null = null;
   for (const b of bosses) {
     if (!b.dead) {

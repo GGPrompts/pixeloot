@@ -6,19 +6,13 @@ import { inventory } from '../../core/Inventory';
 import { getComputedStats } from '../../core/ComputedStats';
 import { GEM_COLORS } from '../../loot/Gems';
 import { sfxPlayer } from '../../audio/SFXManager';
+import { RARITY_COLORS, Fonts, FontSize } from '../../ui/UITheme';
 
 const PICKUP_RADIUS = 32;
 const PICKUP_RADIUS_SQ = PICKUP_RADIUS * PICKUP_RADIUS;
 
 const pickups = world.with('pickup', 'position');
 const players = world.with('player', 'position');
-
-const RARITY_COLORS: Record<Rarity, number> = {
-  [Rarity.Normal]: 0xcccccc,
-  [Rarity.Magic]: 0x4444ff,
-  [Rarity.Rare]: 0xffff00,
-  [Rarity.Unique]: 0xff8800,
-};
 
 /**
  * Spawn a floating text that rises and fades (used for pickup feedback).
@@ -28,8 +22,8 @@ function spawnPickupText(x: number, y: number, message: string, color: number): 
     text: message,
     style: new TextStyle({
       fill: color,
-      fontSize: 14,
-      fontFamily: 'monospace',
+      fontSize: FontSize.base,
+      fontFamily: Fonts.body,
       fontWeight: 'bold',
       stroke: { color: 0x000000, width: 2 },
     }),

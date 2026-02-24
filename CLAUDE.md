@@ -68,6 +68,18 @@ Dexie (IndexedDB) with tables: saves, playerState, inventoryState, worldState, s
 
 All UI is PixiJS-native (Container/Graphics/Text). Each panel exports an `update*()` function called from the game loop and an `is*Open()` predicate for input gating. No DOM framework. All panels close with Escape and have a clickable `[X] close` button.
 
+**Theme system** — All colors, fonts, and drawing helpers are centralized in `src/ui/UITheme.ts`. When adding or modifying UI:
+- Import `Colors`, `Fonts`, `FontSize` from `UITheme.ts` — never hardcode hex colors or font strings
+- Use `drawPanelBg()` for panel backgrounds (navy fill + 3D pixel border)
+- Use `drawPixelBorder()` for 3D chunky borders (highlight top/left, shadow bottom/right)
+- Use `drawSlotBg()` for item/skill slots, `drawDivider()` for section separators
+- Use `makeCloseButton()` for standard [X] close buttons
+- Use `abbreviate()` for truncating item names, `getRarityColor()` for rarity lookups
+- Fonts: `Fonts.display` ('Press Start 2P') for titles/labels, `Fonts.body` ('VT323') for body text
+- Font sizes: xs=12, sm=14, base=16, lg=18, xl=20, 2xl=24, 3xl=28 — minimum 12px for readability
+- Rarity colors: Normal `0xBCBCBC`, Magic `0x4488FF`, Rare `0xFCBF00`, Unique `0xFF7700`
+- Shared tooltip logic lives in `src/ui/Tooltip.ts` (used by InventoryPanel, VendorPanel, StashPanel)
+
 ### Character Classes (entities/classes/)
 
 Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Players select 4 active skills for the hotbar (keys 1-4).

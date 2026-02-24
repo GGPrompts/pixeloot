@@ -1,6 +1,7 @@
 import { Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
+import { Fonts, FontSize } from '../ui/UITheme';
 import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder } from './Enemy';
 import { spawnBoss } from './Boss';
 import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
@@ -443,9 +444,8 @@ export class WaveSystem {
       text: `Wave ${this.currentWave}`,
       style: new TextStyle({
         fill: 0xffffff,
-        fontSize: 48,
-        fontFamily: 'monospace',
-        fontWeight: 'bold',
+        fontSize: FontSize['3xl'],
+        fontFamily: Fonts.display,
         stroke: { color: 0x000000, width: 4 },
       }),
     });

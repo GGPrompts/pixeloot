@@ -3,17 +3,17 @@ import { game } from '../Game';
 import { skillSystem } from '../core/SkillSystem';
 import { rangerSkills } from '../entities/classes/Ranger';
 import { mageSkills } from '../entities/classes/Mage';
+import {
+  Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder,
+} from './UITheme';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 420;
-const PANEL_H = 260;
-const BTN_W = 160;
-const BTN_H = 100;
+const PANEL_W = 480;
+const PANEL_H = 300;
+const BTN_W = 180;
+const BTN_H = 120;
 const BTN_GAP = 30;
-
-const BG_COLOR = 0x111122;
-const BORDER_COLOR = 0x00ffff;
 
 let container: Container | null = null;
 let selectionMade = false;
@@ -54,8 +54,8 @@ function createButton(
 
   // Button background
   const bg = new Graphics();
-  bg.roundRect(0, 0, BTN_W, BTN_H, 6).fill({ color: BG_COLOR, alpha: 0.95 });
-  bg.roundRect(0, 0, BTN_W, BTN_H, 6).stroke({ color: option.color, width: 2 });
+  bg.rect(0, 0, BTN_W, BTN_H).fill({ color: Colors.slotBg, alpha: 0.95 });
+  drawPixelBorder(bg, 0, 0, BTN_W, BTN_H, { borderWidth: 3, highlight: option.color, shadow: Colors.borderShadow });
   btn.addChild(bg);
 
   // Class name
@@ -63,42 +63,41 @@ function createButton(
     text: option.name,
     style: new TextStyle({
       fill: option.color,
-      fontSize: 16,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
       align: 'center',
     }),
   });
   nameText.anchor.set(0.5, 0);
-  nameText.position.set(BTN_W / 2, 8);
+  nameText.position.set(BTN_W / 2, 12);
   btn.addChild(nameText);
 
   // Description
   const descText = new Text({
     text: option.description,
     style: new TextStyle({
-      fill: 0xcccccc,
-      fontSize: 10,
-      fontFamily: 'monospace',
+      fill: Colors.textSecondary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
       align: 'center',
-      lineHeight: 14,
+      lineHeight: 18,
     }),
   });
   descText.anchor.set(0.5, 0);
-  descText.position.set(BTN_W / 2, 32);
+  descText.position.set(BTN_W / 2, 40);
   btn.addChild(descText);
 
   // Hover effects
   btn.on('pointerover', () => {
     bg.clear();
-    bg.roundRect(0, 0, BTN_W, BTN_H, 6).fill({ color: 0x1a1a33, alpha: 0.95 });
-    bg.roundRect(0, 0, BTN_W, BTN_H, 6).stroke({ color: option.color, width: 2, alpha: 1 });
+    bg.rect(0, 0, BTN_W, BTN_H).fill({ color: 0x1a2a4e, alpha: 0.95 });
+    drawPixelBorder(bg, 0, 0, BTN_W, BTN_H, { borderWidth: 3, highlight: option.color, shadow: Colors.borderShadow });
   });
 
   btn.on('pointerout', () => {
     bg.clear();
-    bg.roundRect(0, 0, BTN_W, BTN_H, 6).fill({ color: BG_COLOR, alpha: 0.95 });
-    bg.roundRect(0, 0, BTN_W, BTN_H, 6).stroke({ color: option.color, width: 2 });
+    bg.rect(0, 0, BTN_W, BTN_H).fill({ color: Colors.slotBg, alpha: 0.95 });
+    drawPixelBorder(bg, 0, 0, BTN_W, BTN_H, { borderWidth: 3, highlight: option.color, shadow: Colors.borderShadow });
   });
 
   btn.on('pointertap', () => {
@@ -143,18 +142,16 @@ export function showClassSelect(onSelect: () => void): void {
   const panelY = (SCREEN_H - PANEL_H) / 2;
 
   const panel = new Graphics();
-  panel.roundRect(panelX, panelY, PANEL_W, PANEL_H, 8).fill({ color: BG_COLOR, alpha: 0.92 });
-  panel.roundRect(panelX, panelY, PANEL_W, PANEL_H, 8).stroke({ color: BORDER_COLOR, width: 2 });
+  drawPanelBg(panel, panelX, panelY, PANEL_W, PANEL_H);
   container.addChild(panel);
 
   // Title
   const title = new Text({
     text: 'Choose Your Class',
     style: new TextStyle({
-      fill: BORDER_COLOR,
-      fontSize: 20,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.accentCyan,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
     }),
   });
   title.anchor.set(0.5, 0);
@@ -165,9 +162,9 @@ export function showClassSelect(onSelect: () => void): void {
   const subtitle = new Text({
     text: 'Select a class to begin',
     style: new TextStyle({
-      fill: 0x888888,
-      fontSize: 11,
-      fontFamily: 'monospace',
+      fill: Colors.textMuted,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
     }),
   });
   subtitle.anchor.set(0.5, 0);
@@ -188,13 +185,13 @@ export function showClassSelect(onSelect: () => void): void {
   const hint = new Text({
     text: 'Press C anytime to change class',
     style: new TextStyle({
-      fill: 0x555555,
-      fontSize: 10,
-      fontFamily: 'monospace',
+      fill: Colors.textMuted,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
     }),
   });
   hint.anchor.set(0.5, 1);
-  hint.position.set(SCREEN_W / 2, panelY + PANEL_H - 10);
+  hint.position.set(SCREEN_W / 2, panelY + PANEL_H - 12);
   container.addChild(hint);
 
   game.hudLayer.addChild(container);

@@ -2,14 +2,15 @@ import { Graphics, Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import type { MapItem } from '../loot/MapItem';
+import { Colors, Fonts, FontSize } from '../ui/UITheme';
 
 /** Tier colors for map drops */
 const TIER_COLORS: Record<number, number> = {
-  1: 0xcccccc, // white/grey
-  2: 0x4488ff, // blue
-  3: 0xffff00, // yellow
-  4: 0xff8800, // orange
-  5: 0xff4444, // red
+  1: 0xBCBCBC,
+  2: 0x4488FF,
+  3: 0xFCBF00,
+  4: 0xFF7700,
+  5: Colors.accentRed,
 };
 
 /**
@@ -35,8 +36,8 @@ export function spawnMapDrop(x: number, y: number, mapItem: MapItem): void {
     text: `T${mapItem.tier}`,
     style: new TextStyle({
       fill: color,
-      fontSize: 8,
-      fontFamily: 'monospace',
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.body,
       fontWeight: 'bold',
       stroke: { color: 0x000000, width: 2 },
     }),

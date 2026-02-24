@@ -3,18 +3,16 @@ import { game } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { saveGame, loadGame, listSaves, deleteSave, exportSave, importSave, AUTOSAVE_NAME } from '../save/SaveManager';
 import type { SaveSlot } from '../save/Database';
+import {
+  Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder, makeCloseButton,
+} from './UITheme';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 520;
-const PANEL_H = 440;
+const PANEL_W = 560;
+const PANEL_H = 480;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
-
-const BG_COLOR = 0x111122;
-const BORDER_COLOR = 0x00ffff;
-const BTN_COLOR = 0x1a1a33;
-const BTN_HOVER = 0x2a2a44;
 
 let container: Container | null = null;
 let visible = false;
@@ -39,13 +37,13 @@ function makeButton(
   btn.cursor = 'pointer';
 
   const bg = new Graphics();
-  bg.roundRect(0, 0, w, h, 4).fill({ color: BTN_COLOR, alpha: 0.95 });
-  bg.roundRect(0, 0, w, h, 4).stroke({ color, width: 1 });
+  bg.rect(0, 0, w, h).fill({ color: Colors.slotBg, alpha: 0.95 });
+  drawPixelBorder(bg, 0, 0, w, h, { borderWidth: 2, highlight: color, shadow: Colors.borderShadow });
   btn.addChild(bg);
 
   const text = new Text({
     text: label,
-    style: new TextStyle({ fill: color, fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold' }),
+    style: new TextStyle({ fill: color, fontSize: FontSize.sm, fontFamily: Fonts.body, fontWeight: 'bold' }),
   });
   text.anchor.set(0.5, 0.5);
   text.position.set(w / 2, h / 2);
@@ -53,14 +51,14 @@ function makeButton(
 
   btn.on('pointerover', () => {
     bg.clear();
-    bg.roundRect(0, 0, w, h, 4).fill({ color: BTN_HOVER, alpha: 0.95 });
-    bg.roundRect(0, 0, w, h, 4).stroke({ color, width: 2 });
+    bg.rect(0, 0, w, h).fill({ color: 0x1a2a4e, alpha: 0.95 });
+    drawPixelBorder(bg, 0, 0, w, h, { borderWidth: 2, highlight: color, shadow: Colors.borderShadow });
   });
 
   btn.on('pointerout', () => {
     bg.clear();
-    bg.roundRect(0, 0, w, h, 4).fill({ color: BTN_COLOR, alpha: 0.95 });
-    bg.roundRect(0, 0, w, h, 4).stroke({ color, width: 1 });
+    bg.rect(0, 0, w, h).fill({ color: Colors.slotBg, alpha: 0.95 });
+    drawPixelBorder(bg, 0, 0, w, h, { borderWidth: 2, highlight: color, shadow: Colors.borderShadow });
   });
 
   btn.on('pointertap', () => {
@@ -94,38 +92,27 @@ async function buildPanel(): Promise<Container> {
 
   // Panel bg
   const panelBg = new Graphics();
-  panelBg.roundRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 8).fill({ color: BG_COLOR, alpha: 0.95 });
-  panelBg.roundRect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 8).stroke({ color: BORDER_COLOR, width: 2 });
+  drawPanelBg(panelBg, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
   root.addChild(panelBg);
 
   // Title
   const title = new Text({
     text: 'SAVE / LOAD',
-    style: new TextStyle({ fill: BORDER_COLOR, fontSize: 20, fontFamily: 'monospace', fontWeight: 'bold' }),
+    style: new TextStyle({ fill: Colors.accentCyan, fontSize: FontSize.xs, fontFamily: Fonts.display }),
   });
-  title.anchor.set(0.5, 0);
-  title.position.set(SCREEN_W / 2, PANEL_Y + 14);
+  title.position.set(PANEL_X + 16, PANEL_Y + 16);
   root.addChild(title);
 
   // Close button
-  const hint = new Text({
-    text: '[X] close',
-    style: new TextStyle({ fill: 0x555566, fontSize: 10, fontFamily: 'monospace' }),
-  });
-  hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
-  hint.eventMode = 'static';
-  hint.cursor = 'pointer';
-  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
-  hint.on('pointerout', () => { hint.style.fill = 0x555566; });
-  hint.on('pointertap', () => { hideSaveLoadPanel(); });
-  root.addChild(hint);
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => { hideSaveLoadPanel(); });
+  root.addChild(closeBtn);
 
   // Action buttons row at top
   const btnY = PANEL_Y + 48;
   const btnH = 28;
   const btnGap = 8;
 
-  makeButton('New Save', PANEL_X + 16, btnY, 80, btnH, root, 0x44ff44, async () => {
+  makeButton('New Save', PANEL_X + 16, btnY, 90, btnH, root, Colors.accentLime, async () => {
     busy = true;
     try {
       const name = prompt('Save name:');
@@ -139,7 +126,7 @@ async function buildPanel(): Promise<Container> {
     busy = false;
   });
 
-  makeButton('Import', PANEL_X + 16 + 80 + btnGap, btnY, 72, btnH, root, 0xffaa44, async () => {
+  makeButton('Import', PANEL_X + 16 + 90 + btnGap, btnY, 80, btnH, root, Colors.accentOrange, async () => {
     busy = true;
     try {
       const json = prompt('Paste save JSON:');
@@ -180,7 +167,7 @@ async function renderSaveList(root: Container): Promise<void> {
   if (saves.length === 0) {
     const empty = new Text({
       text: 'No saves found. Clear a wave to auto-save, or click "New Save".',
-      style: new TextStyle({ fill: 0x666688, fontSize: 12, fontFamily: 'monospace', wordWrap: true, wordWrapWidth: PANEL_W - 40 }),
+      style: new TextStyle({ fill: Colors.textMuted, fontSize: FontSize.sm, fontFamily: Fonts.body, wordWrap: true, wordWrapWidth: PANEL_W - 40 }),
     });
     empty.position.set(PANEL_X + 20, listY + 20);
     listContainer.addChild(empty);
@@ -195,23 +182,23 @@ async function renderSaveList(root: Container): Promise<void> {
 
     // Row background
     const rowBg = new Graphics();
-    rowBg.rect(PANEL_X + 12, y, PANEL_W - 24, rowH - 4).fill({ color: 0x0a0a18, alpha: 0.7 });
-    rowBg.rect(PANEL_X + 12, y, PANEL_W - 24, rowH - 4).stroke({ width: 1, color: 0x333355 });
+    rowBg.rect(PANEL_X + 12, y, PANEL_W - 24, rowH - 4).fill({ color: Colors.slotBg, alpha: 0.7 });
+    rowBg.rect(PANEL_X + 12, y, PANEL_W - 24, rowH - 4).stroke({ width: 2, color: Colors.borderMid });
     listContainer.addChild(rowBg);
 
     // Save info
     const nameText = new Text({
       text: displayName(slot),
-      style: new TextStyle({ fill: 0xddddee, fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold' }),
+      style: new TextStyle({ fill: Colors.textPrimary, fontSize: FontSize.lg, fontFamily: Fonts.body, fontWeight: 'bold' }),
     });
     nameText.position.set(PANEL_X + 20, y + 4);
     listContainer.addChild(nameText);
 
     const infoText = new Text({
       text: `Lv.${slot.level} ${slot.classType}  |  ${formatTimestamp(slot.timestamp)}`,
-      style: new TextStyle({ fill: 0x888899, fontSize: 10, fontFamily: 'monospace' }),
+      style: new TextStyle({ fill: Colors.textMuted, fontSize: FontSize.sm, fontFamily: Fonts.body }),
     });
-    infoText.position.set(PANEL_X + 20, y + 22);
+    infoText.position.set(PANEL_X + 20, y + 24);
     listContainer.addChild(infoText);
 
     // Row buttons
@@ -223,7 +210,7 @@ async function renderSaveList(root: Container): Promise<void> {
     if (slot.id != null) {
       const sid = slot.id;
 
-      makeButton('Load', btnX, btnRowY, btnW, btnRowH, listContainer, 0x44aaff, async () => {
+      makeButton('Load', btnX, btnRowY, btnW, btnRowH, listContainer, Colors.accentCyan, async () => {
         busy = true;
         try {
           await loadGame(sid);
@@ -234,7 +221,7 @@ async function renderSaveList(root: Container): Promise<void> {
         busy = false;
       });
 
-      makeButton('Delete', btnX + btnW + 6, btnRowY, btnW, btnRowH, listContainer, 0xff4444, async () => {
+      makeButton('Delete', btnX + btnW + 6, btnRowY, btnW, btnRowH, listContainer, Colors.accentRed, async () => {
         busy = true;
         try {
           await deleteSave(sid);
@@ -245,7 +232,7 @@ async function renderSaveList(root: Container): Promise<void> {
         busy = false;
       });
 
-      makeButton('Export', btnX + (btnW + 6) * 2, btnRowY, btnW, btnRowH, listContainer, 0xffaa44, async () => {
+      makeButton('Export', btnX + (btnW + 6) * 2, btnRowY, btnW, btnRowH, listContainer, Colors.accentOrange, async () => {
         busy = true;
         try {
           const json = await exportSave(sid);
@@ -262,7 +249,7 @@ async function renderSaveList(root: Container): Promise<void> {
         busy = false;
       });
 
-      makeButton('Save', btnX + (btnW + 6) * 3, btnRowY, btnW, btnRowH, listContainer, 0x44ff44, async () => {
+      makeButton('Save', btnX + (btnW + 6) * 3, btnRowY, btnW, btnRowH, listContainer, Colors.accentLime, async () => {
         busy = true;
         try {
           await saveGame(slot.name);

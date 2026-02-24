@@ -1,5 +1,6 @@
 import { Text, TextStyle } from 'pixi.js';
 import { game } from '../Game';
+import { Fonts } from './UITheme';
 
 const RISE_PX = 40;
 const DURATION_MS = 800;
@@ -18,8 +19,8 @@ export function spawnDamageNumber(
     text: `-${amount}`,
     style: new TextStyle({
       fill: color,
-      fontSize: 16,
-      fontFamily: 'monospace',
+      fontSize: 22,
+      fontFamily: Fonts.body,
       fontWeight: 'bold',
       stroke: { color: 0x000000, width: 2 },
     }),

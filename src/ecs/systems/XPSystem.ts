@@ -4,6 +4,7 @@ import { game } from '../../Game';
 import { scaleXP } from '../../core/MonsterScaling';
 import { getComputedStats } from '../../core/ComputedStats';
 import { sfxPlayer } from '../../audio/SFXManager';
+import { Fonts, FontSize } from '../../ui/UITheme';
 
 const players = world.with('player', 'xp', 'level', 'statPoints', 'stats');
 
@@ -67,9 +68,8 @@ function spawnLevelUpText(x: number, y: number): void {
     text: 'LEVEL UP!',
     style: new TextStyle({
       fill: 0xffd700,
-      fontSize: 22,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fontSize: FontSize.base,
+      fontFamily: Fonts.display,
       stroke: { color: 0x000000, width: 3 },
     }),
   });

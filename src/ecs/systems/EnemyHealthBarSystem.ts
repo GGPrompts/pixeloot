@@ -1,5 +1,6 @@
 import { Graphics, Text, TextStyle } from 'pixi.js';
 import { world } from '../world';
+import { Fonts, FontSize } from '../../ui/UITheme';
 
 const BAR_W = 24;
 const BAR_H = 3;
@@ -7,8 +8,8 @@ const BAR_OFFSET_Y = -14; // above the enemy sprite
 
 const LEVEL_STYLE = new TextStyle({
   fill: 0xcccccc,
-  fontSize: 8,
-  fontFamily: 'monospace',
+  fontSize: FontSize.xs,
+  fontFamily: Fonts.body,
   stroke: { color: 0x000000, width: 2 },
 });
 

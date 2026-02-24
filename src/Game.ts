@@ -1,4 +1,5 @@
 import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Fonts, FontSize, Colors } from './ui/UITheme';
 import { InputManager } from './core/InputManager';
 import { createPlayer } from './entities/Player';
 import { movementSystem } from './ecs/systems/MovementSystem';
@@ -93,9 +94,9 @@ export class Game {
     this.fpsText = new Text({
       text: 'FPS: --',
       style: new TextStyle({
-        fill: 0xffffff,
-        fontSize: 14,
-        fontFamily: 'monospace',
+        fill: Colors.textPrimary,
+        fontSize: FontSize.base,
+        fontFamily: Fonts.body,
       }),
     });
     this.fpsText.position.set(8, 8);
@@ -105,12 +106,12 @@ export class Game {
     this.muteText = new Text({
       text: '[P] VOL 50%',
       style: new TextStyle({
-        fill: 0x88ff88,
-        fontSize: 12,
-        fontFamily: 'monospace',
+        fill: Colors.accentLime,
+        fontSize: FontSize.base,
+        fontFamily: Fonts.body,
       }),
     });
-    this.muteText.position.set(SCREEN_W - 120, 8);
+    this.muteText.position.set(SCREEN_W - 140, 8);
     this.hudLayer.addChild(this.muteText);
 
     // Initialize input manager
@@ -193,6 +194,9 @@ export class Game {
     };
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
+
+    // Wait for custom fonts to load before initializing UI
+    await document.fonts.ready;
 
     const g = new Game(app);
     // Set singleton before initEntities so modules importing `game` can access it
@@ -332,11 +336,11 @@ export class Game {
     // Music HUD indicator
     if (musicPlayer.isMuted()) {
       this.muteText.text = '[P] MUTED';
-      this.muteText.style.fill = 0xff4444;
+      this.muteText.style.fill = Colors.accentRed;
     } else {
       const pct = Math.round(musicPlayer.getMasterVolume() * 100);
       this.muteText.text = `[P] VOL ${pct}%`;
-      this.muteText.style.fill = 0x88ff88;
+      this.muteText.style.fill = Colors.accentLime;
     }
 
     // FPS counter — update display every 500 ms

@@ -3,40 +3,41 @@ import { game } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { inventory, EquipSlots } from '../core/Inventory';
 import { BaseItem, Rarity, Slot } from '../loot/ItemTypes';
+import {
+  Colors, Fonts, FontSize, RARITY_COLORS, RARITY_NAMES,
+  getRarityColor, abbreviate, drawPanelBg, drawSlotBg, drawDivider,
+  makeCloseButton,
+} from './UITheme';
+import { showItemTooltip, hideTooltip } from './Tooltip';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 400;
-const PANEL_H = 480;
-const PANEL_X = SCREEN_W - PANEL_W - 20; // right side
+const PANEL_W = 480;
+const PANEL_H = 540;
+const PANEL_X = SCREEN_W - PANEL_W - 20;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const GEAR_SLOT_SIZE = 48;
+const GEAR_SLOT_SIZE = 52;
 const GEAR_SLOT_GAP = 6;
-const GEAR_COL_X = 24; // relative to panel
-const GEAR_START_Y = 50;
+const GEAR_COL_X = 24;
+const GEAR_START_Y = 56;
 
 const BACKPACK_COLS = 4;
 const BACKPACK_ROWS = 5;
-const BACKPACK_SLOT_SIZE = 40;
+const BACKPACK_SLOT_SIZE = 48;
 const BACKPACK_GAP = 4;
-const BACKPACK_X = 200; // relative to panel
-const BACKPACK_Y = 50;
+const BACKPACK_X = 230;
+const BACKPACK_Y = 56;
 
-// Rarity colors
-const RARITY_COLORS: Record<Rarity, number> = {
-  [Rarity.Normal]: 0xcccccc,
-  [Rarity.Magic]: 0x4488ff,
-  [Rarity.Rare]: 0xffff00,
-  [Rarity.Unique]: 0xff8800,
-};
-
-const RARITY_NAMES: Record<Rarity, string> = {
-  [Rarity.Normal]: 'Normal',
-  [Rarity.Magic]: 'Magic',
-  [Rarity.Rare]: 'Rare',
-  [Rarity.Unique]: 'Unique',
+const SLOT_NAME_MAP: Record<Slot, string> = {
+  [Slot.Weapon]: 'Weapon',
+  [Slot.Helmet]: 'Helmet',
+  [Slot.Chest]: 'Chest',
+  [Slot.Boots]: 'Boots',
+  [Slot.Ring]: 'Ring',
+  [Slot.Amulet]: 'Amulet',
+  [Slot.Offhand]: 'Offhand',
 };
 
 const SLOT_LABELS: { key: keyof EquipSlots; label: string }[] = [
@@ -50,86 +51,50 @@ const SLOT_LABELS: { key: keyof EquipSlots; label: string }[] = [
   { key: 'offhand', label: 'Offhand' },
 ];
 
-const SLOT_NAME_MAP: Record<Slot, string> = {
-  [Slot.Weapon]: 'Weapon',
-  [Slot.Helmet]: 'Helmet',
-  [Slot.Chest]: 'Chest',
-  [Slot.Boots]: 'Boots',
-  [Slot.Ring]: 'Ring',
-  [Slot.Amulet]: 'Amulet',
-  [Slot.Offhand]: 'Offhand',
-};
-
 let container: Container | null = null;
-let tooltip: Container | null = null;
 let visible = false;
 let prevIPressed = false;
 let prevEPressed = false;
 let prevEscPressed = false;
 
-// Track slot graphics for refresh
 let gearSlotContainers: Container[] = [];
 let backpackSlotContainers: Container[] = [];
-
-function getRarityColor(rarity: Rarity): number {
-  return RARITY_COLORS[rarity] ?? 0xcccccc;
-}
-
-function abbreviate(name: string, maxLen: number): string {
-  if (name.length <= maxLen) return name;
-  return name.slice(0, maxLen - 1) + '.';
-}
 
 function createPanel(): Container {
   const root = new Container();
 
-  // Background
+  // Background with 3D border
   const bg = new Graphics();
-  bg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).fill({ color: 0x111122, alpha: 0.9 });
-  bg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).stroke({ width: 2, color: 0x6666aa });
+  drawPanelBg(bg, PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
   root.addChild(bg);
 
   // Title
   const title = new Text({
     text: 'INVENTORY',
     style: new TextStyle({
-      fill: 0xffd700,
-      fontSize: 18,
-      fontFamily: 'monospace',
-      fontWeight: 'bold',
+      fill: Colors.accentGold,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
     }),
   });
-  title.position.set(PANEL_X + 16, PANEL_Y + 14);
+  title.position.set(PANEL_X + 16, PANEL_Y + 16);
   root.addChild(title);
 
   // Close button
-  const hint = new Text({
-    text: '[X] close',
-    style: new TextStyle({
-      fill: 0x666688,
-      fontSize: 11,
-      fontFamily: 'monospace',
-    }),
-  });
-  hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
-  hint.eventMode = 'static';
-  hint.cursor = 'pointer';
-  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
-  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
-  hint.on('pointertap', () => {
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => {
     visible = false;
     if (container) container.visible = false;
     hideTooltip();
   });
-  root.addChild(hint);
+  root.addChild(closeBtn);
 
-  // --- Gear Slots ---
+  // --- Equipment section label ---
   const gearLabel = new Text({
     text: 'Equipment',
     style: new TextStyle({
-      fill: 0xaaaacc,
-      fontSize: 12,
-      fontFamily: 'monospace',
+      fill: Colors.textSecondary,
+      fontSize: 10,
+      fontFamily: Fonts.display,
     }),
   });
   gearLabel.position.set(PANEL_X + GEAR_COL_X, PANEL_Y + GEAR_START_Y - 16);
@@ -144,25 +109,21 @@ function createPanel(): Container {
     const slotContainer = new Container();
     slotContainer.position.set(slotX, slotY);
 
-    // Slot background
     const slotBg = new Graphics();
-    slotBg.rect(0, 0, GEAR_SLOT_SIZE * 3, GEAR_SLOT_SIZE).fill({ color: 0x0a0a15, alpha: 0.8 });
-    slotBg.rect(0, 0, GEAR_SLOT_SIZE * 3, GEAR_SLOT_SIZE).stroke({ width: 1, color: 0x333355 });
+    drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5);
     slotContainer.addChild(slotBg);
 
-    // Slot label (placeholder when empty)
     const labelText = new Text({
       text: slotInfo.label,
       style: new TextStyle({
-        fill: 0x444466,
-        fontSize: 11,
-        fontFamily: 'monospace',
+        fill: Colors.textMuted,
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
       }),
     });
     labelText.position.set(6, 4);
     slotContainer.addChild(labelText);
 
-    // Make interactive for click to unequip
     slotBg.eventMode = 'static';
     slotBg.cursor = 'pointer';
     const key = slotInfo.key;
@@ -173,30 +134,32 @@ function createPanel(): Container {
       }
     });
 
-    // Hover for tooltip
     slotBg.on('pointerover', (e: FederatedPointerEvent) => {
       const item = inventory.equipped[key];
-      if (item) showTooltip(item, e.globalX, e.globalY);
+      if (item) showItemTooltip(item, e.globalX, e.globalY);
     });
     slotBg.on('pointermove', (e: FederatedPointerEvent) => {
       const item = inventory.equipped[key];
-      if (item) showTooltip(item, e.globalX, e.globalY);
+      if (item) showItemTooltip(item, e.globalX, e.globalY);
     });
-    slotBg.on('pointerout', () => {
-      hideTooltip();
-    });
+    slotBg.on('pointerout', () => hideTooltip());
 
     root.addChild(slotContainer);
     gearSlotContainers.push(slotContainer);
   }
 
-  // --- Backpack ---
+  // --- Divider between gear and backpack ---
+  const dividerGfx = new Graphics();
+  drawDivider(dividerGfx, PANEL_X + BACKPACK_X - 16, PANEL_Y + GEAR_START_Y, PANEL_H - 80);
+  root.addChild(dividerGfx);
+
+  // --- Backpack label ---
   const bpLabel = new Text({
     text: 'Backpack',
     style: new TextStyle({
-      fill: 0xaaaacc,
-      fontSize: 12,
-      fontFamily: 'monospace',
+      fill: Colors.textSecondary,
+      fontSize: 10,
+      fontFamily: Fonts.display,
     }),
   });
   bpLabel.position.set(PANEL_X + BACKPACK_X, PANEL_Y + BACKPACK_Y - 16);
@@ -213,11 +176,9 @@ function createPanel(): Container {
       slotContainer.position.set(sx, sy);
 
       const slotBg = new Graphics();
-      slotBg.rect(0, 0, BACKPACK_SLOT_SIZE, BACKPACK_SLOT_SIZE).fill({ color: 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, BACKPACK_SLOT_SIZE, BACKPACK_SLOT_SIZE).stroke({ width: 1, color: 0x333355 });
+      drawSlotBg(slotBg, 0, 0, BACKPACK_SLOT_SIZE);
       slotContainer.addChild(slotBg);
 
-      // Make interactive for click to equip
       slotBg.eventMode = 'static';
       slotBg.cursor = 'pointer';
       const slotIdx = idx;
@@ -229,18 +190,15 @@ function createPanel(): Container {
         }
       });
 
-      // Hover for tooltip
       slotBg.on('pointerover', (e: FederatedPointerEvent) => {
         const item = inventory.backpack[slotIdx];
-        if (item) showTooltip(item, e.globalX, e.globalY);
+        if (item) showItemTooltip(item, e.globalX, e.globalY);
       });
       slotBg.on('pointermove', (e: FederatedPointerEvent) => {
         const item = inventory.backpack[slotIdx];
-        if (item) showTooltip(item, e.globalX, e.globalY);
+        if (item) showItemTooltip(item, e.globalX, e.globalY);
       });
-      slotBg.on('pointerout', () => {
-        hideTooltip();
-      });
+      slotBg.on('pointerout', () => hideTooltip());
 
       root.addChild(slotContainer);
       backpackSlotContainers.push(slotContainer);
@@ -258,12 +216,10 @@ function refreshSlots(): void {
     const slotContainer = gearSlotContainers[i];
     const item = inventory.equipped[slotInfo.key];
 
-    // Remove old item display (keep bg at index 0, label at index 1)
     while (slotContainer.children.length > 2) {
       slotContainer.removeChildAt(2);
     }
 
-    // Get the label text child
     const labelText = slotContainer.children[1] as Text;
     const slotBg = slotContainer.children[0] as Graphics;
 
@@ -271,37 +227,32 @@ function refreshSlots(): void {
       labelText.visible = false;
       const color = getRarityColor(item.rarity);
 
-      // Redraw border with rarity color
       slotBg.clear();
-      slotBg.rect(0, 0, GEAR_SLOT_SIZE * 3, GEAR_SLOT_SIZE).fill({ color: 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, GEAR_SLOT_SIZE * 3, GEAR_SLOT_SIZE).stroke({ width: 2, color });
+      drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5, color);
 
-      // Item name
       const nameText = new Text({
-        text: abbreviate(item.name, 16),
+        text: abbreviate(item.name, 20),
         style: new TextStyle({
           fill: color,
-          fontSize: 11,
-          fontFamily: 'monospace',
+          fontSize: FontSize.base,
+          fontFamily: Fonts.body,
           fontWeight: 'bold',
         }),
       });
       nameText.position.set(6, 4);
       slotContainer.addChild(nameText);
 
-      // Slot type + level
       const infoText = new Text({
         text: `Lv.${item.level} ${SLOT_NAME_MAP[item.slot]}`,
         style: new TextStyle({
-          fill: 0x888899,
-          fontSize: 9,
-          fontFamily: 'monospace',
+          fill: Colors.textMuted,
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
         }),
       });
-      infoText.position.set(6, 20);
+      infoText.position.set(6, 22);
       slotContainer.addChild(infoText);
 
-      // Brief stats
       const statsArr: string[] = [];
       if (item.baseStats.damage) statsArr.push(`DMG:${item.baseStats.damage}`);
       if (item.baseStats.armor) statsArr.push(`ARM:${item.baseStats.armor}`);
@@ -310,20 +261,18 @@ function refreshSlots(): void {
         const statText = new Text({
           text: statsArr.join(' '),
           style: new TextStyle({
-            fill: 0x999999,
-            fontSize: 9,
-            fontFamily: 'monospace',
+            fill: Colors.textSecondary,
+            fontSize: FontSize.sm,
+            fontFamily: Fonts.body,
           }),
         });
-        statText.position.set(6, 34);
+        statText.position.set(6, 38);
         slotContainer.addChild(statText);
       }
     } else {
       labelText.visible = true;
-      // Reset border
       slotBg.clear();
-      slotBg.rect(0, 0, GEAR_SLOT_SIZE * 3, GEAR_SLOT_SIZE).fill({ color: 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, GEAR_SLOT_SIZE * 3, GEAR_SLOT_SIZE).stroke({ width: 1, color: 0x333355 });
+      drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5);
     }
   }
 
@@ -332,7 +281,6 @@ function refreshSlots(): void {
     const slotContainer = backpackSlotContainers[i];
     const item = inventory.backpack[i];
 
-    // Remove old item display (keep bg at index 0)
     while (slotContainer.children.length > 1) {
       slotContainer.removeChildAt(1);
     }
@@ -342,129 +290,35 @@ function refreshSlots(): void {
     if (item) {
       const color = getRarityColor(item.rarity);
 
-      // Redraw with rarity border
       slotBg.clear();
-      slotBg.rect(0, 0, BACKPACK_SLOT_SIZE, BACKPACK_SLOT_SIZE).fill({ color: 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, BACKPACK_SLOT_SIZE, BACKPACK_SLOT_SIZE).stroke({ width: 2, color });
+      drawSlotBg(slotBg, 0, 0, BACKPACK_SLOT_SIZE, color);
 
-      // Item abbreviation
       const nameText = new Text({
-        text: abbreviate(item.name, 5),
+        text: abbreviate(item.name, 8),
         style: new TextStyle({
           fill: color,
-          fontSize: 9,
-          fontFamily: 'monospace',
+          fontSize: FontSize.sm,
+          fontFamily: Fonts.body,
           fontWeight: 'bold',
         }),
       });
       nameText.position.set(3, 4);
       slotContainer.addChild(nameText);
 
-      // Slot icon text
       const slotIcon = new Text({
         text: SLOT_NAME_MAP[item.slot].slice(0, 3),
         style: new TextStyle({
-          fill: 0x666688,
-          fontSize: 8,
-          fontFamily: 'monospace',
+          fill: Colors.textMuted,
+          fontSize: FontSize.xs,
+          fontFamily: Fonts.body,
         }),
       });
-      slotIcon.position.set(3, 26);
+      slotIcon.position.set(3, 30);
       slotContainer.addChild(slotIcon);
     } else {
-      // Reset border
       slotBg.clear();
-      slotBg.rect(0, 0, BACKPACK_SLOT_SIZE, BACKPACK_SLOT_SIZE).fill({ color: 0x0a0a15, alpha: 0.8 });
-      slotBg.rect(0, 0, BACKPACK_SLOT_SIZE, BACKPACK_SLOT_SIZE).stroke({ width: 1, color: 0x333355 });
+      drawSlotBg(slotBg, 0, 0, BACKPACK_SLOT_SIZE);
     }
-  }
-}
-
-// --- Tooltip ---
-
-function buildTooltipText(item: BaseItem): string {
-  const rarityName = RARITY_NAMES[item.rarity];
-  const slotName = SLOT_NAME_MAP[item.slot];
-  const lines: string[] = [];
-
-  lines.push(`[${rarityName}] ${item.name}`);
-  lines.push(`Level ${item.level} ${slotName}`);
-  lines.push('\u2500'.repeat(20));
-
-  // Base stats
-  if (item.baseStats.damage) lines.push(`Damage: ${item.baseStats.damage}`);
-  if (item.baseStats.armor) lines.push(`Armor: ${item.baseStats.armor}`);
-  if (item.baseStats.attackSpeed) lines.push(`Attack Speed: ${item.baseStats.attackSpeed}`);
-
-  // Affixes
-  if (item.affixes.length > 0) {
-    lines.push('\u2500'.repeat(20));
-    for (const affix of item.affixes) {
-      const sign = affix.value >= 0 ? '+' : '';
-      // Determine if stat looks like a percentage
-      const isPercent = affix.stat.includes('%') || affix.stat.includes('percent')
-        || affix.stat.includes('critical') || affix.stat.includes('speed')
-        || affix.stat.includes('movement');
-      lines.push(`${sign}${affix.value}${isPercent ? '%' : ''} ${affix.stat}`);
-    }
-  }
-
-  // Unique effect
-  if (item.uniqueEffect) {
-    lines.push('\u2500'.repeat(20));
-    lines.push(item.uniqueEffect);
-  }
-
-  return lines.join('\n');
-}
-
-function showTooltip(item: BaseItem, globalX: number, globalY: number): void {
-  hideTooltip();
-
-  tooltip = new Container();
-  const color = getRarityColor(item.rarity);
-  const content = buildTooltipText(item);
-
-  const text = new Text({
-    text: content,
-    style: new TextStyle({
-      fill: 0xeeeeee,
-      fontSize: 11,
-      fontFamily: 'monospace',
-      lineHeight: 16,
-      wordWrap: true,
-      wordWrapWidth: 240,
-    }),
-  });
-
-  const padding = 10;
-  const tooltipW = text.width + padding * 2;
-  const tooltipH = text.height + padding * 2;
-
-  // Position to the left of cursor, clamped to screen
-  let tx = globalX - tooltipW - 12;
-  let ty = globalY - 10;
-  if (tx < 4) tx = globalX + 12;
-  if (ty + tooltipH > SCREEN_H - 4) ty = SCREEN_H - tooltipH - 4;
-  if (ty < 4) ty = 4;
-
-  const bg = new Graphics();
-  bg.rect(0, 0, tooltipW, tooltipH).fill({ color: 0x0a0a18, alpha: 0.95 });
-  bg.rect(0, 0, tooltipW, tooltipH).stroke({ width: 1, color });
-  tooltip.addChild(bg);
-
-  text.position.set(padding, padding);
-  tooltip.addChild(text);
-
-  tooltip.position.set(tx, ty);
-  game.hudLayer.addChild(tooltip);
-}
-
-function hideTooltip(): void {
-  if (tooltip) {
-    tooltip.removeFromParent();
-    tooltip.destroy({ children: true });
-    tooltip = null;
   }
 }
 
@@ -476,7 +330,6 @@ export function updateInventoryPanel(): void {
   const eDown = input.isPressed('KeyE');
   const escDown = input.isPressed('Escape');
 
-  // Close on Escape rising edge
   if (escDown && !prevEscPressed && visible) {
     visible = false;
     if (container) container.visible = false;
@@ -488,7 +341,6 @@ export function updateInventoryPanel(): void {
   }
   prevEscPressed = escDown;
 
-  // Toggle on rising edge
   if ((iDown && !prevIPressed) || (eDown && !prevEPressed)) {
     visible = !visible;
 
@@ -508,7 +360,6 @@ export function updateInventoryPanel(): void {
   prevIPressed = iDown;
   prevEPressed = eDown;
 
-  // Refresh while visible
   if (visible && container) {
     refreshSlots();
   }

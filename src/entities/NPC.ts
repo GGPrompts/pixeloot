@@ -12,6 +12,7 @@ import { openCraftingPanel } from '../ui/CraftingPanel';
 import { toggleClassSelect } from '../ui/ClassSelect';
 import { openMapDevicePanel } from '../ui/MapDeviceUI';
 import { openStashPanel } from '../ui/StashPanel';
+import { Fonts, FontSize } from '../ui/UITheme';
 
 const TILE_SIZE = 32;
 
@@ -87,9 +88,8 @@ function showComingSoon(): void {
       text: 'Coming soon!',
       style: new TextStyle({
         fill: 0xffffff,
-        fontSize: 24,
-        fontFamily: 'monospace',
-        fontWeight: 'bold',
+        fontSize: FontSize.xl,
+        fontFamily: Fonts.display,
         stroke: { color: 0x000000, width: 3 },
       }),
     });
@@ -176,8 +176,8 @@ export function spawnTownNPCs(spawnX: number, spawnY: number): void {
       text: def.name,
       style: new TextStyle({
         fill: 0xffffff,
-        fontSize: 11,
-        fontFamily: 'monospace',
+        fontSize: FontSize.sm,
+        fontFamily: Fonts.body,
         stroke: { color: 0x000000, width: 2 },
       }),
     });
