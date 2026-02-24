@@ -18,7 +18,7 @@
 ```
 Enter Map → Kill Monsters → Collect Loot → Upgrade Gear → Harder Maps
                                               ↓
-                                    Meet Players → Trade in Town
+                                     Chat → Trade → Show Off
 ```
 
 ---
@@ -276,8 +276,7 @@ Each theme changes the visual palette (background color, grid tint, particle eff
 ### Town Hub
 - Safe zone between maps
 - NPCs: Vendor (buy/sell), Stash, Skill Trainer, Map Device
-- **Other players visible** - walk around, chat, initiate trades
-- Chat visible in town (proximity or global)
+- Chat panel docked at bottom of screen (persistent across town & maps)
 
 ---
 
@@ -287,20 +286,34 @@ Each theme changes the visual palette (background color, grid tint, particle eff
 - **Gold** - single currency for everything
 - Gold sinks: respec, stash tabs, vendor items, death penalty, map crafting
 
-### In-Person Trading
-Old-school style, like D2:
-- **Must be in town together** to trade
+### Chat Channels
+Persistent chat panel at the bottom of the screen - visible whether you're in town or clearing a map. This is the social backbone.
+
+| Channel | Purpose |
+|---------|---------|
+| **General** | Anything goes, main social space |
+| **Trading** | Item links + offers, negotiations |
+| **LFG** | Looking for group (future co-op feature) |
+| **Hardcore** | Separate community for HC players |
+
+- Players can **link items** in chat (hover to see stats)
+- Click a player's name to **whisper** (private message)
+- Right-click a player's name to **request trade**
+
+### Trading
+Old-school style, like D2 chat channels:
+- **Negotiate in chat** - post what you have, what you want
 - **Trade window** - both players place items/gold, both confirm
-- **Chat to negotiate** - no automated pricing, builds community
-- **Trust & reputation** - players learn who's reliable
+- **No need to be in the same place** - trade request works from any screen
+- **Trust & reputation** - players learn who's reliable over time
 - **Server-validated** - trade window is server-authoritative, prevents duplication
 
 ### Why No Auction House
 - Auction houses kill community interaction
 - Automated pricing flattens the economy (everything trends to "known value")
-- In-person trading creates stories: "I got this insane deal from a guy who didn't know what he had"
+- Chat-based trading creates stories: "I got this insane deal from a guy who didn't know what he had"
 - Forces players to *talk to each other*
-- Can always add a bulletin board later (post what you're looking for / offering) without full automation
+- Can always add a **bulletin board** later (post WTB/WTS listings) without full automation
 
 ### Vendor
 - Sells basic gear (normal/magic quality) scaled to player level
@@ -405,9 +418,9 @@ Client-side games can't prevent all cheating, but we can:
 ### M6: Social Layer
 - [ ] Backend setup (auth, database)
 - [ ] Item registry and server-side validation
-- [ ] Town hub multiplayer (see other players)
-- [ ] Chat system
-- [ ] In-person trade window
+- [ ] Chat system with channels (General, Trading, LFG, Hardcore)
+- [ ] Item linking in chat (hover to preview stats)
+- [ ] Trade window (request from chat, both confirm)
 - [ ] Leaderboards
 - [ ] Cloud save sync
 
