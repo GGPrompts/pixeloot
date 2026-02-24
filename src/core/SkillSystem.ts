@@ -18,6 +18,8 @@ const KEY_CODES: Record<string, string> = {
   '2': 'Digit2',
   '3': 'Digit3',
   '4': 'Digit4',
+  '5': 'Digit5',
+  '6': 'Digit6',
 };
 
 class SkillSystem {

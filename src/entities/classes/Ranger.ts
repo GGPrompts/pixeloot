@@ -5,6 +5,7 @@ import { world } from '../../ecs/world';
 import { game } from '../../Game';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { spawnDeathParticles } from '../DeathParticles';
+import { applyStatus, hasStatus, StatusType } from '../../core/StatusEffects';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
@@ -204,6 +205,259 @@ const evasiveRoll: SkillDef = {
 };
 
 // ---------------------------------------------------------------------------
+// Skill 5 - Trap (cooldown 10s)
+// Place an invisible trap at player position; arms after 0.5s.
+// When an enemy enters 48px radius, explodes for 80 damage in 64px AoE.
+// Persists 15s if not triggered. Max 3 active traps.
+// ---------------------------------------------------------------------------
+const TRAP_ARM_DELAY = 0.5;
+const TRAP_TRIGGER_RADIUS = 48;
+const TRAP_EXPLOSION_RADIUS = 64;
+const TRAP_DAMAGE = 80;
+const TRAP_LIFETIME = 15;
+const TRAP_MAX_ACTIVE = 3;
+
+interface ActiveTrap {
+  x: number;
+  y: number;
+  armed: boolean;
+  elapsed: number;
+  graphic: Graphics;
+  destroyed: boolean;
+}
+
+const activeTraps: ActiveTrap[] = [];
+
+function cleanupTrap(trap: ActiveTrap): void {
+  trap.destroyed = true;
+  trap.graphic.removeFromParent();
+  trap.graphic.destroy();
+  const idx = activeTraps.indexOf(trap);
+  if (idx >= 0) activeTraps.splice(idx, 1);
+}
+
+function detonateTrap(trap: ActiveTrap): void {
+  // Deal AoE damage to all enemies in explosion radius
+  for (const enemy of enemies) {
+    const dx = enemy.position.x - trap.x;
+    const dy = enemy.position.y - trap.y;
+    const distSq = dx * dx + dy * dy;
+
+    if (distSq < TRAP_EXPLOSION_RADIUS * TRAP_EXPLOSION_RADIUS) {
+      let dmg = TRAP_DAMAGE;
+
+      // Mark: +15% damage taken
+      if (hasStatus(enemy, StatusType.Mark)) {
+        dmg = Math.round(dmg * 1.15);
+      }
+
+      enemy.health.current -= dmg;
+      spawnDamageNumber(enemy.position.x, enemy.position.y - 10, dmg, 0x44ff44);
+
+      if (enemy.sprite) {
+        enemy.sprite.alpha = 0.3;
+        setTimeout(() => {
+          if (enemy.sprite) enemy.sprite.alpha = 1;
+        }, 100);
+      }
+
+      if (enemy.health.current <= 0) {
+        spawnDeathParticles(enemy.position.x, enemy.position.y);
+        if (enemy.sprite) enemy.sprite.removeFromParent();
+        world.remove(enemy);
+      }
+    }
+  }
+
+  // Bright flash on detonation
+  const flash = new Graphics();
+  flash.circle(0, 0, TRAP_EXPLOSION_RADIUS).fill({ color: 0x44ff44, alpha: 0.5 });
+  flash.position.set(trap.x, trap.y);
+  game.effectLayer.addChild(flash);
+
+  let fadeTime = 0;
+  const onFade = (ft: { deltaTime: number }) => {
+    fadeTime += ft.deltaTime / 60;
+    flash.alpha = Math.max(0, 0.5 - fadeTime * 2.5);
+    if (fadeTime >= 0.3) {
+      game.app.ticker.remove(onFade);
+      flash.removeFromParent();
+      flash.destroy();
+    }
+  };
+  game.app.ticker.add(onFade);
+
+  cleanupTrap(trap);
+}
+
+const trap: SkillDef = {
+  name: 'Trap',
+  key: '5',
+  cooldown: 10,
+  execute(playerPos, _mousePos) {
+    // Enforce max active traps - remove oldest if at limit
+    while (activeTraps.length >= TRAP_MAX_ACTIVE) {
+      cleanupTrap(activeTraps[0]);
+    }
+
+    const tx = playerPos.x;
+    const ty = playerPos.y;
+
+    // Create trap visual on world layer (dim green pulsing circle)
+    const trapGraphic = new Graphics();
+    trapGraphic.circle(0, 0, TRAP_TRIGGER_RADIUS * 0.4).fill({ color: 0x00ff44, alpha: 0.15 });
+    trapGraphic.circle(0, 0, TRAP_TRIGGER_RADIUS * 0.4).stroke({ width: 1, color: 0x00ff44, alpha: 0.25 });
+    trapGraphic.position.set(tx, ty);
+    trapGraphic.alpha = 0.4;
+    game.worldLayer.addChild(trapGraphic);
+
+    const activeTrap: ActiveTrap = {
+      x: tx,
+      y: ty,
+      armed: false,
+      elapsed: 0,
+      graphic: trapGraphic,
+      destroyed: false,
+    };
+    activeTraps.push(activeTrap);
+
+    // Tick: arm after delay, check for enemy proximity, expire after lifetime
+    const onTick = (t: { deltaTime: number }) => {
+      if (activeTrap.destroyed) {
+        game.app.ticker.remove(onTick);
+        return;
+      }
+
+      activeTrap.elapsed += t.deltaTime / 60;
+
+      // Arm after delay
+      if (!activeTrap.armed && activeTrap.elapsed >= TRAP_ARM_DELAY) {
+        activeTrap.armed = true;
+      }
+
+      // Pulsing glow effect
+      const pulse = 0.25 + 0.15 * Math.sin(activeTrap.elapsed * 4);
+      trapGraphic.alpha = activeTrap.armed ? pulse : 0.15;
+
+      // Check for enemy trigger if armed
+      if (activeTrap.armed) {
+        for (const enemy of enemies) {
+          const dx = enemy.position.x - activeTrap.x;
+          const dy = enemy.position.y - activeTrap.y;
+          const distSq = dx * dx + dy * dy;
+
+          if (distSq < TRAP_TRIGGER_RADIUS * TRAP_TRIGGER_RADIUS) {
+            game.app.ticker.remove(onTick);
+            detonateTrap(activeTrap);
+            return;
+          }
+        }
+      }
+
+      // Expire after lifetime
+      if (activeTrap.elapsed >= TRAP_LIFETIME) {
+        game.app.ticker.remove(onTick);
+        cleanupTrap(activeTrap);
+      }
+    };
+    game.app.ticker.add(onTick);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Skill 6 - Mark Target (cooldown 12s)
+// Mark nearest enemy within 200px of cursor. Marked enemy takes +15% damage
+// from all sources for 5s. Only one mark active at a time.
+// Visual: spinning diamond marker above enemy head.
+// ---------------------------------------------------------------------------
+const MARK_RANGE = 200;
+
+let activeMarkGraphic: Graphics | null = null;
+let activeMarkTickRemover: (() => void) | null = null;
+
+const markTarget: SkillDef = {
+  name: 'Mark Target',
+  key: '6',
+  cooldown: 12,
+  execute(_playerPos, mousePos) {
+    // Find nearest enemy within range of cursor
+    let nearest: (typeof enemies.entities)[number] | null = null;
+    let nearestDistSq = MARK_RANGE * MARK_RANGE;
+
+    for (const enemy of enemies) {
+      const dx = enemy.position.x - mousePos.x;
+      const dy = enemy.position.y - mousePos.y;
+      const distSq = dx * dx + dy * dy;
+
+      if (distSq < nearestDistSq) {
+        nearestDistSq = distSq;
+        nearest = enemy;
+      }
+    }
+
+    if (!nearest) return;
+
+    // Remove previous mark visual if any
+    if (activeMarkGraphic) {
+      activeMarkGraphic.removeFromParent();
+      activeMarkGraphic.destroy();
+      activeMarkGraphic = null;
+    }
+    if (activeMarkTickRemover) {
+      activeMarkTickRemover();
+      activeMarkTickRemover = null;
+    }
+
+    // Apply Mark status effect to the enemy
+    applyStatus(nearest, StatusType.Mark);
+
+    // Create spinning diamond marker above enemy
+    const marker = new Graphics();
+    const markerSize = 8;
+    // Draw diamond shape
+    marker.moveTo(0, -markerSize);
+    marker.lineTo(markerSize, 0);
+    marker.lineTo(0, markerSize);
+    marker.lineTo(-markerSize, 0);
+    marker.closePath();
+    marker.stroke({ width: 2, color: 0xff00ff, alpha: 0.9 });
+    marker.fill({ color: 0xff00ff, alpha: 0.25 });
+    game.effectLayer.addChild(marker);
+    activeMarkGraphic = marker;
+
+    const markedEnemy = nearest;
+    let markElapsed = 0;
+    const MARK_DURATION = 5;
+
+    const onTick = (t: { deltaTime: number }) => {
+      markElapsed += t.deltaTime / 60;
+
+      // If enemy is dead or mark expired, clean up
+      if (markElapsed >= MARK_DURATION || !markedEnemy.position || markedEnemy.health.current <= 0) {
+        game.app.ticker.remove(onTick);
+        marker.removeFromParent();
+        marker.destroy();
+        if (activeMarkGraphic === marker) activeMarkGraphic = null;
+        activeMarkTickRemover = null;
+        return;
+      }
+
+      // Follow enemy position, hover above head
+      marker.position.set(markedEnemy.position.x, markedEnemy.position.y - 28);
+
+      // Spinning rotation
+      marker.rotation = markElapsed * 3;
+
+      // Subtle pulse
+      marker.alpha = 0.6 + 0.4 * Math.sin(markElapsed * 6);
+    };
+
+    game.app.ticker.add(onTick);
+    activeMarkTickRemover = () => game.app.ticker.remove(onTick);
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Export all Ranger skills
 // ---------------------------------------------------------------------------
-export const rangerSkills: SkillDef[] = [powerShot, multiShot, rainOfArrows, evasiveRoll];
+export const rangerSkills: SkillDef[] = [powerShot, multiShot, rainOfArrows, evasiveRoll, trap, markTarget];

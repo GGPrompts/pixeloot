@@ -1,6 +1,6 @@
 import { world } from '../ecs/world';
 import { game } from '../Game';
-import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker } from './Enemy';
+import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder } from './Enemy';
 import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
 
 const MIN_PLAYER_DIST = 200;
@@ -64,4 +64,12 @@ export function spawnInitialEnemies(_count?: number): void {
   // 1 Flanker
   const flankerPos = findSpawnPosition(px, py);
   if (flankerPos) spawnFlanker(flankerPos.x, flankerPos.y, monsterLevel);
+
+  // 1 Splitter
+  const splitterPos = findSpawnPosition(px, py);
+  if (splitterPos) spawnSplitter(splitterPos.x, splitterPos.y, monsterLevel);
+
+  // 1 Shielder
+  const shielderPos = findSpawnPosition(px, py);
+  if (shielderPos) spawnShielder(shielderPos.x, shielderPos.y, monsterLevel);
 }

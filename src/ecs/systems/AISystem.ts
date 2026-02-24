@@ -109,6 +109,20 @@ export function aiSystem(dt: number): void {
         break;
       }
 
+      case 'splitter': {
+        // Chase player directly, same as rusher but faster
+        enemy.velocity.x = nx * enemy.speed;
+        enemy.velocity.y = ny * enemy.speed;
+        break;
+      }
+
+      case 'shielder': {
+        // Chase player directly, shield faces toward the player (handled by sprite rotation)
+        enemy.velocity.x = nx * enemy.speed;
+        enemy.velocity.y = ny * enemy.speed;
+        break;
+      }
+
       // 'rusher' and 'tank' both chase directly (tank is just slower)
       default: {
         enemy.velocity.x = nx * enemy.speed;

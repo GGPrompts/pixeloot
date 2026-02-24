@@ -59,6 +59,39 @@ export const ZONE_THEMES: Record<string, ZoneTheme> = {
     wallColor: 0x0d1a1a,
     accentColor: 0x44aaaa,
   },
+  overgrowth: {
+    name: 'Overgrowth',
+    backgroundColor: 0x0a1f0a,
+    gridColor: 0x44dd88,
+    gridAlpha: 0.06,
+    wallColor: 0x2d6b2d,
+    accentColor: 0x44dd88,
+  },
+  storm_network: {
+    name: 'Storm Network',
+    backgroundColor: 0x1a1a0a,
+    gridColor: 0xffdd44,
+    gridAlpha: 0.06,
+    wallColor: 0x5a5a2a,
+    accentColor: 0xffdd44,
+  },
+  the_abyss: {
+    name: 'The Abyss',
+    backgroundColor: 0x050508,
+    gridColor: 0x4444aa,
+    gridAlpha: 0.04,
+    wallColor: 0x101018,
+    accentColor: 0x4444aa,
+    enemyTintMultiplier: 0.3,
+  },
+  chromatic_rift: {
+    name: 'Chromatic Rift',
+    backgroundColor: 0x1a0a1a,
+    gridColor: 0xff44ff,
+    gridAlpha: 0.06,
+    wallColor: 0x3a2a3a,
+    accentColor: 0xff44ff,
+  },
 };
 
 /** All theme keys for random selection. */

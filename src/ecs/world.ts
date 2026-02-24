@@ -48,6 +48,8 @@ export type Entity = {
   gemDrop?: { gem: Gem };           // gem drop on the ground
   pickup?: true;                    // entity can be picked up by walking over it
   firstHitTaken?: true;             // tracks if enemy has been hit once (resist_first_hit mod)
+  shielded?: true;                  // enemy has a directional shield (blocks frontal projectiles)
+  isMiniSplitter?: true;            // mini-splitter that does NOT split again on death
 };
 
 export const world = new World<Entity>();

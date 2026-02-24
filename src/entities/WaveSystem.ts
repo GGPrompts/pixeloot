@@ -1,7 +1,7 @@
 import { Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
-import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker } from './Enemy';
+import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder } from './Enemy';
 import { spawnBoss } from './Boss';
 import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
@@ -19,7 +19,7 @@ const WAVE_TEXT_DURATION = 2; // seconds the "Wave X" text is visible
 type EnemySpawnFn = (x: number, y: number, monsterLevel?: number) => void;
 
 type SpawnEntry = {
-  type: 'rusher' | 'swarm' | 'tank' | 'sniper' | 'flanker';
+  type: 'rusher' | 'swarm' | 'tank' | 'sniper' | 'flanker' | 'splitter' | 'shielder';
   x: number;
   y: number;
 };
@@ -37,6 +37,8 @@ const SPAWN_FNS: Record<SpawnEntry['type'], EnemySpawnFn> = {
   tank: spawnTank,
   sniper: spawnSniper,
   flanker: spawnFlanker,
+  splitter: spawnSplitter,
+  shielder: spawnShielder,
 };
 
 // -- Predefined waves 1-5 ------------------------------------------------
@@ -46,12 +48,12 @@ const PREDEFINED_WAVES: WaveDefinition[] = [
   { enemies: [{ type: 'rusher', count: 5 }], formation: 'column' },
   // Wave 2
   { enemies: [{ type: 'swarm', count: 8 }], formation: 'chaoticSwarm' },
-  // Wave 3
-  { enemies: [{ type: 'rusher', count: 3 }, { type: 'tank', count: 1 }], formation: 'shieldWall' },
-  // Wave 4
-  { enemies: [{ type: 'rusher', count: 6 }, { type: 'flanker', count: 2 }], formation: 'pincer' },
+  // Wave 3: introduce Splitters
+  { enemies: [{ type: 'rusher', count: 3 }, { type: 'tank', count: 1 }, { type: 'splitter', count: 2 }], formation: 'shieldWall' },
+  // Wave 4: introduce Shielders
+  { enemies: [{ type: 'rusher', count: 4 }, { type: 'flanker', count: 2 }, { type: 'shielder', count: 1 }], formation: 'pincer' },
   // Wave 5
-  { enemies: [{ type: 'swarm', count: 4 }, { type: 'sniper', count: 2 }, { type: 'tank', count: 1 }], formation: 'surround' },
+  { enemies: [{ type: 'swarm', count: 4 }, { type: 'sniper', count: 2 }, { type: 'tank', count: 1 }, { type: 'splitter', count: 1 }, { type: 'shielder', count: 1 }], formation: 'surround' },
 ];
 
 const ALL_FORMATIONS: FormationType[] = ['column', 'pincer', 'surround', 'shieldWall', 'chaoticSwarm'];
@@ -205,7 +207,7 @@ function generateWave(waveNum: number): WaveDefinition {
   const baseCount = 7;
   const totalEnemies = Math.round(baseCount * scaleFactor);
 
-  const types: SpawnEntry['type'][] = ['rusher', 'swarm', 'tank', 'sniper', 'flanker'];
+  const types: SpawnEntry['type'][] = ['rusher', 'swarm', 'tank', 'sniper', 'flanker', 'splitter', 'shielder'];
   const enemies: { type: SpawnEntry['type']; count: number }[] = [];
 
   let remaining = totalEnemies;

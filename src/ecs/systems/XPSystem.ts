@@ -18,6 +18,8 @@ const BASE_XP: Record<string, number> = {
   tank: 40,
   sniper: 25,
   flanker: 20,
+  splitter: 20,
+  shielder: 30,
 };
 
 /**

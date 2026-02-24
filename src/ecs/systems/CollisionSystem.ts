@@ -10,6 +10,7 @@ import { hasModifier } from '../../core/MapDevice';
 import { spawnMapDrop } from '../../entities/MapDrop';
 import { spawnGemDrop } from '../../entities/GemDrop';
 import { getComputedStats } from '../../core/ComputedStats';
+import { spawnMiniSplitter } from '../../entities/Enemy';
 
 /** Apply armor damage reduction to incoming damage. */
 function reduceDamage(rawDamage: number): number {
@@ -51,6 +52,32 @@ export function collisionSystem(dt: number): void {
       const distSq = dx * dx + dy * dy;
 
       if (distSq < HIT_RADIUS * HIT_RADIUS) {
+        // Shielder: block projectiles hitting the front face
+        if (enemy.shielded && enemy.sprite) {
+          // Enemy facing angle (toward player, set by AISystem rotation)
+          const facingAngle = enemy.sprite.rotation;
+          // Projectile incoming angle (from projectile toward enemy)
+          const incomingAngle = Math.atan2(
+            enemy.position.y - proj.position.y,
+            enemy.position.x - proj.position.x,
+          );
+          // Angle difference between enemy facing and projectile incoming direction
+          let angleDiff = facingAngle - incomingAngle;
+          // Normalize to [-PI, PI]
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          // Block if projectile comes from within ~90 degrees of the front face
+          if (Math.abs(angleDiff) < Math.PI / 2) {
+            // Blocked by shield - show "0" damage and consume projectile
+            spawnDamageNumber(enemy.position.x, enemy.position.y - 10, 0, 0x4488ff);
+            if (!proj.piercing) {
+              consumed = true;
+              projectilesToDespawn.push(proj);
+            }
+            continue;
+          }
+        }
+
         // Resist first hit modifier: enemy is immune to the first damage instance
         if (hasModifier('resist_first_hit') && !enemy.firstHitTaken) {
           world.addComponent(enemy, 'firstHitTaken', true as const);
@@ -116,6 +143,19 @@ export function collisionSystem(dt: number): void {
   }
 
   for (const enemy of enemiesToRemove) {
+    // Splitter: spawn 2 mini-splitters on death (only if not already a mini-splitter)
+    if (enemy.enemyType === 'splitter' && !enemy.isMiniSplitter) {
+      for (let i = 0; i < 2; i++) {
+        const offsetX = (i === 0 ? -1 : 1) * 16;
+        const offsetY = (Math.random() - 0.5) * 16;
+        spawnMiniSplitter(
+          enemy.position.x + offsetX,
+          enemy.position.y + offsetY,
+          enemy.level ?? 1,
+        );
+      }
+    }
+
     // Spawn death particles before removing
     spawnDeathParticles(enemy.position.x, enemy.position.y);
 

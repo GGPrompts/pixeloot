@@ -1,4 +1,4 @@
-import { Graphics } from 'pixi.js';
+import { Graphics, Container } from 'pixi.js';
 import { world, type Entity } from '../ecs/world';
 import { game } from '../Game';
 import { scaleHealth, scaleDamage } from '../core/MonsterScaling';
@@ -195,6 +195,129 @@ export function spawnFlanker(worldX: number, worldY: number, monsterLevel = 1): 
     sprite: g,
     aiTimer: 0,
     aiState: 'circling',
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Splitter enemy: a teal pentagon. On death, splits into 2 mini-Splitters.
+ */
+export function spawnSplitter(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Pentagon ~12px radius
+  for (let i = 0; i < 5; i++) {
+    const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+    const px = Math.cos(angle) * 12;
+    const py = Math.sin(angle) * 12;
+    if (i === 0) {
+      g.moveTo(px, py);
+    } else {
+      g.lineTo(px, py);
+    }
+  }
+  g.closePath().fill({ color: 0x44ddaa });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(40, monsterLevel);
+  const dmg = scaleDamage(8, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 90,
+    baseSpeed: 90,
+    enemy: true as const,
+    enemyType: 'splitter',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a mini-Splitter: half-size teal pentagon. Does NOT split again on death.
+ */
+export function spawnMiniSplitter(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Half-size pentagon ~6px radius
+  for (let i = 0; i < 5; i++) {
+    const angle = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+    const px = Math.cos(angle) * 6;
+    const py = Math.sin(angle) * 6;
+    if (i === 0) {
+      g.moveTo(px, py);
+    } else {
+      g.lineTo(px, py);
+    }
+  }
+  g.closePath().fill({ color: 0x44ddaa });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(10, monsterLevel);
+  const dmg = scaleDamage(8, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 90,
+    baseSpeed: 90,
+    enemy: true as const,
+    enemyType: 'splitter',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    level: monsterLevel,
+    isMiniSplitter: true as const,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Shielder enemy: a white square with a thick front shield bar.
+ * Projectiles hitting the front face are blocked; must be hit from behind or sides.
+ */
+export function spawnShielder(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const container = new Container();
+
+  // White square body ~12px half-size
+  const body = new Graphics();
+  body.rect(-12, -12, 24, 24).fill({ color: 0xffffff });
+  container.addChild(body);
+
+  // Thick shield bar on the front (right) face
+  const shield = new Graphics();
+  shield.rect(12, -14, 4, 28).fill({ color: 0x4488ff });
+  container.addChild(shield);
+
+  container.position.set(worldX, worldY);
+  game.entityLayer.addChild(container);
+
+  const hp = scaleHealth(60, monsterLevel);
+  const dmg = scaleDamage(15, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 60,
+    baseSpeed: 60,
+    enemy: true as const,
+    enemyType: 'shielder',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: container,
+    shielded: true as const,
     level: monsterLevel,
   });
   applyMapModifiers(entity);

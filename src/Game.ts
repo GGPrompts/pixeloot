@@ -31,6 +31,7 @@ import { updateVendorPanel, isVendorOpen } from './ui/VendorPanel';
 import { updateCraftingPanel, isCraftingPanelOpen } from './ui/CraftingPanel';
 import { updateStashPanel, isStashOpen } from './ui/StashPanel';
 import { updateLootFilterPanel } from './ui/LootFilterPanel';
+import { updateMinimap, refreshMinimapLayout } from './ui/Minimap';
 import { lootFilterSystem } from './ecs/systems/LootFilterSystem';
 import { getAutoSave, loadGame } from './save/SaveManager';
 import { applyTheme, getActiveTheme } from './core/ZoneThemes';
@@ -318,6 +319,7 @@ export class Game {
     lootFilterSystem();
     updateLootFilterPanel(dt);
     updateComingSoonText(dt);
+    updateMinimap();
 
     // Music HUD indicator
     if (musicPlayer.isMuted()) {

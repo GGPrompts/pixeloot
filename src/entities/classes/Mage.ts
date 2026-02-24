@@ -319,6 +319,219 @@ function spawnTeleportParticles(cx: number, cy: number): void {
 }
 
 // ---------------------------------------------------------------------------
+// Skill 5 - Arcane Wall (cooldown 15s)
+// Places a barrier perpendicular to player-mouse direction at cursor position
+// Blocks enemy movement for 5s, does NOT block projectiles
+// ---------------------------------------------------------------------------
+const WALL_WIDTH = 160;
+const WALL_THICKNESS = 16;
+const WALL_DURATION = 5;
+const WALL_FADE_TIME = 1; // fade out over last 1s
+const TILE_SIZE = 32;
+
+const arcaneWall: SkillDef = {
+  name: 'Arcane Wall',
+  key: '5',
+  cooldown: 15,
+  execute(playerPos, mousePos) {
+    const cx = mousePos.x;
+    const cy = mousePos.y;
+
+    // Direction from player to mouse
+    const dx = mousePos.x - playerPos.x;
+    const dy = mousePos.y - playerPos.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len === 0) return;
+
+    // Perpendicular direction for the wall orientation
+    const perpX = -dy / len;
+    const perpY = dx / len;
+
+    // Normal direction (along player-mouse line) for thickness
+    const normX = dx / len;
+    const normY = dy / len;
+
+    // Collect tiles that the wall covers and mark them solid
+    const tileMap = game.tileMap;
+    const wallTiles: { tx: number; ty: number; prevValue: number }[] = [];
+    const halfWidth = WALL_WIDTH / 2;
+    const halfThick = WALL_THICKNESS / 2;
+
+    // Sample points along the wall rectangle and mark tiles
+    for (let w = -halfWidth; w <= halfWidth; w += TILE_SIZE / 2) {
+      for (let t = -halfThick; t <= halfThick; t += TILE_SIZE / 2) {
+        const wx = cx + perpX * w + normX * t;
+        const wy = cy + perpY * w + normY * t;
+        const tile = tileMap.worldToTile(wx, wy);
+
+        // Only mark tiles that are in bounds and not already solid
+        if (tile.x >= 0 && tile.y >= 0 && tile.x < tileMap.width && tile.y < tileMap.height) {
+          if (tileMap.tiles[tile.y][tile.x] !== 1) {
+            // Check if we already recorded this tile
+            const alreadyRecorded = wallTiles.some((wt) => wt.tx === tile.x && wt.ty === tile.y);
+            if (!alreadyRecorded) {
+              wallTiles.push({ tx: tile.x, ty: tile.y, prevValue: tileMap.tiles[tile.y][tile.x] });
+              tileMap.tiles[tile.y][tile.x] = 1;
+            }
+          }
+        }
+      }
+    }
+
+    // Visual: glowing purple/blue rectangular barrier
+    const wallGfx = new Graphics();
+    const angle = Math.atan2(perpY, perpX);
+    wallGfx.position.set(cx, cy);
+    wallGfx.rotation = angle;
+
+    // Draw the wall rectangle (centered at origin, rotated)
+    wallGfx.rect(-halfWidth, -halfThick, WALL_WIDTH, WALL_THICKNESS)
+      .fill({ color: 0x8844ff, alpha: 0.5 });
+    wallGfx.rect(-halfWidth, -halfThick, WALL_WIDTH, WALL_THICKNESS)
+      .stroke({ width: 2, color: 0xaa66ff, alpha: 0.8 });
+    // Inner glow line
+    wallGfx.rect(-halfWidth + 4, -halfThick + 4, WALL_WIDTH - 8, WALL_THICKNESS - 8)
+      .fill({ color: 0xbb88ff, alpha: 0.3 });
+
+    game.effectLayer.addChild(wallGfx);
+
+    // Animate shimmer and fade, then clean up tiles
+    let elapsed = 0;
+    const onTick = (t: { deltaTime: number }) => {
+      elapsed += t.deltaTime / 60;
+
+      // Shimmer effect: oscillate alpha slightly
+      const shimmer = 0.4 + 0.2 * Math.sin(elapsed * 8);
+
+      if (elapsed > WALL_DURATION - WALL_FADE_TIME) {
+        // Fade out over last 1s
+        const fadeProgress = (elapsed - (WALL_DURATION - WALL_FADE_TIME)) / WALL_FADE_TIME;
+        wallGfx.alpha = Math.max(0, (1 - fadeProgress) * shimmer * 2);
+      } else {
+        wallGfx.alpha = shimmer + 0.4;
+      }
+
+      if (elapsed >= WALL_DURATION) {
+        // Restore tiles to original values
+        for (const wt of wallTiles) {
+          if (wt.tx >= 0 && wt.ty >= 0 && wt.tx < tileMap.width && wt.ty < tileMap.height) {
+            tileMap.tiles[wt.ty][wt.tx] = wt.prevValue;
+          }
+        }
+
+        game.app.ticker.remove(onTick);
+        wallGfx.removeFromParent();
+        wallGfx.destroy();
+      }
+    };
+    game.app.ticker.add(onTick);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Skill 6 - Meteor (cooldown 14s)
+// Target location at mouse cursor, 1.5s telegraph, then 200 dmg AoE + Burn
+// ---------------------------------------------------------------------------
+const METEOR_RADIUS = 96;
+const METEOR_DAMAGE = 200;
+const METEOR_DELAY = 1.5;
+
+const meteor: SkillDef = {
+  name: 'Meteor',
+  key: '6',
+  cooldown: 14,
+  execute(_playerPos, mousePos) {
+    const tx = mousePos.x;
+    const ty = mousePos.y;
+
+    // Telegraph phase: growing red/orange circle on ground
+    const telegraph = new Graphics();
+    telegraph.position.set(tx, ty);
+    game.effectLayer.addChild(telegraph);
+
+    let elapsed = 0;
+    let impacted = false;
+
+    const onTick = (t: { deltaTime: number }) => {
+      elapsed += t.deltaTime / 60;
+
+      if (!impacted) {
+        // Telegraph: growing warning circle
+        const progress = Math.min(elapsed / METEOR_DELAY, 1);
+        const currentRadius = METEOR_RADIUS * progress;
+
+        telegraph.clear();
+        // Outer warning ring
+        telegraph.circle(0, 0, currentRadius)
+          .stroke({ width: 2, color: 0xff4400, alpha: 0.6 + 0.3 * Math.sin(elapsed * 12) });
+        // Fill with semi-transparent red/orange
+        telegraph.circle(0, 0, currentRadius)
+          .fill({ color: 0xff2200, alpha: 0.1 + 0.1 * progress });
+        // Inner crosshair for visual clarity
+        if (progress > 0.3) {
+          telegraph.circle(0, 0, currentRadius * 0.3)
+            .fill({ color: 0xff6600, alpha: 0.15 * progress });
+        }
+
+        if (elapsed >= METEOR_DELAY) {
+          impacted = true;
+
+          // Deal damage to all enemies in radius
+          for (const enemy of enemies) {
+            const dx = enemy.position.x - tx;
+            const dy = enemy.position.y - ty;
+            if (dx * dx + dy * dy < METEOR_RADIUS * METEOR_RADIUS) {
+              enemy.health.current -= METEOR_DAMAGE;
+              spawnDamageNumber(enemy.position.x, enemy.position.y - 10, METEOR_DAMAGE, 0xff6600);
+              applyStatus(enemy, StatusType.Burn, { x: tx, y: ty });
+
+              if (enemy.sprite) {
+                enemy.sprite.alpha = 0.3;
+                setTimeout(() => {
+                  if (enemy.sprite) enemy.sprite.alpha = 1;
+                }, 100);
+              }
+
+              if (enemy.health.current <= 0) {
+                spawnDeathParticles(enemy.position.x, enemy.position.y);
+                if (enemy.sprite) enemy.sprite.removeFromParent();
+                world.remove(enemy);
+              }
+            }
+          }
+
+          // Impact visual: bright orange flash expanding outward
+          telegraph.clear();
+          elapsed = 0; // Reset for fade phase
+        }
+      } else {
+        // Impact flash: expanding bright ring that fades
+        const fadeProgress = Math.min(elapsed / 0.5, 1);
+        const flashRadius = METEOR_RADIUS + METEOR_RADIUS * 0.3 * fadeProgress;
+
+        telegraph.clear();
+        // Bright core flash
+        telegraph.circle(0, 0, METEOR_RADIUS * (1 - fadeProgress * 0.5))
+          .fill({ color: 0xff8800, alpha: 0.6 * (1 - fadeProgress) });
+        // Expanding outer ring
+        telegraph.circle(0, 0, flashRadius)
+          .stroke({ width: 4 * (1 - fadeProgress), color: 0xffaa22, alpha: 0.8 * (1 - fadeProgress) });
+        // Secondary inner ring
+        telegraph.circle(0, 0, flashRadius * 0.6)
+          .stroke({ width: 2 * (1 - fadeProgress), color: 0xffffff, alpha: 0.5 * (1 - fadeProgress) });
+
+        if (fadeProgress >= 1) {
+          game.app.ticker.remove(onTick);
+          telegraph.removeFromParent();
+          telegraph.destroy();
+        }
+      }
+    };
+    game.app.ticker.add(onTick);
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Export all Mage skills
 // ---------------------------------------------------------------------------
-export const mageSkills: SkillDef[] = [fireball, frostNova, lightningChain, teleport];
+export const mageSkills: SkillDef[] = [fireball, frostNova, lightningChain, teleport, arcaneWall, meteor];

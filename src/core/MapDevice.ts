@@ -13,6 +13,7 @@ import { world } from '../ecs/world';
 import { game } from '../Game';
 import { applyTheme, getActiveTheme, ZONE_THEMES } from './ZoneThemes';
 import { exitTown, isInTown } from './TownManager';
+import { refreshMinimapLayout } from '../ui/Minimap';
 import { musicPlayer } from '../audio/MusicPlayer';
 
 // ── Active Map State ────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export function activateMap(mapItem: MapItem): void {
   drawGrid();
   game.tileMap = new TileMap(dungeonData);
   game.tileMap.render(game.worldLayer, theme.wallColor);
+  refreshMinimapLayout();
 
   // 6. Update scaling config with tier bonus
   // The wave system will pick this up via getActiveScalingConfig()

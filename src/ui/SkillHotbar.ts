@@ -4,7 +4,7 @@ import { skillSystem } from '../core/SkillSystem';
 
 const SLOT_SIZE = 48;
 const SLOT_GAP = 6;
-const SLOT_COUNT = 4;
+const SLOT_COUNT = 6;
 const BORDER_COLOR = 0x00ffff;
 const BG_COLOR = 0x111122;
 const BG_ALPHA = 0.85;
