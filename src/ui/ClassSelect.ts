@@ -4,8 +4,9 @@ import { skillSystem } from '../core/SkillSystem';
 import { rangerSkills } from '../entities/classes/Ranger';
 import { mageSkills } from '../entities/classes/Mage';
 import {
-  Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder,
+  Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder, makeCloseButton,
 } from './UITheme';
+import { InputManager } from '../core/InputManager';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
@@ -18,6 +19,8 @@ const BTN_GAP = 40;
 let container: Container | null = null;
 let selectionMade = false;
 let onSelectCallback: (() => void) | null = null;
+let dismissable = false;
+let prevEscPressed = false;
 
 interface ClassOption {
   name: string;
@@ -128,6 +131,8 @@ export function showClassSelect(onSelect: () => void): void {
   if (container) return;
   selectionMade = false;
   onSelectCallback = onSelect;
+  // Dismissable if the player already has a class (mid-game reclass)
+  dismissable = skillSystem.activeClass !== '';
 
   container = new Container();
 
@@ -144,6 +149,14 @@ export function showClassSelect(onSelect: () => void): void {
   const panel = new Graphics();
   drawPanelBg(panel, panelX, panelY, PANEL_W, PANEL_H);
   container.addChild(panel);
+
+  // Close button (only when dismissable — mid-game reclass)
+  if (dismissable) {
+    const closeBtn = makeCloseButton(panelX + PANEL_W - 40, panelY + 8, () => {
+      hideClassSelect();
+    });
+    container.addChild(closeBtn);
+  }
 
   // Title
   const title = new Text({
@@ -183,7 +196,7 @@ export function showClassSelect(onSelect: () => void): void {
 
   // Keyboard hint
   const hint = new Text({
-    text: 'Press C anytime to change class',
+    text: dismissable ? 'Press Esc to cancel' : 'Press C anytime to change class',
     style: new TextStyle({
       fill: Colors.textMuted,
       fontSize: FontSize.sm,
@@ -209,9 +222,17 @@ export function isClassSelectVisible(): boolean {
   return container !== null;
 }
 
-/**
- * Toggle class select on/off. Used for the 'C' keybind.
- */
+/** Called each frame to handle Escape dismissal when panel is open and dismissable. */
+export function updateClassSelect(): void {
+  if (!container || !dismissable) return;
+
+  const escDown = InputManager.instance.isPressed('Escape');
+  if (escDown && !prevEscPressed) {
+    hideClassSelect();
+  }
+  prevEscPressed = escDown;
+}
+
 /** Look up class skills by name (used by save/load). */
 export function getClassSkillsByName(name: string): typeof rangerSkills | null {
   const found = classes.find((c) => c.name === name);

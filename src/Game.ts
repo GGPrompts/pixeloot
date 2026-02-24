@@ -24,7 +24,7 @@ import { skillSystem } from './core/SkillSystem';
 import { world } from './ecs/world';
 import { statusEffectSystem } from './ecs/systems/StatusEffectSystem';
 import { initHotbar, updateHotbar } from './ui/SkillHotbar';
-import { showClassSelect, isClassSelectVisible, toggleClassSelect } from './ui/ClassSelect';
+import { showClassSelect, isClassSelectVisible, toggleClassSelect, updateClassSelect } from './ui/ClassSelect';
 import { updateInventoryPanel, isInventoryOpen } from './ui/InventoryPanel';
 import { updateSaveLoadPanel, isSaveLoadPanelOpen } from './ui/SaveLoadPanel';
 import { updateMapDeviceUI, isMapDeviceOpen } from './ui/MapDeviceUI';
@@ -350,6 +350,7 @@ export class Game {
     updateStatPanel();
     updateHotbar();
     updateBossHealthBar();
+    updateClassSelect();
     updateSkillAssignPanel();
     updateInventoryPanel();
     updateSaveLoadPanel();
