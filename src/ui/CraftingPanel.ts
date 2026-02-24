@@ -1,5 +1,5 @@
 import { Container, Graphics, Text, TextStyle, FederatedPointerEvent } from 'pixi.js';
-import { game } from '../Game';
+import { game, isAnyPanelOpen } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { inventory } from '../core/Inventory';
 import { materials, MATERIAL_NAMES, MATERIAL_COLORS, MaterialType } from '../loot/Materials';
@@ -660,20 +660,22 @@ export function updateCraftingPanel(): void {
   prevEscPressed = escDown;
 
   if (kDown && !prevKPressed) {
-    visible = !visible;
+    if (visible || !isAnyPanelOpen()) {
+      visible = !visible;
 
-    if (!container) {
-      container = createPanel();
-      game.hudLayer.addChild(container);
-    }
+      if (!container) {
+        container = createPanel();
+        game.hudLayer.addChild(container);
+      }
 
-    container.visible = visible;
-    if (visible) {
-      selectedRecipe = null;
-      selectedCraftTargetIdx = null;
-      selectedGem = null;
-      selectedGemTargetIdx = null;
-      rebuildPanel();
+      container.visible = visible;
+      if (visible) {
+        selectedRecipe = null;
+        selectedCraftTargetIdx = null;
+        selectedGem = null;
+        selectedGemTargetIdx = null;
+        rebuildPanel();
+      }
     }
   }
 

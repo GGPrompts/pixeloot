@@ -1,5 +1,5 @@
 import { Container, Graphics, Text, TextStyle, FederatedPointerEvent } from 'pixi.js';
-import { game } from '../Game';
+import { game, isAnyPanelOpen } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { inventory, EquipSlots } from '../core/Inventory';
 import { BaseItem, Rarity, Slot } from '../loot/ItemTypes';
@@ -339,18 +339,21 @@ export function updateInventoryPanel(): void {
   prevEscPressed = escDown;
 
   if (iDown && !prevIPressed) {
-    visible = !visible;
+    // Only open if no other panel is visible; always allow closing
+    if (visible || !isAnyPanelOpen()) {
+      visible = !visible;
 
-    if (!container) {
-      container = createPanel();
-      game.hudLayer.addChild(container);
-    }
+      if (!container) {
+        container = createPanel();
+        game.hudLayer.addChild(container);
+      }
 
-    container.visible = visible;
-    if (visible) {
-      refreshSlots();
-    } else {
-      hideTooltip();
+      container.visible = visible;
+      if (visible) {
+        refreshSlots();
+      } else {
+        hideTooltip();
+      }
     }
   }
 

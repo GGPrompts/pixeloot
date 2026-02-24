@@ -71,7 +71,7 @@ function rebuildPanel(): void {
 
   // Title
   const title = new Text({
-    text: 'Skill Assignment [K]',
+    text: 'Skill Assignment [J]',
     style: new TextStyle({
       fill: Colors.accentCyan,
       fontSize: FontSize.xs,

@@ -1,5 +1,5 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
-import { game } from '../Game';
+import { game, isAnyPanelOpen } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { inventory } from '../core/Inventory';
 import { activateMap } from '../core/MapDevice';
@@ -330,7 +330,7 @@ export function updateMapDeviceUI(): void {
   if (mDown && !prevMPressed) {
     if (visible) {
       hideMapDevice();
-    } else {
+    } else if (!isAnyPanelOpen()) {
       showMapDevice();
     }
   }

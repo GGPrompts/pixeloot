@@ -43,6 +43,13 @@ import { updateSkillAssignPanel, isSkillAssignOpen, toggleSkillAssignPanel } fro
 import { updateRangeIndicators } from './ui/RangeIndicator';
 import { SCREEN_W, SCREEN_H, TILE_SIZE, LOGIC_FPS, LOGIC_STEP } from './core/constants';
 
+/** Returns true if any UI panel is currently open (used to prevent multiple panels). */
+export function isAnyPanelOpen(): boolean {
+  return isClassSelectVisible() || isInventoryOpen() || isSaveLoadPanelOpen()
+    || isMapDeviceOpen() || isVendorOpen() || isCraftingPanelOpen()
+    || isStashOpen() || isSkillAssignOpen();
+}
+
 /**
  * PixiJS v8 Ticker kills the entire game loop if any listener throws
  * (requestAnimationFrame is never re-scheduled). Patch _tick to add
@@ -267,16 +274,16 @@ export class Game {
     // Check for 'C' key toggle (class select) - edge detect
     const cDown = InputManager.instance.isPressed('KeyC');
     if (cDown && !this.prevCPressed) {
-      if (this.gameplayStarted) {
+      if (this.gameplayStarted && (!isAnyPanelOpen() || isClassSelectVisible())) {
         toggleClassSelect();
       }
     }
     this.prevCPressed = cDown;
 
-    // Check for 'K' key toggle (skill assignment panel) - edge detect
-    const kDown = InputManager.instance.isPressed('KeyK');
+    // Check for 'J' key toggle (skill assignment panel) - edge detect
+    const kDown = InputManager.instance.isPressed('KeyJ');
     if (kDown && !this.prevKPressed) {
-      if (this.gameplayStarted) {
+      if (this.gameplayStarted && (!isAnyPanelOpen() || isSkillAssignOpen())) {
         toggleSkillAssignPanel();
       }
     }
@@ -301,10 +308,8 @@ export class Game {
     // Skill system: tick cooldowns every frame (even during panels/town)
     skillSystem.tickSkills(dt);
 
-    // Pause gameplay while class select, inventory, save/load, or map device is open
-    const panelOpen = isClassSelectVisible() || isInventoryOpen() || isSaveLoadPanelOpen()
-      || isMapDeviceOpen() || isVendorOpen() || isCraftingPanelOpen()
-      || isStashOpen() || isSkillAssignOpen();
+    // Pause gameplay while any UI panel is open
+    const panelOpen = isAnyPanelOpen();
 
     if (panelOpen) {
       // Keep prev-input state current so rising edges work when panel closes

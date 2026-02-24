@@ -82,7 +82,7 @@ All UI is PixiJS-native (Container/Graphics/Text). Each panel exports an `update
 
 ### Character Classes (entities/classes/)
 
-Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Controls: LMB (primary attack, hold-to-fire), RMB (assignable, single-press), Space (movement skill, single-press), E (assignable, single-press). Players assign 2 of 4 assignable skills to RMB/E via the skill assignment panel (K key). Each `SkillDef` has `slotType` ('primary'|'movement'|'assignable') and `targetType` for input routing and range indicators. Primary attacks have short base cooldowns (Ranger 0.4s, Mage 0.5s) scaled by attackSpeed; other skills have longer cooldowns scaled by CDR only.
+Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Controls: LMB (primary attack, hold-to-fire), RMB (assignable, single-press), Space (movement skill, single-press), E (assignable, single-press). Players assign 2 of 4 assignable skills to RMB/E via the skill assignment panel (J key). Panel hotkeys: I (inventory), V (vendor), K (crafting), M (map device), J (skill assign), C (class select), Tab (stats). Only one panel can be open at a time — `isAnyPanelOpen()` in Game.ts guards all toggles. Each `SkillDef` has `slotType` ('primary'|'movement'|'assignable') and `targetType` for input routing and range indicators. Primary attacks have short base cooldowns (Ranger 0.4s, Mage 0.5s) scaled by attackSpeed; other skills have longer cooldowns scaled by CDR only.
 
 ### Audio (audio/)
 

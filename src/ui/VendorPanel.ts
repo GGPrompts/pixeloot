@@ -1,5 +1,5 @@
 import { Container, Graphics, Text, TextStyle, FederatedPointerEvent } from 'pixi.js';
-import { game } from '../Game';
+import { game, isAnyPanelOpen } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { inventory } from '../core/Inventory';
 import { world } from '../ecs/world';
@@ -463,21 +463,23 @@ export function updateVendorPanel(): void {
   prevEscPressed = escDown;
 
   if (vDown && !prevVPressed) {
-    visible = !visible;
+    if (visible || !isAnyPanelOpen()) {
+      visible = !visible;
 
-    if (!container) {
-      container = createPanel();
-      game.hudLayer.addChild(container);
-    }
+      if (!container) {
+        container = createPanel();
+        game.hudLayer.addChild(container);
+      }
 
-    container.visible = visible;
-    if (visible) {
-      const stock = refreshVendorStock(getPlayerLevel());
-      vendorItems = stock.items;
-      vendorMaps = stock.maps;
-      refreshPanel();
-    } else {
-      hideTooltip();
+      container.visible = visible;
+      if (visible) {
+        const stock = refreshVendorStock(getPlayerLevel());
+        vendorItems = stock.items;
+        vendorMaps = stock.maps;
+        refreshPanel();
+      } else {
+        hideTooltip();
+      }
     }
   }
 
