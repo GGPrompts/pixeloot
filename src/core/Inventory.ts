@@ -11,6 +11,7 @@ export interface EquipSlots {
   ring1: BaseItem | null;
   ring2: BaseItem | null;
   amulet: BaseItem | null;
+  offhand: BaseItem | null;
 }
 
 const BACKPACK_SIZE = 20; // 4x5 grid
@@ -23,6 +24,7 @@ const SLOT_MAP: Record<keyof EquipSlots, Slot> = {
   ring1: Slot.Ring,
   ring2: Slot.Ring,
   amulet: Slot.Amulet,
+  offhand: Slot.Offhand,
 };
 
 export class Inventory {
@@ -34,6 +36,7 @@ export class Inventory {
     ring1: null,
     ring2: null,
     amulet: null,
+    offhand: null,
   };
 
   backpack: (BaseItem | null)[] = new Array(BACKPACK_SIZE).fill(null);
@@ -113,6 +116,7 @@ export class Inventory {
       case Slot.Chest: return 'chest';
       case Slot.Boots: return 'boots';
       case Slot.Amulet: return 'amulet';
+      case Slot.Offhand: return 'offhand';
       case Slot.Ring:
         // Prefer empty ring slot
         if (!this.equipped.ring1) return 'ring1';

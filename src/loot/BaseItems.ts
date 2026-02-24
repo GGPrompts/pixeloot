@@ -119,6 +119,19 @@ export const AMULET_TEMPLATES: BaseItemTemplate[] = [
   },
 ];
 
+export const OFFHAND_TEMPLATES: BaseItemTemplate[] = [
+  {
+    name: 'Wooden Shield',
+    slot: Slot.Offhand,
+    baseStats: { armor: 10 },
+  },
+  {
+    name: 'Spell Focus',
+    slot: Slot.Offhand,
+    baseStats: { armor: 5 },
+  },
+];
+
 const TEMPLATES_BY_SLOT: Record<number, BaseItemTemplate[]> = {
   [Slot.Weapon]: WEAPON_TEMPLATES,
   [Slot.Helmet]: HELMET_TEMPLATES,
@@ -126,6 +139,7 @@ const TEMPLATES_BY_SLOT: Record<number, BaseItemTemplate[]> = {
   [Slot.Boots]: BOOTS_TEMPLATES,
   [Slot.Ring]: RING_TEMPLATES,
   [Slot.Amulet]: AMULET_TEMPLATES,
+  [Slot.Offhand]: OFFHAND_TEMPLATES,
 };
 
 /** Get all base item templates for a given equipment slot */

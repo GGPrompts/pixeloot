@@ -99,6 +99,7 @@ function getEquippedItems(): (BaseItem | null)[] {
     slots.ring1,
     slots.ring2,
     slots.amulet,
+    slots.offhand,
   ];
 }
 

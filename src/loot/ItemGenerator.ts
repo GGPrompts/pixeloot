@@ -2,6 +2,7 @@ import { BaseItem, BaseStats, Rarity, Slot } from './ItemTypes';
 import { pickRandomTemplate } from './BaseItems';
 import { rollAffixes } from './AffixRoller';
 import { generateName } from './NameGenerator';
+import { pickRandomUnique } from './UniqueItems';
 
 let nextId = 0;
 
@@ -58,6 +59,31 @@ export function generateItem(
   rarity?: Rarity,
 ): BaseItem {
   const finalRarity = rarity ?? rollRarity();
+
+  // Handle unique rarity: try to find a matching unique definition
+  if (finalRarity === Rarity.Unique) {
+    const unique = pickRandomUnique(slot);
+    if (unique) {
+      const baseStats = scaleBaseStats(unique.baseStats, itemLevel);
+      // Unique items get a small set of affixes for additional stat variety
+      const affixes = rollAffixes(Rarity.Rare, itemLevel, slot);
+
+      return {
+        id: makeId(),
+        name: unique.name,
+        slot,
+        rarity: Rarity.Unique,
+        level: itemLevel,
+        baseStats,
+        affixes,
+        uniqueEffect: unique.uniqueEffect,
+        effectId: unique.effectId,
+        ...(unique.weaponType !== undefined && { weaponType: unique.weaponType }),
+      };
+    }
+    // No unique exists for this slot; fall through to generate a Rare instead
+  }
+
   const template = pickRandomTemplate(slot);
   const baseStats = scaleBaseStats(template.baseStats, itemLevel);
   const affixes = rollAffixes(finalRarity, itemLevel, slot);
@@ -67,7 +93,7 @@ export function generateItem(
     id: makeId(),
     name,
     slot,
-    rarity: finalRarity,
+    rarity: finalRarity === Rarity.Unique ? Rarity.Rare : finalRarity,
     level: itemLevel,
     baseStats,
     affixes,

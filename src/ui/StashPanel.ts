@@ -78,6 +78,7 @@ const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Boots]: 'Boots',
   [Slot.Ring]: 'Ring',
   [Slot.Amulet]: 'Amulet',
+  [Slot.Offhand]: 'Offhand',
 };
 
 let container: Container | null = null;

@@ -30,7 +30,7 @@ const MAP_DROP_CHANCE_REGULAR = 0.02; // 2% from regular enemies
 const MAP_DROP_CHANCE_BOSS = 1.0;     // guaranteed from bosses
 
 /** All equippable slots for random item generation */
-const ALL_SLOTS = [Slot.Weapon, Slot.Helmet, Slot.Chest, Slot.Boots, Slot.Ring, Slot.Amulet];
+const ALL_SLOTS = [Slot.Weapon, Slot.Helmet, Slot.Chest, Slot.Boots, Slot.Ring, Slot.Amulet, Slot.Offhand];
 
 function randomSlot(): Slot {
   return ALL_SLOTS[Math.floor(Math.random() * ALL_SLOTS.length)];

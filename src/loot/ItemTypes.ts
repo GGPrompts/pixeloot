@@ -12,6 +12,7 @@ export enum Slot {
   Boots,
   Ring,
   Amulet,
+  Offhand,
 }
 
 export enum WeaponType {
@@ -35,6 +36,7 @@ export interface BaseItem {
   baseStats: BaseStats;
   affixes: Affix[];
   uniqueEffect?: string;
+  effectId?: string;
   weaponType?: WeaponType;
   socket?: ItemSocket;
 }

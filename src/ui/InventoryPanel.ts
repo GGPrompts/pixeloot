@@ -47,6 +47,7 @@ const SLOT_LABELS: { key: keyof EquipSlots; label: string }[] = [
   { key: 'ring1', label: 'Ring 1' },
   { key: 'ring2', label: 'Ring 2' },
   { key: 'amulet', label: 'Amulet' },
+  { key: 'offhand', label: 'Offhand' },
 ];
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
@@ -56,6 +57,7 @@ const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Boots]: 'Boots',
   [Slot.Ring]: 'Ring',
   [Slot.Amulet]: 'Amulet',
+  [Slot.Offhand]: 'Offhand',
 };
 
 let container: Container | null = null;

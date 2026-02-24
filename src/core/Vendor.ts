@@ -21,6 +21,7 @@ const GEAR_SLOTS: Slot[] = [
   Slot.Boots,
   Slot.Ring,
   Slot.Amulet,
+  Slot.Offhand,
 ];
 
 /** Current vendor stock (refreshed on open or after timeout). */
