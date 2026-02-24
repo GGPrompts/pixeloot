@@ -265,16 +265,24 @@ function createPanel(): Container {
   title.position.set(PANEL_X + 16, PANEL_Y + 14);
   root.addChild(title);
 
-  // Close hint
+  // Close button
   const hint = new Text({
-    text: '[ESC] close',
+    text: '[X] close',
     style: new TextStyle({
       fill: 0x666688,
       fontSize: 11,
       fontFamily: 'monospace',
     }),
   });
-  hint.position.set(PANEL_X + PANEL_W - 90, PANEL_Y + 18);
+  hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
+  hint.eventMode = 'static';
+  hint.cursor = 'pointer';
+  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
+  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
+  hint.on('pointertap', () => {
+    visible = false;
+    if (container) container.visible = false;
+  });
   root.addChild(hint);
 
   // Gold display

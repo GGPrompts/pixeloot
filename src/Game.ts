@@ -187,6 +187,18 @@ export class Game {
 
     document.body.appendChild(app.canvas);
 
+    // Scale canvas to fill window while preserving aspect ratio
+    const resizeCanvas = () => {
+      const canvas = app.canvas as HTMLCanvasElement;
+      const scaleX = window.innerWidth / SCREEN_W;
+      const scaleY = window.innerHeight / SCREEN_H;
+      const scale = Math.min(scaleX, scaleY);
+      canvas.style.width = `${SCREEN_W * scale}px`;
+      canvas.style.height = `${SCREEN_H * scale}px`;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
     const g = new Game(app);
     // Set singleton before initEntities so modules importing `game` can access it
     game = g;
@@ -270,7 +282,8 @@ export class Game {
       const mouseDown = InputManager.instance.isMouseDown(0);
       if (mouseDown && !this.prevMouseDown) {
         const mouse = InputManager.instance.getMousePosition();
-        checkNPCClick(mouse.x, mouse.y);
+        const world = screenToWorld(mouse.x, mouse.y);
+        checkNPCClick(world.x, world.y);
       }
       this.prevMouseDown = mouseDown;
     } else {
@@ -341,6 +354,14 @@ export class Game {
       this.fpsTimer = 0;
     }
   }
+}
+
+/** Convert screen-space coordinates to world-space by removing camera offset. */
+export function screenToWorld(screenX: number, screenY: number): { x: number; y: number } {
+  return {
+    x: screenX - game.entityLayer.position.x,
+    y: screenY - game.entityLayer.position.y,
+  };
 }
 
 // Singleton instance — set after create() resolves

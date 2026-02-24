@@ -179,16 +179,24 @@ function createPanel(): Container {
   computedStatsText.position.set(px + 16, dividerY + 24);
   container.addChild(computedStatsText);
 
-  // Close hint
+  // Close button
   const hint = new Text({
-    text: '[Tab] to close',
+    text: '[X] close',
     style: new TextStyle({
       fill: 0x666688,
       fontSize: 12,
       fontFamily: 'monospace',
     }),
   });
-  hint.position.set(px + 16, py + PANEL_H - 24);
+  hint.position.set(px + PANEL_W - 80, py + 14);
+  hint.eventMode = 'static';
+  hint.cursor = 'pointer';
+  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
+  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
+  hint.on('pointertap', () => {
+    visible = false;
+    if (panel) panel.visible = false;
+  });
   container.addChild(hint);
 
   container.visible = false;

@@ -65,6 +65,7 @@ let feedbackText: Text | null = null;
 let feedbackTimer = 0;
 let visible = false;
 let prevVPressed = false;
+let prevEscPressed = false;
 
 // Cached stock for current open session
 let vendorItems: VendorItem[] = [];
@@ -236,9 +237,9 @@ function createPanel(): Container {
   title.position.set(PANEL_X + 16, PANEL_Y + 14);
   root.addChild(title);
 
-  // Close hint
+  // Close button
   const hint = new Text({
-    text: '[V] close',
+    text: '[X] close',
     style: new TextStyle({
       fill: 0x666688,
       fontSize: 11,
@@ -246,6 +247,15 @@ function createPanel(): Container {
     }),
   });
   hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
+  hint.eventMode = 'static';
+  hint.cursor = 'pointer';
+  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
+  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
+  hint.on('pointertap', () => {
+    visible = false;
+    if (container) container.visible = false;
+    hideTooltip();
+  });
   root.addChild(hint);
 
   // Gold display
@@ -592,6 +602,18 @@ function sellItem(backpackIdx: number): void {
 export function updateVendorPanel(): void {
   const input = InputManager.instance;
   const vDown = input.isPressed('KeyV');
+  const escDown = input.isPressed('Escape');
+
+  // Close on Escape rising edge
+  if (escDown && !prevEscPressed && visible) {
+    visible = false;
+    if (container) container.visible = false;
+    hideTooltip();
+    prevEscPressed = escDown;
+    prevVPressed = vDown;
+    return;
+  }
+  prevEscPressed = escDown;
 
   // Toggle on rising edge
   if (vDown && !prevVPressed) {

@@ -65,6 +65,7 @@ let tooltip: Container | null = null;
 let visible = false;
 let prevIPressed = false;
 let prevEPressed = false;
+let prevEscPressed = false;
 
 // Track slot graphics for refresh
 let gearSlotContainers: Container[] = [];
@@ -101,16 +102,25 @@ function createPanel(): Container {
   title.position.set(PANEL_X + 16, PANEL_Y + 14);
   root.addChild(title);
 
-  // Close hint
+  // Close button
   const hint = new Text({
-    text: '[I / E] close',
+    text: '[X] close',
     style: new TextStyle({
       fill: 0x666688,
       fontSize: 11,
       fontFamily: 'monospace',
     }),
   });
-  hint.position.set(PANEL_X + PANEL_W - 100, PANEL_Y + 18);
+  hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
+  hint.eventMode = 'static';
+  hint.cursor = 'pointer';
+  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
+  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
+  hint.on('pointertap', () => {
+    visible = false;
+    if (container) container.visible = false;
+    hideTooltip();
+  });
   root.addChild(hint);
 
   // --- Gear Slots ---
@@ -464,6 +474,19 @@ export function updateInventoryPanel(): void {
   const input = InputManager.instance;
   const iDown = input.isPressed('KeyI');
   const eDown = input.isPressed('KeyE');
+  const escDown = input.isPressed('Escape');
+
+  // Close on Escape rising edge
+  if (escDown && !prevEscPressed && visible) {
+    visible = false;
+    if (container) container.visible = false;
+    hideTooltip();
+    prevEscPressed = escDown;
+    prevIPressed = iDown;
+    prevEPressed = eDown;
+    return;
+  }
+  prevEscPressed = escDown;
 
   // Toggle on rising edge
   if ((iDown && !prevIPressed) || (eDown && !prevEPressed)) {

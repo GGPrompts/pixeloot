@@ -24,6 +24,7 @@ const TIER_COLORS: Record<number, number> = {
 let container: Container | null = null;
 let visible = false;
 let prevMPressed = false;
+let prevEscPressed = false;
 let selectedMapIndex = -1;
 
 function createPanel(): Container {
@@ -63,9 +64,9 @@ function rebuildPanel(): void {
   title.position.set(PANEL_X + 16, PANEL_Y + 14);
   container.addChild(title);
 
-  // Close hint
+  // Close button
   const hint = new Text({
-    text: '[M] close',
+    text: '[X] close',
     style: new TextStyle({
       fill: 0x666688,
       fontSize: 11,
@@ -73,6 +74,11 @@ function rebuildPanel(): void {
     }),
   });
   hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
+  hint.eventMode = 'static';
+  hint.cursor = 'pointer';
+  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
+  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
+  hint.on('pointertap', () => { hideMapDevice(); });
   container.addChild(hint);
 
   const maps = inventory.maps;
@@ -332,6 +338,16 @@ function hideMapDevice(): void {
 export function updateMapDeviceUI(): void {
   const input = InputManager.instance;
   const mDown = input.isPressed('KeyM');
+  const escDown = input.isPressed('Escape');
+
+  // Close on Escape rising edge
+  if (escDown && !prevEscPressed && visible) {
+    hideMapDevice();
+    prevEscPressed = escDown;
+    prevMPressed = mDown;
+    return;
+  }
+  prevEscPressed = escDown;
 
   if (mDown && !prevMPressed) {
     if (visible) {

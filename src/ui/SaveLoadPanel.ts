@@ -107,12 +107,17 @@ async function buildPanel(): Promise<Container> {
   title.position.set(SCREEN_W / 2, PANEL_Y + 14);
   root.addChild(title);
 
-  // Hint
+  // Close button
   const hint = new Text({
-    text: '[Escape] close',
+    text: '[X] close',
     style: new TextStyle({ fill: 0x555566, fontSize: 10, fontFamily: 'monospace' }),
   });
-  hint.position.set(PANEL_X + PANEL_W - 110, PANEL_Y + 18);
+  hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 18);
+  hint.eventMode = 'static';
+  hint.cursor = 'pointer';
+  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
+  hint.on('pointerout', () => { hint.style.fill = 0x555566; });
+  hint.on('pointertap', () => { hideSaveLoadPanel(); });
   root.addChild(hint);
 
   // Action buttons row at top

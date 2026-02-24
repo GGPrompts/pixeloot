@@ -1,5 +1,6 @@
 import { world } from '../world';
 import { InputManager } from '../../core/InputManager';
+import { screenToWorld } from '../../Game';
 
 const playerSprites = world.with('position', 'sprite', 'player');
 
@@ -9,10 +10,11 @@ const playerSprites = world.with('position', 'sprite', 'player');
  */
 export function playerFacingSystem(): void {
   const mouse = InputManager.instance.getMousePosition();
+  const worldMouse = screenToWorld(mouse.x, mouse.y);
 
   for (const entity of playerSprites) {
-    const dx = mouse.x - entity.position.x;
-    const dy = mouse.y - entity.position.y;
+    const dx = worldMouse.x - entity.position.x;
+    const dy = worldMouse.y - entity.position.y;
     entity.sprite.rotation = Math.atan2(dy, dx);
   }
 }

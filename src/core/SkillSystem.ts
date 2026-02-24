@@ -1,6 +1,7 @@
 import { InputManager } from './InputManager';
 import { getComputedStats } from './ComputedStats';
 import { sfxPlayer } from '../audio/SFXManager';
+import { screenToWorld } from '../Game';
 
 export interface SkillDef {
   name: string;
@@ -83,7 +84,8 @@ class SkillSystem {
    */
   checkInput(playerPos: { x: number; y: number }): void {
     const input = InputManager.instance;
-    const mousePos = input.getMousePosition();
+    const screenMouse = input.getMousePosition();
+    const mousePos = screenToWorld(screenMouse.x, screenMouse.y);
 
     for (let i = 0; i < this.skills.length; i++) {
       const keyCode = KEY_CODES[this.skills[i].def.key];

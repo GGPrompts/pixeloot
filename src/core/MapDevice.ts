@@ -51,8 +51,6 @@ export function isMapActive(): boolean {
 // ── Map Activation ──────────────────────────────────────────────────
 
 const TILE_SIZE = 32;
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
 
 /**
  * Activate a map item: generate a new dungeon, apply modifiers,
@@ -83,20 +81,20 @@ export function activateMap(mapItem: MapItem): void {
   clearEntities();
 
   // 4. Generate new dungeon with a different size for variety
-  const baseW = Math.floor(SCREEN_W / TILE_SIZE);
-  const baseH = Math.floor(SCREEN_H / TILE_SIZE);
+  const baseW = 80;
+  const baseH = 50;
   // Vary size slightly based on tier
   const dungeonW = baseW + Math.floor(Math.random() * 10) - 5;
   const dungeonH = baseH + Math.floor(Math.random() * 6) - 3;
   const dungeonData = generateDungeon(
-    Math.max(20, dungeonW),
-    Math.max(15, dungeonH),
+    Math.max(40, dungeonW),
+    Math.max(30, dungeonH),
   );
 
   // 5. Replace the tile map
   // Remove old world layer children and re-draw
   game.worldLayer.removeChildren();
-  drawGrid();
+  drawGrid(dungeonData.width * TILE_SIZE, dungeonData.height * TILE_SIZE);
   game.tileMap = new TileMap(dungeonData);
   game.tileMap.render(game.worldLayer, theme.wallColor);
   refreshMinimapLayout();
@@ -164,15 +162,15 @@ function clearEntities(): void {
   }
 }
 
-function drawGrid(): void {
+function drawGrid(mapW: number, mapH: number): void {
   const theme = getActiveTheme();
   const g = new Graphics();
 
-  for (let x = 0; x <= SCREEN_W; x += TILE_SIZE) {
-    g.moveTo(x, 0).lineTo(x, SCREEN_H).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
+  for (let x = 0; x <= mapW; x += TILE_SIZE) {
+    g.moveTo(x, 0).lineTo(x, mapH).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
   }
-  for (let y = 0; y <= SCREEN_H; y += TILE_SIZE) {
-    g.moveTo(0, y).lineTo(SCREEN_W, y).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
+  for (let y = 0; y <= mapH; y += TILE_SIZE) {
+    g.moveTo(0, y).lineTo(mapW, y).stroke({ width: 1, color: theme.gridColor, alpha: theme.gridAlpha });
   }
 
   game.worldLayer.addChild(g);

@@ -47,6 +47,7 @@ const SLOTS_PER_ROW = 4;
 let container: Container | null = null;
 let visible = false;
 let prevKPressed = false;
+let prevEscPressed = false;
 
 // State for crafting workflow
 let selectedRecipe: Recipe | null = null;
@@ -95,12 +96,20 @@ function rebuildPanel(): void {
   title.position.set(PANEL_X + 16, PANEL_Y + 12);
   container.addChild(title);
 
-  // Close hint
+  // Close button
   const hint = new Text({
-    text: '[K] close',
+    text: '[X] close',
     style: new TextStyle({ fill: 0x666688, fontSize: 11, fontFamily: 'monospace' }),
   });
   hint.position.set(PANEL_X + PANEL_W - 80, PANEL_Y + 16);
+  hint.eventMode = 'static';
+  hint.cursor = 'pointer';
+  hint.on('pointerover', () => { hint.style.fill = 0xff4444; });
+  hint.on('pointerout', () => { hint.style.fill = 0x666688; });
+  hint.on('pointertap', () => {
+    visible = false;
+    if (container) container.visible = false;
+  });
   container.addChild(hint);
 
   // Feedback text
@@ -565,6 +574,17 @@ function abbreviate(name: string, maxLen: number): string {
 export function updateCraftingPanel(): void {
   const input = InputManager.instance;
   const kDown = input.isPressed('KeyK');
+  const escDown = input.isPressed('Escape');
+
+  // Close on Escape rising edge
+  if (escDown && !prevEscPressed && visible) {
+    visible = false;
+    if (container) container.visible = false;
+    prevEscPressed = escDown;
+    prevKPressed = kDown;
+    return;
+  }
+  prevEscPressed = escDown;
 
   // Toggle on rising edge
   if (kDown && !prevKPressed) {

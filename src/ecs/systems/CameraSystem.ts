@@ -50,24 +50,13 @@ export function cameraSystem(): void {
   }
 
   for (const entity of players) {
-    // When the map is larger than the screen, uncomment:
-    // game.worldLayer.position.set(
-    //   SCREEN_W / 2 - entity.position.x + offsetX,
-    //   SCREEN_H / 2 - entity.position.y + offsetY,
-    // );
-    // game.entityLayer.position.set(
-    //   SCREEN_W / 2 - entity.position.x + offsetX,
-    //   SCREEN_H / 2 - entity.position.y + offsetY,
-    // );
+    const camX = SCREEN_W / 2 - entity.position.x + offsetX;
+    const camY = SCREEN_H / 2 - entity.position.y + offsetY;
 
-    // For now, keep layers at origin but apply shake offset
-    game.worldLayer.position.set(offsetX, offsetY);
-    game.entityLayer.position.set(offsetX, offsetY);
-    game.effectLayer.position.set(offsetX, offsetY);
+    game.worldLayer.position.set(camX, camY);
+    game.entityLayer.position.set(camX, camY);
+    game.effectLayer.position.set(camX, camY);
 
-    void entity;
-    void SCREEN_W;
-    void SCREEN_H;
     break; // Only follow the first player
   }
 }

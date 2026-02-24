@@ -78,6 +78,10 @@ export function pickupSystem(_dt: number): void {
 
     if (pickup.lootDrop) {
       const item = pickup.lootDrop.item;
+      if (!inventory.addItem(item)) {
+        // Backpack full — skip this pickup so it stays on the ground
+        continue;
+      }
       const color = RARITY_COLORS[item.rarity] ?? 0xcccccc;
       spawnPickupText(pickup.position.x, pickup.position.y - 10, item.name, color);
       // Play rarity-appropriate pickup SFX
@@ -88,8 +92,6 @@ export function pickupSystem(_dt: number): void {
         [Rarity.Unique]: 'pickup_unique',
       };
       sfxPlayer.play(raritySfx[item.rarity] ?? 'pickup_normal');
-      // TODO: add item to player inventory (inventory UI is a separate task)
-      console.log('[Loot] Picked up:', item.name, `(${Rarity[item.rarity]})`, item);
     }
 
     if (pickup.mapDrop) {

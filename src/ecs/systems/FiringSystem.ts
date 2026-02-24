@@ -6,6 +6,7 @@ import { inventory } from '../../core/Inventory';
 import { getWeaponBehavior, DEFAULT_WEAPON_BEHAVIOR, type WeaponBehavior } from '../../core/WeaponBehaviors';
 import { getComputedStats } from '../../core/ComputedStats';
 import { isInTown } from '../../core/TownManager';
+import { screenToWorld } from '../../Game';
 
 const players = world.with('position', 'player');
 
@@ -64,6 +65,7 @@ export function firingSystem(dt: number): void {
   if (isInTown()) return;
 
   const mouse = input.getMousePosition();
+  const worldMouse = screenToWorld(mouse.x, mouse.y);
 
   for (const player of players) {
     if (player.inputDisabled) break;
@@ -83,7 +85,7 @@ export function firingSystem(dt: number): void {
       opts.damage = Math.round((opts.damage ?? 0) * computed.critMultiplier);
     }
 
-    fireProjectile(player.position.x, player.position.y, mouse.x, mouse.y, opts);
+    fireProjectile(player.position.x, player.position.y, worldMouse.x, worldMouse.y, opts);
 
     // Fire rate from weapon behavior, modified by computed attack speed
     // computed.attackSpeed is a multiplier (> 1 = faster)
