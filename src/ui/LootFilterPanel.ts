@@ -6,12 +6,12 @@ import {
   Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder,
 } from './UITheme';
 
-const PANEL_W = 200;
+const PANEL_W = 280;
 const PANEL_X = 8;
-const PANEL_Y = 140;
-const ROW_H = 26;
-const CHECKBOX_SIZE = 18;
-const PADDING = 12;
+const PANEL_Y = 180;
+const ROW_H = 36;
+const CHECKBOX_SIZE = 24;
+const PADDING = 16;
 
 interface FilterRow {
   key: keyof LootFilterConfig;
@@ -54,7 +54,7 @@ function createPanel(): Container {
     text: 'LOOT FILTER',
     style: new TextStyle({
       fill: Colors.accentGold,
-      fontSize: 10,
+      fontSize: FontSize.xs,
       fontFamily: Fonts.display,
     }),
   });

@@ -22,39 +22,39 @@ import { showTooltip, hideTooltip, buildItemTooltipText } from './Tooltip';
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 640;
-const PANEL_H = 660;
+const PANEL_W = 820;
+const PANEL_H = 780;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const SLOT_SIZE = 48;
-const SLOT_GAP = 4;
+const SLOT_SIZE = 56;
+const SLOT_GAP = 5;
 
 const STASH_COLS = 4;
 const STASH_ROWS = 6;
 const STASH_GRID_X = 20;
-const STASH_GRID_Y = 100;
+const STASH_GRID_Y = 130;
 
 const BACKPACK_COLS = 4;
 const BACKPACK_ROWS = 5;
-const BACKPACK_GRID_X = 340;
-const BACKPACK_GRID_Y = 100;
+const BACKPACK_GRID_X = 430;
+const BACKPACK_GRID_Y = 130;
 
-const TAB_BTN_W = 72;
-const TAB_BTN_H = 28;
-const TAB_BTN_GAP = 4;
-const TAB_BTN_Y = 50;
+const TAB_BTN_W = 88;
+const TAB_BTN_H = 34;
+const TAB_BTN_GAP = 5;
+const TAB_BTN_Y = 54;
 const TAB_BTN_X = 20;
 
-const SEARCH_BAR_X = 340;
-const SEARCH_BAR_Y = 56;
-const SEARCH_BAR_W = 170;
-const SEARCH_BAR_H = 28;
+const SEARCH_BAR_X = 430;
+const SEARCH_BAR_Y = 58;
+const SEARCH_BAR_W = 200;
+const SEARCH_BAR_H = 34;
 
-const SORT_BTN_X = 520;
-const SORT_BTN_Y = 56;
-const SORT_BTN_W = 80;
-const SORT_BTN_H = 28;
+const SORT_BTN_X = 640;
+const SORT_BTN_Y = 58;
+const SORT_BTN_W = 100;
+const SORT_BTN_H = 34;
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Weapon]: 'Weapon',
@@ -144,7 +144,7 @@ function createPanel(): Container {
   root.addChild(title);
 
   // Close button
-  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => {
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 70, PANEL_Y + 16, () => {
     visible = false;
     if (container) container.visible = false;
   });
@@ -172,7 +172,7 @@ function createPanel(): Container {
       fontFamily: Fonts.body,
     }),
   });
-  stashLabel.position.set(PANEL_X + STASH_GRID_X, PANEL_Y + STASH_GRID_Y - 18);
+  stashLabel.position.set(PANEL_X + STASH_GRID_X, PANEL_Y + STASH_GRID_Y - 28);
   root.addChild(stashLabel);
 
   // Backpack section label
@@ -184,7 +184,7 @@ function createPanel(): Container {
       fontFamily: Fonts.body,
     }),
   });
-  bpLabel.position.set(PANEL_X + BACKPACK_GRID_X, PANEL_Y + BACKPACK_GRID_Y - 18);
+  bpLabel.position.set(PANEL_X + BACKPACK_GRID_X, PANEL_Y + BACKPACK_GRID_Y - 28);
   root.addChild(bpLabel);
 
   // Feedback text
@@ -421,7 +421,7 @@ function refreshPanel(): void {
               fontFamily: Fonts.body,
             }),
           });
-          slotIcon.position.set(3, 32);
+          slotIcon.position.set(3, 36);
           slotC.addChild(slotIcon);
 
           slotBg.eventMode = 'static';
@@ -498,7 +498,7 @@ function refreshPanel(): void {
             fontFamily: Fonts.body,
           }),
         });
-        slotIcon.position.set(3, 32);
+        slotIcon.position.set(3, 36);
         slotC.addChild(slotIcon);
 
         slotBg.eventMode = 'static';
@@ -575,6 +575,7 @@ let keyListener: ((e: KeyboardEvent) => void) | null = null;
 
 function attachKeyListener(): void {
   if (keyListener) return;
+  InputManager.instance.textInputActive = true;
   keyListener = (e: KeyboardEvent) => {
     if (!visible) return;
 
@@ -602,6 +603,7 @@ function detachKeyListener(): void {
     window.removeEventListener('keydown', keyListener);
     keyListener = null;
   }
+  InputManager.instance.textInputActive = false;
 }
 
 // --- Public API ---

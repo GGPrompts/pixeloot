@@ -9,11 +9,11 @@ import {
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 480;
-const PANEL_H = 300;
-const BTN_W = 180;
-const BTN_H = 120;
-const BTN_GAP = 30;
+const PANEL_W = 640;
+const PANEL_H = 400;
+const BTN_W = 240;
+const BTN_H = 160;
+const BTN_GAP = 40;
 
 let container: Container | null = null;
 let selectionMade = false;
@@ -168,13 +168,13 @@ export function showClassSelect(onSelect: () => void): void {
     }),
   });
   subtitle.anchor.set(0.5, 0);
-  subtitle.position.set(SCREEN_W / 2, panelY + 42);
+  subtitle.position.set(SCREEN_W / 2, panelY + 52);
   container.addChild(subtitle);
 
   // Class buttons
   const totalBtnWidth = classes.length * BTN_W + (classes.length - 1) * BTN_GAP;
   const btnStartX = (SCREEN_W - totalBtnWidth) / 2;
-  const btnY = panelY + 70;
+  const btnY = panelY + 90;
 
   for (let i = 0; i < classes.length; i++) {
     const x = btnStartX + i * (BTN_W + BTN_GAP);

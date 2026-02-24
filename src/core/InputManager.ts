@@ -1,3 +1,5 @@
+import { SCREEN_W, SCREEN_H } from './constants';
+
 const MOVEMENT_KEYS: Record<string, { x: number; y: number }> = {
   KeyW: { x: 0, y: -1 },
   KeyA: { x: -1, y: 0 },
@@ -16,6 +18,7 @@ export class InputManager {
   private mouse = { x: 0, y: 0 };
   private mouseButtons = new Set<number>();
   private canvas: HTMLCanvasElement;
+  private _textInputActive = false;
 
   private onKeyDown: (e: KeyboardEvent) => void;
   private onKeyUp: (e: KeyboardEvent) => void;
@@ -28,7 +31,8 @@ export class InputManager {
     this.canvas = canvas;
 
     this.onKeyDown = (e: KeyboardEvent) => {
-      if (e.code in MOVEMENT_KEYS) e.preventDefault();
+      if (this._textInputActive) return;
+      if (e.code in MOVEMENT_KEYS || e.code === 'Tab') e.preventDefault();
       this.pressed.add(e.code);
     };
 
@@ -38,10 +42,8 @@ export class InputManager {
 
     this.onMouseMove = (e: MouseEvent) => {
       const rect = this.canvas.getBoundingClientRect();
-      const scaleX = this.canvas.width / rect.width;
-      const scaleY = this.canvas.height / rect.height;
-      this.mouse.x = (e.clientX - rect.left) * scaleX;
-      this.mouse.y = (e.clientY - rect.top) * scaleY;
+      this.mouse.x = ((e.clientX - rect.left) / rect.width) * SCREEN_W;
+      this.mouse.y = ((e.clientY - rect.top) / rect.height) * SCREEN_H;
     };
 
     this.onMouseDown = (e: MouseEvent) => {
@@ -115,6 +117,16 @@ export class InputManager {
   /** Returns whether a mouse button is currently held down. 0 = left, 2 = right. */
   isMouseDown(button = 0): boolean {
     return this.mouseButtons.has(button);
+  }
+
+  /** When true, keyboard input is suppressed (e.g. UI text field has focus). */
+  get textInputActive(): boolean {
+    return this._textInputActive;
+  }
+
+  set textInputActive(value: boolean) {
+    this._textInputActive = value;
+    if (value) this.pressed.clear();
   }
 
   destroy(): void {

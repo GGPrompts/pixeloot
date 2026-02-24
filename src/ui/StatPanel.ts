@@ -8,8 +8,8 @@ import {
   Colors, Fonts, FontSize, drawPanelBg, drawDivider, makeCloseButton,
 } from './UITheme';
 
-const PANEL_W = 360;
-const PANEL_H = 560;
+const PANEL_W = 460;
+const PANEL_H = 680;
 const STAT_NAMES = ['dexterity', 'intelligence', 'vitality', 'focus'] as const;
 const STAT_LABELS: Record<string, string> = {
   dexterity: 'DEX',
@@ -70,12 +70,12 @@ function createPanel(): Container {
       fontFamily: Fonts.body,
     }),
   });
-  pointsText.position.set(px + 16, py + 42);
+  pointsText.position.set(px + 16, py + 52);
   container.addChild(pointsText);
 
   // Stat rows
-  const startY = py + 74;
-  const rowHeight = 50;
+  const startY = py + 96;
+  const rowHeight = 66;
 
   for (let i = 0; i < STAT_NAMES.length; i++) {
     const statName = STAT_NAMES[i];
@@ -86,7 +86,7 @@ function createPanel(): Container {
       text: STAT_LABELS[statName],
       style: new TextStyle({
         fill: Colors.accentCyan,
-        fontSize: 10,
+        fontSize: FontSize.xs,
         fontFamily: Fonts.display,
       }),
     });
@@ -102,7 +102,7 @@ function createPanel(): Container {
         fontFamily: Fonts.body,
       }),
     });
-    desc.position.set(px + 20, rowY + 20);
+    desc.position.set(px + 20, rowY + 28);
     container.addChild(desc);
 
     // Stat value
@@ -114,15 +114,15 @@ function createPanel(): Container {
         fontFamily: Fonts.body,
       }),
     });
-    valText.position.set(px + 230, rowY);
+    valText.position.set(px + 310, rowY);
     container.addChild(valText);
     statValueTexts.push(valText);
 
     // [+] button with 3D border
     const btn = new Graphics();
-    const btnX = px + 278;
+    const btnX = px + 370;
     const btnY = rowY - 2;
-    const btnSize = 28;
+    const btnSize = 36;
     btn.rect(btnX, btnY, btnSize, btnSize).fill({ color: 0x1a2e1a });
     btn.rect(btnX, btnY, btnSize, btnSize).stroke({ width: 2, color: Colors.accentLime });
     container.addChild(btn);
@@ -137,7 +137,7 @@ function createPanel(): Container {
         fontWeight: 'bold',
       }),
     });
-    btnLabel.position.set(btnX + 8, btnY + 2);
+    btnLabel.position.set(btnX + 6, btnY + 2);
     container.addChild(btnLabel);
 
     btn.eventMode = 'static';
@@ -157,7 +157,7 @@ function createPanel(): Container {
     text: 'COMPUTED STATS',
     style: new TextStyle({
       fill: Colors.textSecondary,
-      fontSize: 10,
+      fontSize: FontSize.xs,
       fontFamily: Fonts.display,
     }),
   });
@@ -177,7 +177,7 @@ function createPanel(): Container {
   container.addChild(computedStatsText);
 
   // Close button
-  const closeBtn = makeCloseButton(px + PANEL_W - 50, py + 16, () => {
+  const closeBtn = makeCloseButton(px + PANEL_W - 70, py + 16, () => {
     visible = false;
     if (panel) panel.visible = false;
   });

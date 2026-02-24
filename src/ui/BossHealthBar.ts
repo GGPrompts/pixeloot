@@ -4,8 +4,8 @@ import { game } from '../Game';
 import { Colors, Fonts, FontSize, drawPixelBorder } from './UITheme';
 import { SCREEN_W } from '../core/constants';
 
-const BAR_WIDTH = 440;
-const BAR_HEIGHT = 24;
+const BAR_WIDTH = 560;
+const BAR_HEIGHT = 32;
 const BAR_Y = 40;
 
 const bosses = world.with('boss', 'enemy', 'health');
@@ -34,7 +34,7 @@ function createBar(): void {
     text: 'Dungeon Guardian',
     style: new TextStyle({
       fill: Colors.textPrimary,
-      fontSize: 10,
+      fontSize: FontSize.xs,
       fontFamily: Fonts.display,
       stroke: { color: 0x000000, width: 3 },
     }),

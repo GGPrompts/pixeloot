@@ -6,9 +6,9 @@ import { Colors, Fonts, FontSize, drawPixelBorder } from './UITheme';
 
 const BAR_X = 8;
 const BAR_Y = 30;
-const BAR_W = 240;
-const BAR_H = 16;
-const XP_BAR_H = 10;
+const BAR_W = 320;
+const BAR_H = 24;
+const XP_BAR_H = 14;
 const POTION_COOLDOWN_MAX = 8;
 
 const players = world.with('player', 'health');
@@ -70,11 +70,11 @@ function initHUD(): void {
       fontWeight: 'bold',
     }),
   });
-  statPointIndicator.position.set(BAR_X + BAR_W + 60, xpBarY - 2);
+  statPointIndicator.position.set(BAR_X + BAR_W + 80, xpBarY - 2);
   game.hudLayer.addChild(statPointIndicator);
 
   // Gold counter (shifted down to accommodate XP bar)
-  const goldY = xpBarY + XP_BAR_H + 6;
+  const goldY = xpBarY + XP_BAR_H + 8;
   goldText = new Text({
     text: 'Gold: 0',
     style: new TextStyle({
@@ -95,13 +95,13 @@ function initHUD(): void {
       fontFamily: Fonts.body,
     }),
   });
-  potionLabel.position.set(BAR_X, goldY + 22);
+  potionLabel.position.set(BAR_X, goldY + 32);
   game.hudLayer.addChild(potionLabel);
 
   // Potion cooldown bar background
   potionBg = new Graphics();
-  potionBg.rect(BAR_X + 80, goldY + 24, 80, 10).fill({ color: 0x333333 });
-  drawPixelBorder(potionBg, BAR_X + 80, goldY + 24, 80, 10, { borderWidth: 1 });
+  potionBg.rect(BAR_X + 110, goldY + 34, 110, 14).fill({ color: 0x333333 });
+  drawPixelBorder(potionBg, BAR_X + 110, goldY + 34, 110, 14, { borderWidth: 1 });
   game.hudLayer.addChild(potionBg);
 
   // Potion cooldown fill
@@ -148,18 +148,18 @@ export function updateHUD(): void {
   goldText.text = `Gold: ${gold}`;
 
   // Update potion cooldown
-  const goldY = xpBarY + XP_BAR_H + 6;
+  const goldY = xpBarY + XP_BAR_H + 8;
   const cd = player.potionCooldown ?? 0;
   potionFill.clear();
   if (cd > 0) {
     const cdRatio = cd / POTION_COOLDOWN_MAX;
     potionFill
-      .rect(BAR_X + 80, goldY + 24, 80 * (1 - cdRatio), 10)
+      .rect(BAR_X + 110, goldY + 34, 110 * (1 - cdRatio), 14)
       .fill({ color: Colors.accentLime });
     potionLabel.style.fill = Colors.textMuted;
   } else {
     potionFill
-      .rect(BAR_X + 80, goldY + 24, 80, 10)
+      .rect(BAR_X + 110, goldY + 34, 110, 14)
       .fill({ color: Colors.accentLime });
     potionLabel.style.fill = Colors.accentLime;
   }

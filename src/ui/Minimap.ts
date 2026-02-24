@@ -6,7 +6,7 @@ import { isInTown } from '../core/TownManager';
 import { Colors, drawPixelBorder } from './UITheme';
 import { SCREEN_W } from '../core/constants';
 
-const MAP_SIZE = 160;
+const MAP_SIZE = 200;
 const MAP_X = SCREEN_W - MAP_SIZE - 10;
 const MAP_Y = 24;
 const BG_COLOR = 0x0D0D1A;

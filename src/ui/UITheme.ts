@@ -48,13 +48,13 @@ export const Fonts = {
 } as const;
 
 export const FontSize = {
-  xs: 12,
-  sm: 14,
-  base: 16,
-  lg: 18,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 28,
+  xs: 18,
+  sm: 22,
+  base: 26,
+  lg: 30,
+  xl: 34,
+  '2xl': 40,
+  '3xl': 48,
 } as const;
 
 // ── Drawing Helpers ───────────────────────────────────────────────────

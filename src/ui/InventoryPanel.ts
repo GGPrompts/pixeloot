@@ -13,22 +13,22 @@ import { showItemTooltip, hideTooltip } from './Tooltip';
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 480;
-const PANEL_H = 540;
+const PANEL_W = 620;
+const PANEL_H = 700;
 const PANEL_X = SCREEN_W - PANEL_W - 20;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const GEAR_SLOT_SIZE = 52;
-const GEAR_SLOT_GAP = 6;
+const GEAR_SLOT_SIZE = 60;
+const GEAR_SLOT_GAP = 7;
 const GEAR_COL_X = 24;
-const GEAR_START_Y = 56;
+const GEAR_START_Y = 64;
 
 const BACKPACK_COLS = 4;
 const BACKPACK_ROWS = 5;
-const BACKPACK_SLOT_SIZE = 48;
-const BACKPACK_GAP = 4;
-const BACKPACK_X = 230;
-const BACKPACK_Y = 56;
+const BACKPACK_SLOT_SIZE = 56;
+const BACKPACK_GAP = 5;
+const BACKPACK_X = 290;
+const BACKPACK_Y = 64;
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Weapon]: 'Weapon',
@@ -81,7 +81,7 @@ function createPanel(): Container {
   root.addChild(title);
 
   // Close button
-  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => {
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 70, PANEL_Y + 16, () => {
     visible = false;
     if (container) container.visible = false;
     hideTooltip();
@@ -93,11 +93,11 @@ function createPanel(): Container {
     text: 'Equipment',
     style: new TextStyle({
       fill: Colors.textSecondary,
-      fontSize: 10,
+      fontSize: FontSize.xs,
       fontFamily: Fonts.display,
     }),
   });
-  gearLabel.position.set(PANEL_X + GEAR_COL_X, PANEL_Y + GEAR_START_Y - 16);
+  gearLabel.position.set(PANEL_X + GEAR_COL_X, PANEL_Y + GEAR_START_Y - 28);
   root.addChild(gearLabel);
 
   gearSlotContainers = [];
@@ -158,11 +158,11 @@ function createPanel(): Container {
     text: 'Backpack',
     style: new TextStyle({
       fill: Colors.textSecondary,
-      fontSize: 10,
+      fontSize: FontSize.xs,
       fontFamily: Fonts.display,
     }),
   });
-  bpLabel.position.set(PANEL_X + BACKPACK_X, PANEL_Y + BACKPACK_Y - 16);
+  bpLabel.position.set(PANEL_X + BACKPACK_X, PANEL_Y + BACKPACK_Y - 28);
   root.addChild(bpLabel);
 
   backpackSlotContainers = [];
@@ -313,7 +313,7 @@ function refreshSlots(): void {
           fontFamily: Fonts.body,
         }),
       });
-      slotIcon.position.set(3, 30);
+      slotIcon.position.set(3, 34);
       slotContainer.addChild(slotIcon);
     } else {
       slotBg.clear();

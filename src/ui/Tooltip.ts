@@ -99,13 +99,13 @@ export function showTooltip(
       fill: Colors.textPrimary,
       fontSize: FontSize.base,
       fontFamily: Fonts.body,
-      lineHeight: 20,
+      lineHeight: 28,
       wordWrap: true,
-      wordWrapWidth: 280,
+      wordWrapWidth: 380,
     }),
   });
 
-  const padding = 10;
+  const padding = 14;
   const tooltipW = text.width + padding * 2;
   const tooltipH = text.height + padding * 2;
 

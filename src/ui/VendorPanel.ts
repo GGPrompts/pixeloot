@@ -22,21 +22,21 @@ import { showItemTooltip, showTooltip, hideTooltip, buildItemTooltipText, buildM
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 560;
-const PANEL_H = 600;
+const PANEL_W = 700;
+const PANEL_H = 760;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const SLOT_SIZE = 48;
-const SLOT_GAP = 4;
+const SLOT_SIZE = 56;
+const SLOT_GAP = 5;
 const VENDOR_COLS = 4;
 const BACKPACK_COLS = 4;
 const BACKPACK_ROWS = 5;
 
 const VENDOR_GRID_X = 20;
-const VENDOR_GRID_Y = 76;
+const VENDOR_GRID_Y = 90;
 const BACKPACK_GRID_X = 20;
-const BACKPACK_GRID_Y = 340;
+const BACKPACK_GRID_Y = 420;
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Weapon]: 'Weapon',
@@ -108,7 +108,7 @@ function createPanel(): Container {
   root.addChild(title);
 
   // Close button
-  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => {
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 70, PANEL_Y + 16, () => {
     visible = false;
     if (container) container.visible = false;
     hideTooltip();
@@ -137,7 +137,7 @@ function createPanel(): Container {
       fontFamily: Fonts.body,
     }),
   });
-  vendorLabel.position.set(PANEL_X + VENDOR_GRID_X, PANEL_Y + VENDOR_GRID_Y - 18);
+  vendorLabel.position.set(PANEL_X + VENDOR_GRID_X, PANEL_Y + VENDOR_GRID_Y - 30);
   root.addChild(vendorLabel);
 
   // Backpack section label
@@ -149,7 +149,7 @@ function createPanel(): Container {
       fontFamily: Fonts.body,
     }),
   });
-  bpLabel.position.set(PANEL_X + BACKPACK_GRID_X, PANEL_Y + BACKPACK_GRID_Y - 18);
+  bpLabel.position.set(PANEL_X + BACKPACK_GRID_X, PANEL_Y + BACKPACK_GRID_Y - 30);
   root.addChild(bpLabel);
 
   // Feedback text
@@ -221,7 +221,7 @@ function refreshPanel(): void {
         fontFamily: Fonts.body,
       }),
     });
-    priceText.position.set(3, 33);
+    priceText.position.set(3, 36);
     slotC.addChild(priceText);
 
     slotBg.eventMode = 'static';
@@ -284,7 +284,7 @@ function refreshPanel(): void {
         fontFamily: Fonts.body,
       }),
     });
-    priceText.position.set(3, 33);
+    priceText.position.set(3, 36);
     slotC.addChild(priceText);
 
     slotBg.eventMode = 'static';
@@ -350,7 +350,7 @@ function refreshPanel(): void {
             fontFamily: Fonts.body,
           }),
         });
-        priceText.position.set(3, 33);
+        priceText.position.set(3, 36);
         slotC.addChild(priceText);
 
         slotBg.eventMode = 'static';

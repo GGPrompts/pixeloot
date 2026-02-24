@@ -11,8 +11,8 @@ import {
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout
-const PANEL_W = 460;
-const PANEL_H = 480;
+const PANEL_W = 620;
+const PANEL_H = 660;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
@@ -65,13 +65,13 @@ function rebuildPanel(): void {
   container.addChild(title);
 
   // Close button
-  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => { hideMapDevice(); });
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 70, PANEL_Y + 16, () => { hideMapDevice(); });
   container.addChild(closeBtn);
 
   const maps = inventory.maps;
 
   // "Training Grounds" free entry button
-  const freeY = PANEL_Y + 52;
+  const freeY = PANEL_Y + 64;
   const freeLabel = new Text({
     text: 'Free Entry:',
     style: new TextStyle({
@@ -84,7 +84,7 @@ function rebuildPanel(): void {
   container.addChild(freeLabel);
 
   const freeBtnW = PANEL_W - 24;
-  const freeBtnH = 36;
+  const freeBtnH = 48;
   const freeBtnX = PANEL_X + 12;
   const freeBtnY = freeY + 20;
 
@@ -121,7 +121,7 @@ function rebuildPanel(): void {
       fontFamily: Fonts.body,
     }),
   });
-  freeBtnLabel.position.set(freeBtnX + 12, freeBtnY + 10);
+  freeBtnLabel.position.set(freeBtnX + 12, freeBtnY + 12);
   container.addChild(freeBtnLabel);
 
   if (maps.length === 0) {
@@ -153,7 +153,7 @@ function rebuildPanel(): void {
   container.addChild(listLabel);
 
   const maxVisible = 6;
-  const itemH = 34;
+  const itemH = 48;
   for (let i = 0; i < Math.min(maps.length, maxVisible); i++) {
     const mapItem = maps[i];
     const itemY = listStartY + 22 + i * (itemH + 4);
@@ -189,7 +189,7 @@ function rebuildPanel(): void {
         fontWeight: 'bold',
       }),
     });
-    mapText.position.set(PANEL_X + 20, itemY + 8);
+    mapText.position.set(PANEL_X + 20, itemY + 12);
     container.addChild(mapText);
   }
 
@@ -228,11 +228,11 @@ function rebuildPanel(): void {
           fontFamily: Fonts.body,
         }),
       });
-      modText.position.set(PANEL_X + 16, detailY + 28 + m * 18);
+      modText.position.set(PANEL_X + 16, detailY + 36 + m * 24);
       container.addChild(modText);
     }
 
-    const bonusY = detailY + 28 + selected.modifiers.length * 18 + 8;
+    const bonusY = detailY + 36 + selected.modifiers.length * 24 + 10;
     const bonusText = new Text({
       text: `+${selected.quantityBonus}% Monster Quantity  |  +${selected.rarityBonus}% Item Rarity`,
       style: new TextStyle({
@@ -245,10 +245,10 @@ function rebuildPanel(): void {
     container.addChild(bonusText);
 
     // Activate button
-    const btnW = 150;
-    const btnH = 34;
+    const btnW = 200;
+    const btnH = 44;
     const btnX = PANEL_X + (PANEL_W - btnW) / 2;
-    const btnY = bonusY + 28;
+    const btnY = bonusY + 36;
 
     const btn = new Graphics();
     btn.rect(btnX, btnY, btnW, btnH).fill({ color: 0x113311, alpha: 0.9 });

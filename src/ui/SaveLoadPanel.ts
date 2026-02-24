@@ -9,8 +9,8 @@ import {
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 560;
-const PANEL_H = 480;
+const PANEL_W = 740;
+const PANEL_H = 640;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
@@ -104,15 +104,15 @@ async function buildPanel(): Promise<Container> {
   root.addChild(title);
 
   // Close button
-  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 50, PANEL_Y + 16, () => { hideSaveLoadPanel(); });
+  const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 70, PANEL_Y + 16, () => { hideSaveLoadPanel(); });
   root.addChild(closeBtn);
 
   // Action buttons row at top
-  const btnY = PANEL_Y + 48;
-  const btnH = 28;
-  const btnGap = 8;
+  const btnY = PANEL_Y + 60;
+  const btnH = 38;
+  const btnGap = 10;
 
-  makeButton('New Save', PANEL_X + 16, btnY, 90, btnH, root, Colors.accentLime, async () => {
+  makeButton('New Save', PANEL_X + 16, btnY, 120, btnH, root, Colors.accentLime, async () => {
     busy = true;
     try {
       const name = prompt('Save name:');
@@ -126,7 +126,7 @@ async function buildPanel(): Promise<Container> {
     busy = false;
   });
 
-  makeButton('Import', PANEL_X + 16 + 90 + btnGap, btnY, 80, btnH, root, Colors.accentOrange, async () => {
+  makeButton('Import', PANEL_X + 16 + 120 + btnGap, btnY, 110, btnH, root, Colors.accentOrange, async () => {
     busy = true;
     try {
       const json = prompt('Paste save JSON:');
@@ -160,9 +160,9 @@ async function renderSaveList(root: Container): Promise<void> {
   root.addChild(listContainer);
 
   const saves = await listSaves();
-  const listY = PANEL_Y + 90;
-  const rowH = 44;
-  const maxVisible = Math.floor((PANEL_H - 110) / rowH);
+  const listY = PANEL_Y + 116;
+  const rowH = 56;
+  const maxVisible = Math.floor((PANEL_H - 140) / rowH);
 
   if (saves.length === 0) {
     const empty = new Text({
@@ -202,9 +202,9 @@ async function renderSaveList(root: Container): Promise<void> {
     listContainer.addChild(infoText);
 
     // Row buttons
-    const btnX = PANEL_X + PANEL_W - 260;
-    const btnW = 56;
-    const btnRowH = 24;
+    const btnX = PANEL_X + PANEL_W - 340;
+    const btnW = 72;
+    const btnRowH = 32;
     const btnRowY = y + 8;
 
     if (slot.id != null) {
