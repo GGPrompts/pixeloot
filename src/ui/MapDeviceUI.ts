@@ -77,22 +77,84 @@ function rebuildPanel(): void {
 
   const maps = inventory.maps;
 
+  // Always show "Training Grounds" free entry option
+  const freeY = PANEL_Y + 48;
+  const freeLabel = new Text({
+    text: 'Free Entry:',
+    style: new TextStyle({
+      fill: 0xaaaacc,
+      fontSize: 12,
+      fontFamily: 'monospace',
+    }),
+  });
+  freeLabel.position.set(PANEL_X + 16, freeY);
+  container.addChild(freeLabel);
+
+  const freeBtnW = PANEL_W - 24;
+  const freeBtnH = 36;
+  const freeBtnX = PANEL_X + 12;
+  const freeBtnY = freeY + 18;
+
+  const freeBtn = new Graphics();
+  freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
+    .fill({ color: 0x0a150a, alpha: 0.9 });
+  freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
+    .stroke({ width: 1, color: 0x44aa44 });
+  freeBtn.eventMode = 'static';
+  freeBtn.cursor = 'pointer';
+
+  freeBtn.on('pointerover', () => {
+    freeBtn.clear();
+    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
+      .fill({ color: 0x1a2e1a, alpha: 0.9 });
+    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
+      .stroke({ width: 2, color: 0x66ff66 });
+  });
+
+  freeBtn.on('pointerout', () => {
+    freeBtn.clear();
+    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
+      .fill({ color: 0x0a150a, alpha: 0.9 });
+    freeBtn.roundRect(freeBtnX, freeBtnY, freeBtnW, freeBtnH, 4)
+      .stroke({ width: 1, color: 0x44aa44 });
+  });
+
+  freeBtn.on('pointertap', () => {
+    hideMapDevice();
+    // Activate a free T1 map with no modifiers
+    activateMap({ id: '__free__', tier: 1, modifiers: [], quantityBonus: 0, rarityBonus: 0 });
+  });
+
+  container.addChild(freeBtn);
+
+  const freeBtnLabel = new Text({
+    text: 'Training Grounds  (T1, no modifiers)',
+    style: new TextStyle({
+      fill: 0x44ff44,
+      fontSize: 12,
+      fontFamily: 'monospace',
+    }),
+  });
+  freeBtnLabel.position.set(freeBtnX + 12, freeBtnY + 10);
+  container.addChild(freeBtnLabel);
+
   if (maps.length === 0) {
     const emptyText = new Text({
-      text: 'No maps found.\n\nMaps drop from defeating enemies.\nBosses always drop maps.',
+      text: 'No maps in inventory.\nMaps drop from bosses and enemies.',
       style: new TextStyle({
         fill: 0x666688,
-        fontSize: 13,
+        fontSize: 11,
         fontFamily: 'monospace',
-        lineHeight: 20,
+        lineHeight: 18,
       }),
     });
-    emptyText.position.set(PANEL_X + 20, PANEL_Y + 60);
+    emptyText.position.set(PANEL_X + 20, freeBtnY + freeBtnH + 16);
     container.addChild(emptyText);
     return;
   }
 
-  // Map list (left side)
+  // Map list
+  const listStartY = freeBtnY + freeBtnH + 16;
   const listLabel = new Text({
     text: 'Available Maps:',
     style: new TextStyle({
@@ -101,14 +163,14 @@ function rebuildPanel(): void {
       fontFamily: 'monospace',
     }),
   });
-  listLabel.position.set(PANEL_X + 16, PANEL_Y + 48);
+  listLabel.position.set(PANEL_X + 16, listStartY);
   container.addChild(listLabel);
 
-  const maxVisible = 8;
+  const maxVisible = 6;
   const itemH = 32;
   for (let i = 0; i < Math.min(maps.length, maxVisible); i++) {
     const mapItem = maps[i];
-    const itemY = PANEL_Y + 68 + i * (itemH + 4);
+    const itemY = listStartY + 20 + i * (itemH + 4);
     const color = TIER_COLORS[mapItem.tier] ?? 0xcccccc;
     const isSelected = i === selectedMapIndex;
 
@@ -145,7 +207,7 @@ function rebuildPanel(): void {
   // Details for selected map
   if (selectedMapIndex >= 0 && selectedMapIndex < maps.length) {
     const selected = maps[selectedMapIndex];
-    const detailY = PANEL_Y + 68 + Math.min(maps.length, maxVisible) * (itemH + 4) + 10;
+    const detailY = listStartY + 20 + Math.min(maps.length, maxVisible) * (itemH + 4) + 10;
     const color = TIER_COLORS[selected.tier] ?? 0xcccccc;
 
     // Separator
