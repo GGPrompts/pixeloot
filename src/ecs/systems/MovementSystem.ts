@@ -1,16 +1,15 @@
 import { world } from '../world';
 import { InputManager } from '../../core/InputManager';
+import { game } from '../../Game';
 
-const SCREEN_W = 1280;
-const SCREEN_H = 720;
-const MARGIN = 12;
+const TILE_SIZE = 32;
 
 const allMovers = world.with('position', 'velocity');
 const players = world.with('position', 'velocity', 'speed', 'player');
 
 /**
  * Movement system: reads input for player entities, applies velocity to position,
- * and clamps to screen bounds.
+ * and resolves wall collisions for non-projectile entities.
  *
  * Called from fixedUpdate at 60 Hz.
  */
@@ -29,15 +28,47 @@ export function movementSystem(dt: number): void {
     }
   }
 
+  const tileMap = game.tileMap;
+
   // Apply velocity to position for all movers
   for (const entity of allMovers) {
-    entity.position.x += entity.velocity.x * dt;
-    entity.position.y += entity.velocity.y * dt;
+    // Projectiles skip wall collision (handled by ProjectileSystem)
+    if (entity.projectile) {
+      entity.position.x += entity.velocity.x * dt;
+      entity.position.y += entity.velocity.y * dt;
+      continue;
+    }
 
-    // Clamp non-projectile entities to screen bounds
-    if (!entity.projectile) {
-      entity.position.x = Math.max(MARGIN, Math.min(SCREEN_W - MARGIN, entity.position.x));
-      entity.position.y = Math.max(MARGIN, Math.min(SCREEN_H - MARGIN, entity.position.y));
+    const prevX = entity.position.x;
+    const prevY = entity.position.y;
+
+    // Try X movement first
+    const newX = prevX + entity.velocity.x * dt;
+    const tileAtNewX = tileMap.worldToTile(newX, prevY);
+    if (!tileMap.isSolid(tileAtNewX.x, tileAtNewX.y)) {
+      entity.position.x = newX;
+    } else {
+      // Slide against wall: snap to tile edge
+      entity.velocity.x = 0;
+      if (newX > prevX) {
+        entity.position.x = tileAtNewX.x * TILE_SIZE - 1;
+      } else {
+        entity.position.x = (tileAtNewX.x + 1) * TILE_SIZE + 1;
+      }
+    }
+
+    // Try Y movement
+    const newY = prevY + entity.velocity.y * dt;
+    const tileAtNewY = tileMap.worldToTile(entity.position.x, newY);
+    if (!tileMap.isSolid(tileAtNewY.x, tileAtNewY.y)) {
+      entity.position.y = newY;
+    } else {
+      entity.velocity.y = 0;
+      if (newY > prevY) {
+        entity.position.y = tileAtNewY.y * TILE_SIZE - 1;
+      } else {
+        entity.position.y = (tileAtNewY.y + 1) * TILE_SIZE + 1;
+      }
     }
   }
 }
