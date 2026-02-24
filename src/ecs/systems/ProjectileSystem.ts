@@ -2,7 +2,7 @@ import { world } from '../world';
 import { game } from '../../Game';
 import { despawnProjectile } from '../../entities/Projectile';
 import type { Entity } from '../world';
-import { SCREEN_W, SCREEN_H } from '../../core/constants';
+import { TILE_SIZE } from '../../core/constants';
 
 const projectiles = world.with('projectile', 'position', 'velocity', 'lifetime');
 const enemyProjectiles = world.with('enemyProjectile', 'position', 'velocity', 'lifetime');
@@ -26,11 +26,13 @@ function shouldDespawn(entity: Entity & { position: { x: number; y: number }; li
   const tile = game.tileMap.worldToTile(entity.position.x, entity.position.y);
   if (game.tileMap.isSolid(tile.x, tile.y)) return true;
 
+  const worldW = game.tileMap.width * TILE_SIZE;
+  const worldH = game.tileMap.height * TILE_SIZE;
   if (
     entity.position.x < 0 ||
-    entity.position.x > SCREEN_W ||
+    entity.position.x > worldW ||
     entity.position.y < 0 ||
-    entity.position.y > SCREEN_H
+    entity.position.y > worldH
   ) {
     return true;
   }
