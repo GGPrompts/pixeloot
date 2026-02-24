@@ -4,6 +4,8 @@ import { game } from '../Game';
 import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker } from './Enemy';
 import { spawnBoss } from './Boss';
 import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
+import { autoSave } from '../save/SaveManager';
+import { hasModifier, getQuantityBonus } from '../core/MapDevice';
 
 const MIN_PLAYER_DIST = 200;
 const SURROUND_DIST = 400;
@@ -283,6 +285,8 @@ export class WaveSystem {
         if (this.livingEnemyCount() === 0) {
           this.state = 'cooldown';
           this.cooldownTimer = WAVE_DELAY;
+          // Auto-save after wave clear
+          autoSave().catch((err) => console.warn('Auto-save failed:', err));
         }
         break;
     }
@@ -318,9 +322,29 @@ export class WaveSystem {
       ? PREDEFINED_WAVES[this.currentWave - 1]
       : generateWave(this.currentWave);
 
+    // Apply map modifiers to wave definition
+    const modifiedEnemies = waveDef.enemies.map((e) => ({ ...e }));
+
+    // Extra swarm modifier: +50% swarm enemies
+    if (hasModifier('extra_swarm')) {
+      for (const entry of modifiedEnemies) {
+        if (entry.type === 'swarm') {
+          entry.count = Math.round(entry.count * 1.5);
+        }
+      }
+    }
+
+    // Quantity bonus: spawn more enemies overall
+    const qtyBonus = getQuantityBonus();
+    if (qtyBonus > 0) {
+      for (const entry of modifiedEnemies) {
+        entry.count = Math.round(entry.count * (1 + qtyBonus / 100));
+      }
+    }
+
     // Flatten enemy list
     const typeList: SpawnEntry['type'][] = [];
-    for (const entry of waveDef.enemies) {
+    for (const entry of modifiedEnemies) {
       for (let i = 0; i < entry.count; i++) {
         typeList.push(entry.type);
       }

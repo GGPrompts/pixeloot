@@ -3,6 +3,7 @@ import { world } from '../world';
 import { game } from '../../Game';
 import { InputManager } from '../../core/InputManager';
 import { spawnInitialEnemies } from '../../entities/EnemySpawner';
+import { getComputedStats } from '../../core/ComputedStats';
 
 const POTION_COOLDOWN = 8; // seconds
 const POTION_HEAL_PERCENT = 0.3; // 30% of max HP
@@ -68,6 +69,15 @@ export function healthSystem(dt: number): void {
       player.hotTimer = 0;
       hotAccumulator = 0;
     }
+  }
+
+  // --- HP Regen from gear affixes ---
+  const computed = getComputedStats();
+  if (computed.hpRegen > 0 && !player.dead && player.health.current < player.health.max) {
+    player.health.current = Math.min(
+      player.health.max,
+      player.health.current + computed.hpRegen * dt,
+    );
   }
 
   // --- Death check ---

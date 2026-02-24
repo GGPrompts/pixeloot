@@ -2,6 +2,7 @@ import { World } from 'miniplex';
 import type { Container, Graphics } from 'pixi.js';
 import type { StatusEffect } from '../core/StatusEffects';
 import type { BaseItem } from '../loot/ItemTypes';
+import type { MapItem } from '../loot/MapItem';
 
 export type Entity = {
   position?: { x: number; y: number };
@@ -42,7 +43,9 @@ export type Entity = {
   bossPhase?: number;              // current boss fight phase (1, 2, 3)
   lootDrop?: { item: BaseItem };    // item drop on the ground
   goldDrop?: number;                // gold amount for gold drops
+  mapDrop?: { mapItem: MapItem };   // map item drop on the ground
   pickup?: true;                    // entity can be picked up by walking over it
+  firstHitTaken?: true;             // tracks if enemy has been hit once (resist_first_hit mod)
 };
 
 export const world = new World<Entity>();

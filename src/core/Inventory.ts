@@ -1,4 +1,6 @@
 import { BaseItem, Slot } from '../loot/ItemTypes';
+import type { MapItem } from '../loot/MapItem';
+import { markStatsDirty } from './ComputedStats';
 
 export interface EquipSlots {
   weapon: BaseItem | null;
@@ -35,6 +37,22 @@ export class Inventory {
 
   backpack: (BaseItem | null)[] = new Array(BACKPACK_SIZE).fill(null);
 
+  /** Map items stored separately from gear. */
+  maps: MapItem[] = [];
+
+  /** Optional callback fired after any equip/unequip to sync entity stats. */
+  onGearChange: (() => void) | null = null;
+
+  /** Add a map item to the map stash. */
+  addMap(mapItem: MapItem): void {
+    this.maps.push(mapItem);
+  }
+
+  /** Remove a map item by id. */
+  removeMap(mapId: string): void {
+    this.maps = this.maps.filter((m) => m.id !== mapId);
+  }
+
   /** Add an item to the first empty backpack slot. Returns false if full. */
   addItem(item: BaseItem): boolean {
     const emptyIdx = this.backpack.indexOf(null);
@@ -55,6 +73,8 @@ export class Inventory {
     const currentlyEquipped = this.equipped[slotKey];
     this.equipped[slotKey] = item;
     this.backpack[backpackIndex] = currentlyEquipped; // swap (or null)
+    markStatsDirty();
+    this.onGearChange?.();
   }
 
   /** Unequip item from slot, moving it to the backpack. */
@@ -67,6 +87,8 @@ export class Inventory {
 
     this.backpack[emptyIdx] = item;
     this.equipped[slot] = null;
+    markStatsDirty();
+    this.onGearChange?.();
   }
 
   /** Get the equip slot key for a given item. For rings, prefer empty slot. */

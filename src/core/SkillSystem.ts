@@ -1,4 +1,5 @@
 import { InputManager } from './InputManager';
+import { getComputedStats } from './ComputedStats';
 
 export interface SkillDef {
   name: string;
@@ -22,13 +23,25 @@ const KEY_CODES: Record<string, string> = {
 class SkillSystem {
   private skills: SkillState[] = [];
   private prevPressed = new Set<string>();
+  private _activeClass = '';
 
   /** Set the current class skills (replaces all). */
-  setClass(defs: SkillDef[]): void {
+  setClass(defs: SkillDef[], className?: string): void {
     this.skills = defs.map((def) => ({
       def,
       cooldownRemaining: 0,
     }));
+    if (className) this._activeClass = className;
+  }
+
+  /** Get the name of the currently active class. */
+  get activeClass(): string {
+    return this._activeClass;
+  }
+
+  /** Set the active class name (used by save/load). */
+  set activeClass(name: string) {
+    this._activeClass = name;
   }
 
   /** Decrease cooldowns each tick. */
@@ -52,7 +65,9 @@ class SkillSystem {
     if (skill.cooldownRemaining > 0) return false;
 
     skill.def.execute(playerPos, mousePos);
-    skill.cooldownRemaining = skill.def.cooldown;
+    // Apply cooldown reduction from gear + focus stat (capped at 40%)
+    const cdr = getComputedStats().cooldownReduction;
+    skill.cooldownRemaining = skill.def.cooldown * (1 - cdr);
     return true;
   }
 

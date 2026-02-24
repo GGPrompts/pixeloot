@@ -113,7 +113,7 @@ function selectClass(option: ClassOption): void {
   if (selectionMade) return;
   selectionMade = true;
 
-  skillSystem.setClass(option.skills);
+  skillSystem.setClass(option.skills, option.name);
   hideClassSelect();
 
   if (onSelectCallback) {
@@ -215,6 +215,12 @@ export function isClassSelectVisible(): boolean {
 /**
  * Toggle class select on/off. Used for the 'C' keybind.
  */
+/** Look up class skills by name (used by save/load). */
+export function getClassSkillsByName(name: string): typeof rangerSkills | null {
+  const found = classes.find((c) => c.name === name);
+  return found ? found.skills : null;
+}
+
 export function toggleClassSelect(): void {
   if (container) {
     hideClassSelect();

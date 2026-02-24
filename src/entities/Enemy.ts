@@ -2,6 +2,25 @@ import { Graphics } from 'pixi.js';
 import { world, type Entity } from '../ecs/world';
 import { game } from '../Game';
 import { scaleHealth, scaleDamage } from '../core/MonsterScaling';
+import { hasModifier } from '../core/MapDevice';
+
+/**
+ * Apply active map modifiers to a freshly spawned enemy entity.
+ * - hp_boost: +20% HP
+ * - speed_boost: +15% speed
+ */
+function applyMapModifiers(entity: Entity): void {
+  if (hasModifier('hp_boost') && entity.health) {
+    const bonus = Math.round(entity.health.max * 0.2);
+    entity.health.max += bonus;
+    entity.health.current += bonus;
+  }
+  if (hasModifier('speed_boost') && entity.speed !== undefined && entity.baseSpeed !== undefined) {
+    const speedBonus = Math.round(entity.baseSpeed * 0.15);
+    entity.speed += speedBonus;
+    entity.baseSpeed += speedBonus;
+  }
+}
 
 /**
  * Spawns a Rusher enemy: a red triangle that chases the player.
@@ -22,7 +41,7 @@ export function spawnRusher(worldX: number, worldY: number, monsterLevel = 1): E
   const hp = scaleHealth(30, monsterLevel);
   const dmg = scaleDamage(10, monsterLevel);
 
-  return world.add({
+  const entity = world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
     speed: 80,
@@ -34,6 +53,8 @@ export function spawnRusher(worldX: number, worldY: number, monsterLevel = 1): E
     sprite: g,
     level: monsterLevel,
   });
+  applyMapModifiers(entity);
+  return entity;
 }
 
 /**
@@ -49,7 +70,7 @@ export function spawnSwarm(worldX: number, worldY: number, monsterLevel = 1): En
   const hp = scaleHealth(10, monsterLevel);
   const dmg = scaleDamage(5, monsterLevel);
 
-  return world.add({
+  const entity = world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
     speed: 100,
@@ -61,6 +82,8 @@ export function spawnSwarm(worldX: number, worldY: number, monsterLevel = 1): En
     sprite: g,
     level: monsterLevel,
   });
+  applyMapModifiers(entity);
+  return entity;
 }
 
 /**
@@ -88,7 +111,7 @@ export function spawnTank(worldX: number, worldY: number, monsterLevel = 1): Ent
   const hp = scaleHealth(120, monsterLevel);
   const dmg = scaleDamage(20, monsterLevel);
 
-  return world.add({
+  const entity = world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
     speed: 40,
@@ -100,6 +123,8 @@ export function spawnTank(worldX: number, worldY: number, monsterLevel = 1): Ent
     sprite: g,
     level: monsterLevel,
   });
+  applyMapModifiers(entity);
+  return entity;
 }
 
 /**
@@ -123,7 +148,7 @@ export function spawnSniper(worldX: number, worldY: number, monsterLevel = 1): E
   // Sniper base damage is 0 (projectile carries damage), keep it unscaled
   const dmg = 0;
 
-  return world.add({
+  const entity = world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
     speed: 50,
@@ -136,6 +161,8 @@ export function spawnSniper(worldX: number, worldY: number, monsterLevel = 1): E
     aiTimer: 0,
     level: monsterLevel,
   });
+  applyMapModifiers(entity);
+  return entity;
 }
 
 /**
@@ -156,7 +183,7 @@ export function spawnFlanker(worldX: number, worldY: number, monsterLevel = 1): 
   const hp = scaleHealth(20, monsterLevel);
   const dmg = scaleDamage(12, monsterLevel);
 
-  return world.add({
+  const entity = world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
     speed: 130,
@@ -170,4 +197,6 @@ export function spawnFlanker(worldX: number, worldY: number, monsterLevel = 1): 
     aiState: 'circling',
     level: monsterLevel,
   });
+  applyMapModifiers(entity);
+  return entity;
 }

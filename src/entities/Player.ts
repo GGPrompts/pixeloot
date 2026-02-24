@@ -1,6 +1,8 @@
 import { Graphics } from 'pixi.js';
 import { world, type Entity } from '../ecs/world';
 import { game } from '../Game';
+import { setPlayerStats, applyComputedToEntity } from '../core/ComputedStats';
+import { inventory } from '../core/Inventory';
 
 /**
  * Creates the player entity: a glowing cyan chevron pointing right.
@@ -42,6 +44,12 @@ export function createPlayer(): Entity {
     statPoints: 0,
     stats: { dexterity: 0, intelligence: 0, vitality: 0, focus: 0 },
   });
+
+  // Wire up computed stats: set player stat reference and gear change callback
+  setPlayerStats(entity.stats!);
+  inventory.onGearChange = () => {
+    applyComputedToEntity(entity as Entity & { health: { current: number; max: number }; baseSpeed: number; speed: number });
+  };
 
   return entity;
 }

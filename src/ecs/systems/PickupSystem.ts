@@ -2,6 +2,8 @@ import { Text, TextStyle } from 'pixi.js';
 import { world, Entity } from '../world';
 import { game } from '../../Game';
 import { Rarity } from '../../loot/ItemTypes';
+import { inventory } from '../../core/Inventory';
+import { getComputedStats } from '../../core/ComputedStats';
 
 const PICKUP_RADIUS = 32;
 const PICKUP_RADIUS_SQ = PICKUP_RADIUS * PICKUP_RADIUS;
@@ -80,8 +82,20 @@ export function pickupSystem(_dt: number): void {
       console.log('[Loot] Picked up:', item.name, `(${Rarity[item.rarity]})`, item);
     }
 
+    if (pickup.mapDrop) {
+      const mapItem = pickup.mapDrop.mapItem;
+      inventory.addMap(mapItem);
+      const tierColor = [0, 0xcccccc, 0x4488ff, 0xffff00, 0xff8800, 0xff4444][mapItem.tier] ?? 0xcccccc;
+      spawnPickupText(
+        pickup.position.x,
+        pickup.position.y - 10,
+        `Map T${mapItem.tier}`,
+        tierColor,
+      );
+    }
+
     if (pickup.goldDrop !== undefined) {
-      const amount = pickup.goldDrop;
+      const amount = Math.round(pickup.goldDrop * getComputedStats().goldMultiplier);
       spawnPickupText(pickup.position.x, pickup.position.y - 10, `+${amount} gold`, 0xffd700);
       // Add gold to player
       if (player.gold !== undefined) {

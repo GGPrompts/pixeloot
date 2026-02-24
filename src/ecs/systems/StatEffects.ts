@@ -1,30 +1,29 @@
 import type { Entity } from '../world';
-
-const BASE_MAX_HP = 100;
+import { markStatsDirty, applyComputedToEntity } from '../../core/ComputedStats';
 
 /**
  * Applies passive stat effects to the player entity.
  * Called whenever a stat point is allocated.
+ * Uses ComputedStats to aggregate base + gear + stat point bonuses.
  *
- * Stat effects:
+ * Stat effects (via ComputedStats):
  * - Dexterity: +5% projectile speed per point, +3% attack speed per point
- * - Intelligence: +8% skill damage per point (multiplier stored on entity)
- * - Vitality: +10 max HP per point
+ * - Intelligence: +8% skill damage per point
+ * - Vitality: +10 max HP per point + gear bonuses
  * - Focus: +5% cooldown reduction per point
  */
 export function applyStatEffects(
-  player: Entity & { stats: { dexterity: number; intelligence: number; vitality: number; focus: number }; health: { current: number; max: number } },
+  player: Entity & {
+    stats: { dexterity: number; intelligence: number; vitality: number; focus: number };
+    health: { current: number; max: number };
+    baseSpeed?: number;
+    speed?: number;
+  },
 ): void {
-  const { stats, health } = player;
-
-  // Vitality: +10 max HP per point
-  const newMax = BASE_MAX_HP + stats.vitality * 10;
-  const hpDiff = newMax - health.max;
-  health.max = newMax;
-  // When gaining max HP, also heal for the gained amount
-  if (hpDiff > 0) {
-    health.current = Math.min(health.current + hpDiff, health.max);
-  }
+  // Mark dirty so computed stats reflect the new stat allocation
+  markStatsDirty();
+  // Apply computed maxHP, moveSpeed, etc. to the player entity
+  applyComputedToEntity(player);
 }
 
 /**

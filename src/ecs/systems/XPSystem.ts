@@ -2,6 +2,7 @@ import { Text, TextStyle } from 'pixi.js';
 import { world } from '../world';
 import { game } from '../../Game';
 import { scaleXP } from '../../core/MonsterScaling';
+import { getComputedStats } from '../../core/ComputedStats';
 
 const players = world.with('player', 'xp', 'level', 'statPoints', 'stats');
 
@@ -27,7 +28,9 @@ export function grantXP(amount: number): void {
   if (players.entities.length === 0) return;
   const player = players.entities[0];
 
-  player.xp += amount;
+  // Apply XP multiplier from gear affixes
+  const xpGain = Math.round(amount * getComputedStats().xpMultiplier);
+  player.xp += xpGain;
 
   // Check for level-ups (can level multiple times at once)
   let needed = xpToNextLevel(player.level);

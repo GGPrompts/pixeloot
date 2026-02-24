@@ -3,9 +3,10 @@ import { world } from '../ecs/world';
 import { game } from '../Game';
 import { InputManager } from '../core/InputManager';
 import { applyStatEffects } from '../ecs/systems/StatEffects';
+import { getComputedStats, type FinalStats } from '../core/ComputedStats';
 
 const PANEL_W = 320;
-const PANEL_H = 280;
+const PANEL_H = 520;
 const STAT_NAMES = ['dexterity', 'intelligence', 'vitality', 'focus'] as const;
 const STAT_LABELS: Record<string, string> = {
   dexterity: 'DEX',
@@ -31,6 +32,7 @@ let titleText: Text;
 let pointsText: Text;
 const statValueTexts: Text[] = [];
 const statBtnGraphics: Graphics[] = [];
+let computedStatsText: Text;
 
 function createPanel(): Container {
   const container = new Container();
@@ -146,6 +148,37 @@ function createPanel(): Container {
     btn.on('pointerdown', () => allocateStat(statName));
   }
 
+  // ── Divider ──
+  const dividerY = startY + STAT_NAMES.length * rowHeight + 4;
+  const divider = new Graphics();
+  divider.moveTo(px + 16, dividerY).lineTo(px + PANEL_W - 16, dividerY).stroke({ width: 1, color: 0x444466 });
+  container.addChild(divider);
+
+  // ── Computed Stats Section ──
+  const computedTitle = new Text({
+    text: 'COMPUTED STATS',
+    style: new TextStyle({
+      fill: 0xaaaacc,
+      fontSize: 13,
+      fontFamily: 'monospace',
+      fontWeight: 'bold',
+    }),
+  });
+  computedTitle.position.set(px + 16, dividerY + 6);
+  container.addChild(computedTitle);
+
+  computedStatsText = new Text({
+    text: '',
+    style: new TextStyle({
+      fill: 0xcccccc,
+      fontSize: 11,
+      fontFamily: 'monospace',
+      lineHeight: 16,
+    }),
+  });
+  computedStatsText.position.set(px + 16, dividerY + 24);
+  container.addChild(computedStatsText);
+
   // Close hint
   const hint = new Text({
     text: '[Tab] to close',
@@ -160,6 +193,24 @@ function createPanel(): Container {
 
   container.visible = false;
   return container;
+}
+
+function formatComputedStats(stats: FinalStats): string {
+  const lines: string[] = [];
+
+  // Offensive
+  lines.push(`DMG: ${stats.damage}    ATK SPD: x${stats.attackSpeed.toFixed(2)}`);
+  lines.push(`PROJ SPD: x${stats.projectileSpeed.toFixed(2)}  CRIT: ${(stats.critChance * 100).toFixed(1)}%`);
+
+  // Defensive
+  lines.push(`MAX HP: ${stats.maxHP}  ARMOR: ${stats.armor}`);
+  lines.push(`DR: ${(stats.damageReduction * 100).toFixed(1)}%  REGEN: ${stats.hpRegen.toFixed(1)}/s`);
+
+  // Utility
+  lines.push(`MOVE: ${Math.round(stats.moveSpeed)}  CDR: ${(stats.cooldownReduction * 100).toFixed(1)}%`);
+  lines.push(`XP: x${stats.xpMultiplier.toFixed(2)}  GOLD: x${stats.goldMultiplier.toFixed(2)}`);
+
+  return lines.join('\n');
 }
 
 function allocateStat(stat: typeof STAT_NAMES[number]): void {
@@ -194,6 +245,10 @@ function refreshValues(): void {
     // Dim buttons when no points
     statBtnGraphics[i].alpha = player.statPoints > 0 ? 1 : 0.3;
   }
+
+  // Update computed stats display
+  const computed = getComputedStats();
+  computedStatsText.text = formatComputedStats(computed);
 }
 
 /**

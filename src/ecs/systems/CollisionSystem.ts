@@ -6,6 +6,15 @@ import { grantXP, getEnemyXP } from './XPSystem';
 import { StatusType, hasStatus, consumeShock, applyStatus } from '../../core/StatusEffects';
 import { rollDrops } from '../../loot/DropTable';
 import { spawnItemDrop, spawnGoldDrop } from '../../entities/LootDrop';
+import { hasModifier } from '../../core/MapDevice';
+import { spawnMapDrop } from '../../entities/MapDrop';
+import { getComputedStats } from '../../core/ComputedStats';
+
+/** Apply armor damage reduction to incoming damage. */
+function reduceDamage(rawDamage: number): number {
+  const dr = getComputedStats().damageReduction;
+  return Math.max(1, Math.round(rawDamage * (1 - dr)));
+}
 
 const HIT_RADIUS = 16;
 const CONTACT_RADIUS = 20;
@@ -41,6 +50,17 @@ export function collisionSystem(dt: number): void {
       const distSq = dx * dx + dy * dy;
 
       if (distSq < HIT_RADIUS * HIT_RADIUS) {
+        // Resist first hit modifier: enemy is immune to the first damage instance
+        if (hasModifier('resist_first_hit') && !enemy.firstHitTaken) {
+          world.addComponent(enemy, 'firstHitTaken', true as const);
+          spawnDamageNumber(enemy.position.x, enemy.position.y - 10, 0, 0x888888);
+          if (!proj.piercing) {
+            consumed = true;
+            projectilesToDespawn.push(proj);
+          }
+          continue;
+        }
+
         // Calculate damage with status effect modifiers
         let dmg = proj.damage;
 
@@ -123,6 +143,31 @@ export function collisionSystem(dt: number): void {
       );
     }
 
+    // Spawn map drop if rolled
+    if (drops.mapItem) {
+      spawnMapDrop(
+        enemy.position.x + (Math.random() - 0.5) * 20,
+        enemy.position.y + (Math.random() - 0.5) * 20,
+        drops.mapItem,
+      );
+    }
+
+    // Explode on death modifier: deal AoE damage to the player
+    if (hasModifier('explode_on_death')) {
+      const explosionRadius = 60;
+      const explosionDamage = Math.round((enemy.damage ?? 5) * 0.5);
+      if (players.entities.length > 0) {
+        const pl = players.entities[0];
+        const edx = pl.position.x - enemy.position.x;
+        const edy = pl.position.y - enemy.position.y;
+        if (edx * edx + edy * edy < explosionRadius * explosionRadius) {
+          const reducedExplosion = reduceDamage(explosionDamage);
+          pl.health.current -= reducedExplosion;
+          spawnDamageNumber(pl.position.x, pl.position.y - 10, reducedExplosion, 0xff6600);
+        }
+      }
+    }
+
     if (enemy.sprite) {
       enemy.sprite.removeFromParent();
     }
@@ -155,9 +200,15 @@ export function collisionSystem(dt: number): void {
     const distSq = dx * dx + dy * dy;
 
     if (distSq < CONTACT_RADIUS * CONTACT_RADIUS) {
-      player.health.current -= enemy.damage;
-      spawnDamageNumber(player.position.x, player.position.y - 10, enemy.damage, 0xff3333);
+      const reducedContactDmg = reduceDamage(enemy.damage);
+      player.health.current -= reducedContactDmg;
+      spawnDamageNumber(player.position.x, player.position.y - 10, reducedContactDmg, 0xff3333);
       world.addComponent(player, 'invulnTimer', INVULN_DURATION);
+
+      // Fire enchanted modifier: enemies apply Burn on contact
+      if (hasModifier('fire_enchanted')) {
+        applyStatus(player, StatusType.Burn, enemy.position);
+      }
 
       if (player.health.current <= 0) {
         player.health.current = 0;
@@ -176,8 +227,9 @@ export function collisionSystem(dt: number): void {
     const distSq = dx * dx + dy * dy;
 
     if (distSq < HIT_RADIUS * HIT_RADIUS) {
-      player.health.current -= proj.damage;
-      spawnDamageNumber(player.position.x, player.position.y - 10, proj.damage, 0xff44ff);
+      const reducedProjDmg = reduceDamage(proj.damage);
+      player.health.current -= reducedProjDmg;
+      spawnDamageNumber(player.position.x, player.position.y - 10, reducedProjDmg, 0xff44ff);
 
       if (player.health.current <= 0) {
         player.health.current = 0;

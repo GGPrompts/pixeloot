@@ -25,6 +25,9 @@ import { statusEffectSystem } from './ecs/systems/StatusEffectSystem';
 import { initHotbar, updateHotbar } from './ui/SkillHotbar';
 import { showClassSelect, isClassSelectVisible, toggleClassSelect } from './ui/ClassSelect';
 import { updateInventoryPanel, isInventoryOpen } from './ui/InventoryPanel';
+import { updateSaveLoadPanel, isSaveLoadPanelOpen } from './ui/SaveLoadPanel';
+import { updateMapDeviceUI, isMapDeviceOpen } from './ui/MapDeviceUI';
+import { getAutoSave, loadGame } from './save/SaveManager';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -99,14 +102,42 @@ export class Game {
     // Initialize skill hotbar UI
     initHotbar();
 
-    // Show class selection screen before gameplay starts
-    showClassSelect(() => {
-      this.gameplayStarted = true;
-      this.waveSystem.start();
+    // Check for autosave before showing class select
+    this.checkAutoSave().then((loaded) => {
+      if (loaded) {
+        // Autosave was loaded, skip class select and start gameplay
+        this.gameplayStarted = true;
+        this.waveSystem.start();
+      } else {
+        // No autosave (or declined), show class selection
+        showClassSelect(() => {
+          this.gameplayStarted = true;
+          this.waveSystem.start();
+        });
+      }
     });
 
     // Start game loop
     this.startLoop();
+  }
+
+  /** Check for autosave and offer to load it. Returns true if loaded. */
+  private async checkAutoSave(): Promise<boolean> {
+    try {
+      const autoSaveSlot = await getAutoSave();
+      if (autoSaveSlot?.id != null) {
+        const shouldLoad = confirm(
+          `Autosave found: Lv.${autoSaveSlot.level} ${autoSaveSlot.classType} (Wave ${autoSaveSlot.level})\nLoad autosave?`,
+        );
+        if (shouldLoad) {
+          await loadGame(autoSaveSlot.id);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to check autosave:', e);
+    }
+    return false;
   }
 
   /** Factory — creates and initialises the PixiJS application. */
@@ -177,9 +208,11 @@ export class Game {
     }
     this.prevCPressed = cDown;
 
-    // Pause gameplay while class select or inventory is open
+    // Pause gameplay while class select, inventory, save/load, or map device is open
     if (isClassSelectVisible()) return;
     if (isInventoryOpen()) return;
+    if (isSaveLoadPanelOpen()) return;
+    if (isMapDeviceOpen()) return;
 
     // Skill system: tick cooldowns and check key input
     skillSystem.tickSkills(dt);
@@ -215,6 +248,8 @@ export class Game {
     updateHotbar();
     updateBossHealthBar();
     updateInventoryPanel();
+    updateSaveLoadPanel();
+    updateMapDeviceUI();
 
     // FPS counter — update display every 500 ms
     this.frameCount++;
