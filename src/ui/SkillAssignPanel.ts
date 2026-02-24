@@ -6,11 +6,11 @@ import {
 } from './UITheme';
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 540;
-const PANEL_H = 380;
-const ACTIVE_SLOT_SIZE = 72;
-const SKILL_SLOT_W = 110;
-const SKILL_SLOT_H = 56;
+const PANEL_W = 700;
+const PANEL_H = 480;
+const ACTIVE_SLOT_SIZE = 96;
+const SKILL_SLOT_W = 150;
+const SKILL_SLOT_H = 72;
 
 let container: Container | null = null;
 let selectedSlot: 'rmb' | 'e' | null = null;
@@ -112,7 +112,7 @@ function rebuildPanel(): void {
       text: label,
       style: new TextStyle({
         fill: locked ? Colors.textMuted : Colors.textSecondary,
-        fontSize: 8,
+        fontSize: FontSize.xs,
         fontFamily: Fonts.display,
       }),
     });
@@ -141,7 +141,7 @@ function rebuildPanel(): void {
         text: 'FIXED',
         style: new TextStyle({
           fill: Colors.textMuted,
-          fontSize: 8,
+          fontSize: FontSize.xs,
           fontFamily: Fonts.display,
         }),
       });
@@ -232,7 +232,7 @@ function rebuildPanel(): void {
       text: info,
       style: new TextStyle({
         fill: Colors.textMuted,
-        fontSize: FontSize.sm - 4,
+        fontSize: FontSize.xs,
         fontFamily: Fonts.body,
       }),
     });
@@ -246,7 +246,7 @@ function rebuildPanel(): void {
         text: assignedTo,
         style: new TextStyle({
           fill: Colors.accentGold,
-          fontSize: 8,
+          fontSize: FontSize.xs,
           fontFamily: Fonts.display,
         }),
       });

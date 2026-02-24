@@ -11,8 +11,8 @@ import {
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout
-const PANEL_W = 620;
-const PANEL_H = 660;
+const PANEL_W = 740;
+const PANEL_H = 760;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
@@ -84,7 +84,7 @@ function rebuildPanel(): void {
   container.addChild(freeLabel);
 
   const freeBtnW = PANEL_W - 24;
-  const freeBtnH = 48;
+  const freeBtnH = 56;
   const freeBtnX = PANEL_X + 12;
   const freeBtnY = freeY + 20;
 
@@ -153,7 +153,7 @@ function rebuildPanel(): void {
   container.addChild(listLabel);
 
   const maxVisible = 6;
-  const itemH = 48;
+  const itemH = 56;
   for (let i = 0; i < Math.min(maps.length, maxVisible); i++) {
     const mapItem = maps[i];
     const itemY = listStartY + 22 + i * (itemH + 4);

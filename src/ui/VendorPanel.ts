@@ -22,21 +22,21 @@ import { showItemTooltip, showTooltip, hideTooltip, buildItemTooltipText, buildM
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 700;
-const PANEL_H = 820;
+const PANEL_W = 1000;
+const PANEL_H = 960;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const SLOT_SIZE = 68;
-const SLOT_GAP = 5;
-const VENDOR_COLS = 4;
-const BACKPACK_COLS = 4;
-const BACKPACK_ROWS = 5;
+const SLOT_SIZE = 100;
+const SLOT_GAP = 8;
+const VENDOR_COLS = 5;
+const BACKPACK_COLS = 5;
+const BACKPACK_ROWS = 4;
 
 const VENDOR_GRID_X = 20;
 const VENDOR_GRID_Y = 90;
 const BACKPACK_GRID_X = 20;
-const BACKPACK_GRID_Y = 470;
+const BACKPACK_GRID_Y = 550;
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Weapon]: 'Weapon',
@@ -202,12 +202,14 @@ function refreshPanel(): void {
     slotC.addChild(slotBg);
 
     const nameText = new Text({
-      text: abbreviate(vi.item.name, 10),
+      text: vi.item.name,
       style: new TextStyle({
         fill: color,
         fontSize: FontSize.sm,
         fontFamily: Fonts.body,
         fontWeight: 'bold',
+        wordWrap: true,
+        wordWrapWidth: SLOT_SIZE - 6,
       }),
     });
     nameText.position.set(3, 3);
@@ -221,7 +223,7 @@ function refreshPanel(): void {
         fontFamily: Fonts.body,
       }),
     });
-    priceText.position.set(3, 36);
+    priceText.position.set(3, SLOT_SIZE - 20);
     slotC.addChild(priceText);
 
     slotBg.eventMode = 'static';
@@ -284,7 +286,7 @@ function refreshPanel(): void {
         fontFamily: Fonts.body,
       }),
     });
-    priceText.position.set(3, 36);
+    priceText.position.set(3, SLOT_SIZE - 20);
     slotC.addChild(priceText);
 
     slotBg.eventMode = 'static';
@@ -330,12 +332,14 @@ function refreshPanel(): void {
         slotC.addChild(slotBg);
 
         const nameText = new Text({
-          text: abbreviate(item.name, 10),
+          text: item.name,
           style: new TextStyle({
             fill: color,
             fontSize: FontSize.sm,
             fontFamily: Fonts.body,
             fontWeight: 'bold',
+            wordWrap: true,
+            wordWrapWidth: SLOT_SIZE - 6,
           }),
         });
         nameText.position.set(3, 3);
@@ -350,7 +354,7 @@ function refreshPanel(): void {
             fontFamily: Fonts.body,
           }),
         });
-        priceText.position.set(3, 36);
+        priceText.position.set(3, SLOT_SIZE - 20);
         slotC.addChild(priceText);
 
         slotBg.eventMode = 'static';

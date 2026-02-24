@@ -13,21 +13,21 @@ import { showItemTooltip, hideTooltip } from './Tooltip';
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 620;
-const PANEL_H = 700;
+const PANEL_W = 780;
+const PANEL_H = 820;
 const PANEL_X = SCREEN_W - PANEL_W - 20;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const GEAR_SLOT_SIZE = 60;
+const GEAR_SLOT_SIZE = 72;
 const GEAR_SLOT_GAP = 7;
 const GEAR_COL_X = 24;
 const GEAR_START_Y = 64;
 
-const BACKPACK_COLS = 4;
-const BACKPACK_ROWS = 5;
-const BACKPACK_SLOT_SIZE = 68;
-const BACKPACK_GAP = 5;
-const BACKPACK_X = 290;
+const BACKPACK_COLS = 5;
+const BACKPACK_ROWS = 4;
+const BACKPACK_SLOT_SIZE = 88;
+const BACKPACK_GAP = 8;
+const BACKPACK_X = 300;
 const BACKPACK_Y = 64;
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
@@ -230,7 +230,7 @@ function refreshSlots(): void {
       drawSlotBg(slotBg, 0, 0, GEAR_SLOT_SIZE * 3.5, color, GEAR_SLOT_SIZE);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 20),
+        text: abbreviate(item.name, 22),
         style: new TextStyle({
           fill: color,
           fontSize: FontSize.base,
@@ -293,7 +293,7 @@ function refreshSlots(): void {
       drawSlotBg(slotBg, 0, 0, BACKPACK_SLOT_SIZE, color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 8),
+        text: abbreviate(item.name, 12),
         style: new TextStyle({
           fill: color,
           fontSize: FontSize.sm,
@@ -312,7 +312,7 @@ function refreshSlots(): void {
           fontFamily: Fonts.body,
         }),
       });
-      slotIcon.position.set(3, 34);
+      slotIcon.position.set(3, 50);
       slotContainer.addChild(slotIcon);
     } else {
       slotBg.clear();

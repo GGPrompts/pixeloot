@@ -22,36 +22,36 @@ import { showTooltip, hideTooltip, buildItemTooltipText } from './Tooltip';
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 820;
-const PANEL_H = 780;
+const PANEL_W = 1100;
+const PANEL_H = 900;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
-const SLOT_SIZE = 68;
-const SLOT_GAP = 5;
+const SLOT_SIZE = 88;
+const SLOT_GAP = 8;
 
-const STASH_COLS = 4;
+const STASH_COLS = 5;
 const STASH_ROWS = 6;
 const STASH_GRID_X = 20;
-const STASH_GRID_Y = 130;
+const STASH_GRID_Y = 140;
 
-const BACKPACK_COLS = 4;
-const BACKPACK_ROWS = 5;
-const BACKPACK_GRID_X = 430;
-const BACKPACK_GRID_Y = 130;
+const BACKPACK_COLS = 5;
+const BACKPACK_ROWS = 4;
+const BACKPACK_GRID_X = 570;
+const BACKPACK_GRID_Y = 140;
 
-const TAB_BTN_W = 88;
-const TAB_BTN_H = 34;
+const TAB_BTN_W = 100;
+const TAB_BTN_H = 40;
 const TAB_BTN_GAP = 5;
 const TAB_BTN_Y = 54;
 const TAB_BTN_X = 20;
 
-const SEARCH_BAR_X = 430;
+const SEARCH_BAR_X = 570;
 const SEARCH_BAR_Y = 58;
 const SEARCH_BAR_W = 270;
 const SEARCH_BAR_H = 34;
 
-const SORT_BTN_X = 710;
+const SORT_BTN_X = 850;
 const SORT_BTN_Y = 58;
 const SORT_BTN_W = 90;
 const SORT_BTN_H = 34;
@@ -244,12 +244,12 @@ function refreshPanel(): void {
       text: tab.name,
       style: new TextStyle({
         fill: isActive ? Colors.textPrimary : Colors.textMuted,
-        fontSize: 8,
+        fontSize: FontSize.sm,
         fontFamily: Fonts.display,
         fontWeight: isActive ? 'bold' : 'normal',
       }),
     });
-    btnLabel.position.set(8, 7);
+    btnLabel.position.set(10, 9);
     btnC.addChild(btnLabel);
 
     btnBg.eventMode = 'static';
@@ -402,7 +402,7 @@ function refreshPanel(): void {
           slotC.addChild(slotBg);
 
           const nameText = new Text({
-            text: abbreviate(item.name, 10),
+            text: abbreviate(item.name, 12),
             style: new TextStyle({
               fill: color,
               fontSize: FontSize.sm,
@@ -421,7 +421,7 @@ function refreshPanel(): void {
               fontFamily: Fonts.body,
             }),
           });
-          slotIcon.position.set(3, 36);
+          slotIcon.position.set(3, 54);
           slotC.addChild(slotIcon);
 
           slotBg.eventMode = 'static';
@@ -479,7 +479,7 @@ function refreshPanel(): void {
         slotC.addChild(slotBg);
 
         const nameText = new Text({
-          text: abbreviate(item.name, 10),
+          text: abbreviate(item.name, 12),
           style: new TextStyle({
             fill: color,
             fontSize: FontSize.sm,
@@ -498,7 +498,7 @@ function refreshPanel(): void {
             fontFamily: Fonts.body,
           }),
         });
-        slotIcon.position.set(3, 36);
+        slotIcon.position.set(3, 54);
         slotC.addChild(slotIcon);
 
         slotBg.eventMode = 'static';

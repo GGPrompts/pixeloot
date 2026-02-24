@@ -10,10 +10,10 @@ import { InputManager } from '../core/InputManager';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 640;
-const PANEL_H = 400;
-const BTN_W = 240;
-const BTN_H = 160;
+const PANEL_W = 800;
+const PANEL_H = 480;
+const BTN_W = 300;
+const BTN_H = 200;
 const BTN_GAP = 40;
 
 let container: Container | null = null;
@@ -83,7 +83,7 @@ function createButton(
       fontSize: FontSize.sm,
       fontFamily: Fonts.body,
       align: 'center',
-      lineHeight: 18,
+      lineHeight: 24,
     }),
   });
   descText.anchor.set(0.5, 0);

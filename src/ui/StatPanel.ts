@@ -7,9 +7,10 @@ import { getComputedStats, type FinalStats } from '../core/ComputedStats';
 import {
   Colors, Fonts, FontSize, drawPanelBg, drawDivider, makeCloseButton,
 } from './UITheme';
+import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 460;
-const PANEL_H = 680;
+const PANEL_W = 540;
+const PANEL_H = 760;
 const STAT_NAMES = ['dexterity', 'intelligence', 'vitality', 'focus'] as const;
 const STAT_LABELS: Record<string, string> = {
   dexterity: 'DEX',
@@ -39,10 +40,8 @@ let computedStatsText: Text;
 function createPanel(): Container {
   const container = new Container();
 
-  const screenW = game.app.screen.width;
-  const screenH = game.app.screen.height;
-  const px = (screenW - PANEL_W) / 2;
-  const py = (screenH - PANEL_H) / 2;
+  const px = (SCREEN_W - PANEL_W) / 2;
+  const py = (SCREEN_H - PANEL_H) / 2;
 
   // Panel background with 3D border
   const bg = new Graphics();
@@ -75,7 +74,7 @@ function createPanel(): Container {
 
   // Stat rows
   const startY = py + 96;
-  const rowHeight = 66;
+  const rowHeight = 76;
 
   for (let i = 0; i < STAT_NAMES.length; i++) {
     const statName = STAT_NAMES[i];
@@ -114,13 +113,13 @@ function createPanel(): Container {
         fontFamily: Fonts.body,
       }),
     });
-    valText.position.set(px + 310, rowY);
+    valText.position.set(px + 380, rowY);
     container.addChild(valText);
     statValueTexts.push(valText);
 
     // [+] button with 3D border
     const btn = new Graphics();
-    const btnX = px + 370;
+    const btnX = px + 440;
     const btnY = rowY - 2;
     const btnSize = 36;
     btn.rect(btnX, btnY, btnSize, btnSize).fill({ color: 0x1a2e1a });

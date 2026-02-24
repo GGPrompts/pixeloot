@@ -9,8 +9,8 @@ import {
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
-const PANEL_W = 740;
-const PANEL_H = 640;
+const PANEL_W = 860;
+const PANEL_H = 740;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
@@ -161,7 +161,7 @@ async function renderSaveList(root: Container): Promise<void> {
 
   const saves = await listSaves();
   const listY = PANEL_Y + 116;
-  const rowH = 56;
+  const rowH = 64;
   const maxVisible = Math.floor((PANEL_H - 140) / rowH);
 
   if (saves.length === 0) {

@@ -16,22 +16,22 @@ import {
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
-const PANEL_W = 920;
-const PANEL_H = 720;
+const PANEL_W = 1100;
+const PANEL_H = 860;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
 // Section positions (relative to PANEL_X, PANEL_Y)
 const SECTION_LEFT_X = 18;
-const SECTION_RIGHT_X = 460;
+const SECTION_RIGHT_X = 560;
 const MATERIALS_Y = 56;
 const SALVAGE_Y = 110;
 const CRAFT_Y = 110;
-const GEM_Y = 440;
+const GEM_Y = 560;
 const RIGHT_COL_W = PANEL_W - SECTION_RIGHT_X - 18;
 
-const SLOT_SIZE = 54;
-const SLOT_GAP = 5;
+const SLOT_SIZE = 72;
+const SLOT_GAP = 8;
 const SLOTS_PER_ROW = 4;
 
 let container: Container | null = null;
@@ -190,7 +190,7 @@ function buildSalvageSection(): void {
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 8),
+        text: abbreviate(item.name, 10),
         style: new TextStyle({
           fill: color,
           fontSize: FontSize.sm,
@@ -209,7 +209,7 @@ function buildSalvageSection(): void {
           fontFamily: Fonts.body,
         }),
       });
-      levelText.position.set(2, 28);
+      levelText.position.set(2, 40);
       slotBg.addChild(levelText);
 
       if (item.socket) {
@@ -221,7 +221,7 @@ function buildSalvageSection(): void {
             fontFamily: Fonts.body,
           }),
         });
-        socketText.position.set(34, 2);
+        socketText.position.set(50, 2);
         slotBg.addChild(socketText);
       }
 
@@ -356,7 +356,7 @@ function buildCraftingSection(): void {
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isTarget ? Colors.accentCyan : color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 8),
+        text: abbreviate(item.name, 10),
         style: new TextStyle({
           fill: color,
           fontSize: FontSize.sm,
@@ -375,7 +375,7 @@ function buildCraftingSection(): void {
           fontFamily: Fonts.body,
         }),
       });
-      lvText.position.set(2, 32);
+      lvText.position.set(2, 44);
       slotBg.addChild(lvText);
 
       slotBg.eventMode = 'static';
@@ -497,7 +497,7 @@ function buildGemSection(): void {
       }
 
       const nameText = new Text({
-        text: gem.name.slice(0, 6),
+        text: gem.name.slice(0, 8),
         style: new TextStyle({
           fill: color,
           fontSize: FontSize.sm,
@@ -509,7 +509,7 @@ function buildGemSection(): void {
       slotBg.addChild(nameText);
 
       const bonusText = new Text({
-        text: bonus.label.slice(0, 8),
+        text: bonus.label.slice(0, 10),
         style: new TextStyle({
           fill: Colors.textMuted,
           fontSize: FontSize.xs,
@@ -564,7 +564,7 @@ function buildGemSection(): void {
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isTarget ? Colors.accentCyan : color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 8),
+        text: abbreviate(item.name, 10),
         style: new TextStyle({
           fill: color,
           fontSize: FontSize.sm,
@@ -583,7 +583,7 @@ function buildGemSection(): void {
           fontFamily: Fonts.body,
         }),
       });
-      socketText.position.set(34, 32);
+      socketText.position.set(50, 44);
       slotBg.addChild(socketText);
 
       slotBg.eventMode = 'static';
