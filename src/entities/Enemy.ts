@@ -22,6 +22,7 @@ export function spawnRusher(worldX: number, worldY: number): Entity {
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
     speed: 80,
+    baseSpeed: 80,
     enemy: true as const,
     health: { current: 30, max: 30 },
     damage: 10,

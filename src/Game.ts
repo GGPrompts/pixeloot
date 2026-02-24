@@ -15,6 +15,11 @@ import { spawnInitialEnemies } from './entities/EnemySpawner';
 import { healthSystem } from './ecs/systems/HealthSystem';
 import { enemyHealthBarSystem } from './ecs/systems/EnemyHealthBarSystem';
 import { updateHUD } from './ui/HUD';
+import { updateStatPanel } from './ui/StatPanel';
+import { skillSystem } from './core/SkillSystem';
+import { rangerSkills } from './entities/classes/Ranger';
+import { world } from './ecs/world';
+import { statusEffectSystem } from './ecs/systems/StatusEffectSystem';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -83,6 +88,9 @@ export class Game {
     // Create player entity
     createPlayer();
 
+    // Set Ranger as default class
+    skillSystem.setClass(rangerSkills);
+
     // Spawn initial enemies
     spawnInitialEnemies(5);
 
@@ -149,6 +157,17 @@ export class Game {
 
   /** Called at a fixed 60 Hz rate for deterministic game logic. */
   private fixedUpdate(dt: number): void {
+    // Skill system: tick cooldowns and check key input
+    skillSystem.tickSkills(dt);
+    const playerEntities = world.with('player', 'position').entities;
+    if (playerEntities.length > 0) {
+      const p = playerEntities[0];
+      if (!p.dead && !p.inputDisabled) {
+        skillSystem.checkInput(p.position);
+      }
+    }
+
+    statusEffectSystem(dt);
     firingSystem(dt);
     aiSystem(dt);
     movementSystem(dt);
@@ -165,6 +184,7 @@ export class Game {
     cameraSystem();
     enemyHealthBarSystem();
     updateHUD();
+    updateStatPanel();
 
     // FPS counter — update display every 500 ms
     this.frameCount++;

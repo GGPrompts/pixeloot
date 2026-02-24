@@ -32,10 +32,15 @@ export function createPlayer(): Entity {
     position: { x: startX, y: startY },
     velocity: { x: 0, y: 0 },
     speed: 200,
+    baseSpeed: 200,
     player: true as const,
     health: { current: 100, max: 100 },
     gold: 0,
     sprite: g,
+    xp: 0,
+    level: 1,
+    statPoints: 0,
+    stats: { dexterity: 0, intelligence: 0, vitality: 0, focus: 0 },
   });
 
   return entity;

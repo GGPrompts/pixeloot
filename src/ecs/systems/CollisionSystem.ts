@@ -2,6 +2,8 @@ import { world } from '../world';
 import { despawnProjectile } from '../../entities/Projectile';
 import { spawnDeathParticles } from '../../entities/DeathParticles';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
+import { grantXP, getEnemyXP } from './XPSystem';
+import { StatusType, hasStatus, consumeShock } from '../../core/StatusEffects';
 
 const HIT_RADIUS = 16;
 const CONTACT_RADIUS = 20;
@@ -25,16 +27,33 @@ export function collisionSystem(dt: number): void {
 
   // --- Projectile vs Enemy ---
   for (const proj of projectiles) {
+    let consumed = false;
+
     for (const enemy of enemies) {
+      // Skip enemies already hit by this piercing projectile
+      if (proj.piercing && proj.piercingHitIds?.has(enemy)) continue;
+
       const dx = proj.position.x - enemy.position.x;
       const dy = proj.position.y - enemy.position.y;
       const distSq = dx * dx + dy * dy;
 
       if (distSq < HIT_RADIUS * HIT_RADIUS) {
+        // Calculate damage with status effect modifiers
+        let dmg = proj.damage;
+
+        // Shock: consumed on hit, +25% bonus damage
+        if (consumeShock(enemy)) {
+          dmg = Math.round(dmg * 1.25);
+        }
+
+        // Mark: +15% damage taken (not consumed)
+        if (hasStatus(enemy, StatusType.Mark)) {
+          dmg = Math.round(dmg * 1.15);
+        }
+
         // Deal damage
-        enemy.health.current -= proj.damage;
-        spawnDamageNumber(enemy.position.x, enemy.position.y - 10, proj.damage, 0xffffff);
-        projectilesToDespawn.push(proj);
+        enemy.health.current -= dmg;
+        spawnDamageNumber(enemy.position.x, enemy.position.y - 10, dmg, 0xffffff);
 
         // Flash effect on the enemy sprite
         if (enemy.sprite) {
@@ -48,9 +67,19 @@ export function collisionSystem(dt: number): void {
           enemiesToRemove.push(enemy);
         }
 
-        break; // This projectile is consumed
+        if (proj.piercing) {
+          // Track this enemy so we don't double-hit
+          proj.piercingHitIds?.add(enemy);
+        } else {
+          // Normal projectile: consumed on first hit
+          consumed = true;
+          projectilesToDespawn.push(proj);
+          break;
+        }
       }
     }
+
+    if (consumed) continue;
   }
 
   for (const proj of projectilesToDespawn) {
@@ -60,6 +89,9 @@ export function collisionSystem(dt: number): void {
   for (const enemy of enemiesToRemove) {
     // Spawn death particles before removing
     spawnDeathParticles(enemy.position.x, enemy.position.y);
+
+    // Grant XP to player
+    grantXP(getEnemyXP('rusher'));
 
     if (enemy.sprite) {
       enemy.sprite.removeFromParent();
