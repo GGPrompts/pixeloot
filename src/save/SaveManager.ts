@@ -45,6 +45,9 @@ export async function saveGame(slotName?: string): Promise<void> {
 
   const saveId = await db.saves.add(saveSlot);
 
+  const rmbSlot = skillSystem.getSlot('rmb');
+  const eSlot = skillSystem.getSlot('e');
+
   const playerState: PlayerStateData = {
     saveId: saveId as number,
     level: player.level ?? 1,
@@ -54,6 +57,8 @@ export async function saveGame(slotName?: string): Promise<void> {
     gold: player.gold ?? 0,
     health: { current: player.health!.current, max: player.health!.max },
     classType,
+    rmbSkillName: rmbSlot?.def.name,
+    eSkillName: eSlot?.def.name,
   };
 
   const inventoryData: InventoryData = {
@@ -113,6 +118,14 @@ export async function loadGame(saveId: number): Promise<void> {
   const classSkills = getClassSkillsByName(playerState.classType);
   if (classSkills) {
     skillSystem.setClass(classSkills, playerState.classType);
+  }
+
+  // Restore skill assignments (backward compatible — missing fields use defaults)
+  if (playerState.rmbSkillName) {
+    skillSystem.assignSkillByName('rmb', playerState.rmbSkillName);
+  }
+  if (playerState.eSkillName) {
+    skillSystem.assignSkillByName('e', playerState.eSkillName);
   }
 
   // Restore inventory

@@ -22,6 +22,8 @@ export interface PlayerStateData {
   gold: number;
   health: { current: number; max: number };
   classType: string;
+  rmbSkillName?: string;
+  eSkillName?: string;
 }
 
 export interface InventoryData {

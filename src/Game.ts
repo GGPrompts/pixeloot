@@ -39,6 +39,8 @@ import { applyTheme, getActiveTheme } from './core/ZoneThemes';
 import { musicPlayer } from './audio/MusicPlayer';
 import { enterTown, isInTown } from './core/TownManager';
 import { checkNPCClick, updateComingSoonText } from './entities/NPC';
+import { updateSkillAssignPanel, isSkillAssignOpen, toggleSkillAssignPanel } from './ui/SkillAssignPanel';
+import { updateRangeIndicators } from './ui/RangeIndicator';
 import { SCREEN_W, SCREEN_H, TILE_SIZE, LOGIC_FPS, LOGIC_STEP } from './core/constants';
 
 export class Game {
@@ -57,6 +59,7 @@ export class Game {
   private logicAccumulator = 0;
   private prevCPressed = false;
   private prevPPressed = false;
+  private prevKPressed = false;
   private prevMouseDown = false;
   private gameplayStarted = false;
   public waveSystem = new WaveSystem();
@@ -251,6 +254,15 @@ export class Game {
     }
     this.prevCPressed = cDown;
 
+    // Check for 'K' key toggle (skill assignment panel) - edge detect
+    const kDown = InputManager.instance.isPressed('KeyK');
+    if (kDown && !this.prevKPressed) {
+      if (this.gameplayStarted) {
+        toggleSkillAssignPanel();
+      }
+    }
+    this.prevKPressed = kDown;
+
     // Music controls: P to toggle mute, +/- for volume
     const pDown = InputManager.instance.isPressed('KeyP');
     if (pDown && !this.prevPPressed) {
@@ -275,27 +287,30 @@ export class Game {
     if (isVendorOpen()) return;
     if (isCraftingPanelOpen()) return;
     if (isStashOpen()) return;
+    if (isSkillAssignOpen()) return;
 
-    // NPC click interaction in town (rising edge of left mouse)
+    // Skill system: tick cooldowns every frame
+    skillSystem.tickSkills(dt);
+
+    // NPC click interaction in town (rising edge of left mouse), skills outside town
     if (isInTown()) {
       const mouseDown = InputManager.instance.isMouseDown(0);
       if (mouseDown && !this.prevMouseDown) {
         const mouse = InputManager.instance.getMousePosition();
-        const world = screenToWorld(mouse.x, mouse.y);
-        checkNPCClick(world.x, world.y);
+        const worldPos = screenToWorld(mouse.x, mouse.y);
+        checkNPCClick(worldPos.x, worldPos.y);
       }
       this.prevMouseDown = mouseDown;
     } else {
       this.prevMouseDown = InputManager.instance.isMouseDown(0);
-    }
 
-    // Skill system: tick cooldowns and check key input
-    skillSystem.tickSkills(dt);
-    const playerEntities = world.with('player', 'position').entities;
-    if (playerEntities.length > 0) {
-      const p = playerEntities[0];
-      if (!p.dead && !p.inputDisabled) {
-        skillSystem.checkInput(p.position);
+      // Check skill input only outside town
+      const playerEntities = world.with('player', 'position').entities;
+      if (playerEntities.length > 0) {
+        const p = playerEntities[0];
+        if (!p.dead && !p.inputDisabled) {
+          skillSystem.checkInput(p.position);
+        }
       }
     }
 
@@ -317,11 +332,22 @@ export class Game {
     spriteSyncSystem();
     playerFacingSystem();
     cameraSystem();
+
+    // Range indicators (after camera, before HUD)
+    const playerEnts = world.with('player', 'position').entities;
+    if (playerEnts.length > 0 && !isInTown()) {
+      const p = playerEnts[0];
+      const screenMouse = InputManager.instance.getMousePosition();
+      const mouseWorld = screenToWorld(screenMouse.x, screenMouse.y);
+      updateRangeIndicators(p.position, mouseWorld);
+    }
+
     enemyHealthBarSystem();
     updateHUD();
     updateStatPanel();
     updateHotbar();
     updateBossHealthBar();
+    updateSkillAssignPanel();
     updateInventoryPanel();
     updateSaveLoadPanel();
     updateMapDeviceUI();

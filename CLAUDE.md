@@ -45,7 +45,7 @@ The camera centers on the player by offsetting `worldLayer`, `entityLayer`, and 
 - `game` (Game.ts) — PixiJS app, render layers, tileMap, game loop
 - `world` (ecs/world.ts) — Miniplex ECS world instance
 - `inventory` (core/Inventory.ts) — player equipment (8 slots + offhand) and 20-slot backpack
-- `skillSystem` (core/SkillSystem.ts) — skill management, hotbar binding
+- `skillSystem` (core/SkillSystem.ts) — slot-based skill management (LMB/RMB/Space/E), assignment, cooldowns
 - `musicPlayer` / `sfxPlayer` — procedural audio (Web Audio API, no external files)
 
 ### Loot System (loot/)
@@ -82,7 +82,7 @@ All UI is PixiJS-native (Container/Graphics/Text). Each panel exports an `update
 
 ### Character Classes (entities/classes/)
 
-Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Players select 4 active skills for the hotbar (keys 1-4).
+Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Controls: LMB (primary attack, fixed), RMB (assignable), Space (movement skill, fixed), E (assignable). Players assign 2 of 4 assignable skills to RMB/E via the skill assignment panel (K key). Each `SkillDef` has `slotType` ('primary'|'movement'|'assignable') and `targetType` for input routing and range indicators.
 
 ### Audio (audio/)
 

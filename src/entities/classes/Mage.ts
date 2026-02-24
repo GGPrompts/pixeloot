@@ -20,6 +20,8 @@ const fireball: SkillDef = {
   name: 'Fireball',
   key: '1',
   cooldown: 4,
+  slotType: 'primary',
+  targetType: 'projectile',
   execute(playerPos, mousePos) {
     fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, {
       speed: 400,
@@ -42,6 +44,9 @@ const frostNova: SkillDef = {
   name: 'Frost Nova',
   key: '2',
   cooldown: 6,
+  slotType: 'assignable',
+  targetType: 'self_aoe',
+  radius: 128,
   execute(playerPos) {
     const px = playerPos.x;
     const py = playerPos.y;
@@ -109,6 +114,9 @@ const lightningChain: SkillDef = {
   name: 'Lightning Chain',
   key: '3',
   cooldown: 7,
+  slotType: 'assignable',
+  targetType: 'cursor_target',
+  range: 200,
   execute(_playerPos, mousePos) {
     const hitTargets: { x: number; y: number }[] = [];
     const hitSet = new Set<object>();
@@ -237,6 +245,8 @@ const teleport: SkillDef = {
   name: 'Teleport',
   key: '4',
   cooldown: 5,
+  slotType: 'movement',
+  targetType: 'movement',
   execute(playerPos, mousePos) {
     if (players.entities.length === 0) return;
     const player = players.entities[0];
@@ -335,6 +345,8 @@ const arcaneWall: SkillDef = {
   name: 'Arcane Wall',
   key: '5',
   cooldown: 15,
+  slotType: 'assignable',
+  targetType: 'cursor_target',
   execute(playerPos, mousePos) {
     const cx = mousePos.x;
     const cy = mousePos.y;
@@ -442,6 +454,9 @@ const meteor: SkillDef = {
   name: 'Meteor',
   key: '6',
   cooldown: 14,
+  slotType: 'assignable',
+  targetType: 'cursor_aoe',
+  radius: 96,
   execute(_playerPos, mousePos) {
     const tx = mousePos.x;
     const ty = mousePos.y;

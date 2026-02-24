@@ -38,7 +38,7 @@ export class InputManager {
         }
         return;
       }
-      if (e.code in MOVEMENT_KEYS || e.code === 'Tab') e.preventDefault();
+      if (e.code in MOVEMENT_KEYS || e.code === 'Tab' || e.code === 'Space' || e.code === 'KeyE') e.preventDefault();
       this.pressed.add(e.code);
     };
 
@@ -71,6 +71,9 @@ export class InputManager {
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('blur', this.onBlur);
+
+    // Prevent browser context menu so RMB works as a skill input
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   static init(canvas: HTMLCanvasElement): InputManager {

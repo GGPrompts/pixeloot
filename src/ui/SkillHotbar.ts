@@ -5,7 +5,8 @@ import { Colors, Fonts, FontSize, drawPixelBorder } from './UITheme';
 
 const SLOT_SIZE = 80;
 const SLOT_GAP = 8;
-const SLOT_COUNT = 6;
+const SLOT_COUNT = 4;
+const KEYBIND_LABELS = ['LMB', 'RMB', 'SPC', 'E'];
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
@@ -62,7 +63,7 @@ function createSlot(index: number): SlotUI {
 
   // Keybind label in bottom-right corner
   const keybindText = new Text({
-    text: `${index + 1}`,
+    text: KEYBIND_LABELS[index],
     style: new TextStyle({
       fill: Colors.textSecondary,
       fontSize: 8,

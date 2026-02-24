@@ -18,6 +18,8 @@ const powerShot: SkillDef = {
   name: 'Power Shot',
   key: '1',
   cooldown: 3,
+  slotType: 'primary',
+  targetType: 'projectile',
   execute(playerPos, mousePos) {
     fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, {
       speed: 800,
@@ -41,6 +43,8 @@ const multiShot: SkillDef = {
   name: 'Multi Shot',
   key: '2',
   cooldown: 5,
+  slotType: 'assignable',
+  targetType: 'projectile',
   execute(playerPos, mousePos) {
     const dx = mousePos.x - playerPos.x;
     const dy = mousePos.y - playerPos.y;
@@ -70,6 +74,9 @@ const rainOfArrows: SkillDef = {
   name: 'Rain of Arrows',
   key: '3',
   cooldown: 8,
+  slotType: 'assignable',
+  targetType: 'cursor_aoe',
+  radius: 96,
   execute(_playerPos, mousePos) {
     const tx = mousePos.x;
     const ty = mousePos.y;
@@ -154,6 +161,8 @@ const evasiveRoll: SkillDef = {
   name: 'Evasive Roll',
   key: '4',
   cooldown: 4,
+  slotType: 'movement',
+  targetType: 'movement',
   execute(playerPos, mousePos) {
     if (players.entities.length === 0) return;
     const player = players.entities[0];
@@ -294,6 +303,8 @@ const trap: SkillDef = {
   name: 'Trap',
   key: '5',
   cooldown: 10,
+  slotType: 'assignable',
+  targetType: 'self_place',
   execute(playerPos, _mousePos) {
     // Enforce max active traps - remove oldest if at limit
     while (activeTraps.length >= TRAP_MAX_ACTIVE) {
@@ -379,6 +390,9 @@ const markTarget: SkillDef = {
   name: 'Mark Target',
   key: '6',
   cooldown: 12,
+  slotType: 'assignable',
+  targetType: 'cursor_target',
+  range: 200,
   execute(_playerPos, mousePos) {
     // Find nearest enemy within range of cursor
     let nearest: (typeof enemies.entities)[number] | null = null;
