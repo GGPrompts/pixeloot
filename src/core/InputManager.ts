@@ -25,6 +25,8 @@ export class InputManager {
   private onPointerMove: (e: PointerEvent) => void;
   private onPointerDown: (e: PointerEvent) => void;
   private onPointerUp: (e: PointerEvent) => void;
+  private onPointerCancel: (e: PointerEvent) => void;
+  private onLostPointerCapture: (e: PointerEvent) => void;
   private onContextMenu: (e: Event) => void;
   private onBlur: () => void;
 
@@ -64,6 +66,14 @@ export class InputManager {
       this.mouseButtons.delete(e.button);
     };
 
+    this.onPointerCancel = (_e: PointerEvent) => {
+      this.mouseButtons.clear();
+    };
+
+    this.onLostPointerCapture = (_e: PointerEvent) => {
+      this.mouseButtons.clear();
+    };
+
     this.onContextMenu = (e: Event) => {
       e.preventDefault();
     };
@@ -78,6 +88,8 @@ export class InputManager {
     canvas.addEventListener('pointermove', this.onPointerMove);
     canvas.addEventListener('pointerdown', this.onPointerDown);
     canvas.addEventListener('pointerup', this.onPointerUp);
+    canvas.addEventListener('pointercancel', this.onPointerCancel);
+    canvas.addEventListener('lostpointercapture', this.onLostPointerCapture);
     window.addEventListener('blur', this.onBlur);
 
     // Prevent browser context menu so RMB works as a skill input
@@ -152,6 +164,8 @@ export class InputManager {
     this.canvas.removeEventListener('pointermove', this.onPointerMove);
     this.canvas.removeEventListener('pointerdown', this.onPointerDown);
     this.canvas.removeEventListener('pointerup', this.onPointerUp);
+    this.canvas.removeEventListener('pointercancel', this.onPointerCancel);
+    this.canvas.removeEventListener('lostpointercapture', this.onLostPointerCapture);
     window.removeEventListener('blur', this.onBlur);
     window.removeEventListener('contextmenu', this.onContextMenu);
     InputManager._instance = null;

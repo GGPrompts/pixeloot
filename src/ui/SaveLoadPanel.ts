@@ -18,6 +18,7 @@ let container: Container | null = null;
 let visible = false;
 let prevEscPressed = false;
 let busy = false;
+let openVersion = 0;
 
 // ---- Helpers ----
 
@@ -272,8 +273,13 @@ async function refreshSaveList(root: Container): Promise<void> {
 export function showSaveLoadPanel(): void {
   if (visible) return;
   visible = true;
+  const thisVersion = ++openVersion;
 
   buildPanel().then((panel) => {
+    if (!visible || thisVersion !== openVersion) {
+      panel.destroy({ children: true });
+      return;
+    }
     container = panel;
     game.hudLayer.addChild(container);
   });
@@ -302,13 +308,13 @@ export function isSaveLoadPanelOpen(): boolean {
   return visible;
 }
 
-/** Call every frame to handle Escape key toggle. */
+/** Call every frame to handle Escape key close. */
 export function updateSaveLoadPanel(): void {
   const input = InputManager.instance;
   const escDown = input.isPressed('Escape');
 
-  if (escDown && !prevEscPressed) {
-    toggleSaveLoadPanel();
+  if (escDown && !prevEscPressed && visible) {
+    hideSaveLoadPanel();
   }
 
   prevEscPressed = escDown;

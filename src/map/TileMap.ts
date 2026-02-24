@@ -19,12 +19,20 @@ export class TileMap {
     this.gfx = new Graphics();
   }
 
-  /** Returns true if the tile at (tileX, tileY) is solid (wall or out of bounds). */
+  /** Returns true if the tile at (tileX, tileY) is a hard wall or out of bounds (blocks projectiles). */
   isSolid(tileX: number, tileY: number): boolean {
     if (tileX < 0 || tileY < 0 || tileX >= this.width || tileY >= this.height) {
       return true;
     }
     return this.tiles[tileY][tileX] === 1;
+  }
+
+  /** Returns true if the tile blocks entity movement (walls, arcane wall, or out of bounds). */
+  blocksMovement(tileX: number, tileY: number): boolean {
+    if (tileX < 0 || tileY < 0 || tileX >= this.width || tileY >= this.height) {
+      return true;
+    }
+    return this.tiles[tileY][tileX] >= 1;
   }
 
   /** Convert pixel coordinates to tile coordinates. */

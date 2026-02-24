@@ -45,7 +45,7 @@ export function movementSystem(dt: number): void {
     // Try X movement first
     const newX = prevX + entity.velocity.x * dt;
     const tileAtNewX = tileMap.worldToTile(newX, prevY);
-    if (!tileMap.isSolid(tileAtNewX.x, tileAtNewX.y)) {
+    if (!tileMap.blocksMovement(tileAtNewX.x, tileAtNewX.y)) {
       entity.position.x = newX;
     } else {
       // Slide against wall: snap to tile edge
@@ -60,7 +60,7 @@ export function movementSystem(dt: number): void {
     // Try Y movement
     const newY = prevY + entity.velocity.y * dt;
     const tileAtNewY = tileMap.worldToTile(entity.position.x, newY);
-    if (!tileMap.isSolid(tileAtNewY.x, tileAtNewY.y)) {
+    if (!tileMap.blocksMovement(tileAtNewY.x, tileAtNewY.y)) {
       entity.position.y = newY;
     } else {
       entity.velocity.y = 0;

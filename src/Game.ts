@@ -110,8 +110,8 @@ export class Game {
     this.drawGrid();
 
     // Generate dungeon and render walls on world layer (grid shows through floor tiles)
-    const dungeonW = Math.floor(SCREEN_W / TILE_SIZE);
-    const dungeonH = Math.floor(SCREEN_H / TILE_SIZE);
+    const dungeonW = Math.ceil(SCREEN_W / TILE_SIZE);
+    const dungeonH = Math.ceil(SCREEN_H / TILE_SIZE);
     const dungeonData = generateDungeon(dungeonW, dungeonH);
     this.tileMap = new TileMap(dungeonData);
     this.tileMap.render(this.worldLayer, getActiveTheme().wallColor);

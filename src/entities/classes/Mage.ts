@@ -385,7 +385,7 @@ const arcaneWall: SkillDef = {
             const alreadyRecorded = wallTiles.some((wt) => wt.tx === tile.x && wt.ty === tile.y);
             if (!alreadyRecorded) {
               wallTiles.push({ tx: tile.x, ty: tile.y, prevValue: tileMap.tiles[tile.y][tile.x] });
-              tileMap.tiles[tile.y][tile.x] = 1;
+              tileMap.tiles[tile.y][tile.x] = 2;
             }
           }
         }

@@ -90,7 +90,7 @@ function findNearestFloor(targetX: number, targetY: number): { x: number; y: num
         if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) continue;
         const tx = tilePosTarget.x + dx;
         const ty = tilePosTarget.y + dy;
-        if (!game.tileMap.isSolid(tx, ty)) {
+        if (!game.tileMap.blocksMovement(tx, ty)) {
           return game.tileMap.tileToWorld(tx, ty);
         }
       }

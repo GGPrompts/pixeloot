@@ -67,7 +67,7 @@ export function updateFlowField(
 
   // Bounds check
   if (ptx < 0 || ptx >= fieldWidth || pty < 0 || pty >= fieldHeight) return;
-  if (tileMap.tiles[pty][ptx] === 1) return; // player is somehow in a wall
+  if (tileMap.blocksMovement(ptx, pty)) return; // player is somehow in a wall
 
   dist[pty][ptx] = 0;
   // Player's own tile points nowhere (enemy is already on the player)
@@ -89,7 +89,7 @@ export function updateFlowField(
 
       if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight) continue;
       if (dist[ny][nx] !== -1) continue; // already visited
-      if (tileMap.tiles[ny][nx] === 1) continue; // wall
+      if (tileMap.blocksMovement(nx, ny)) continue; // wall or arcane wall
 
       dist[ny][nx] = cd + 1;
 
