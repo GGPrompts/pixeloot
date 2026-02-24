@@ -1,6 +1,7 @@
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker } from './Enemy';
+import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
 
 const MIN_PLAYER_DIST = 200;
 
@@ -27,17 +28,18 @@ function findSpawnPosition(px: number, py: number, maxAttempts = 20): { x: numbe
  * 3 Rushers, 4-6 Swarm (as a pack), 1 Tank, 1 Sniper, 1 Flanker.
  */
 export function spawnInitialEnemies(_count?: number): void {
-  const players = world.with('player', 'position');
+  const players = world.with('player', 'position', 'level');
   const player = players.entities[0];
   if (!player) return;
 
   const px = player.position.x;
   const py = player.position.y;
+  const monsterLevel = getMonsterLevel(player.level, DEFAULT_SCALING_CONFIG);
 
   // 3 Rushers
   for (let i = 0; i < 3; i++) {
     const pos = findSpawnPosition(px, py);
-    if (pos) spawnRusher(pos.x, pos.y);
+    if (pos) spawnRusher(pos.x, pos.y, monsterLevel);
   }
 
   // 4 Swarm in a pack (clustered near one point)
@@ -47,19 +49,19 @@ export function spawnInitialEnemies(_count?: number): void {
     for (let i = 0; i < packSize; i++) {
       const offsetX = (Math.random() - 0.5) * 40;
       const offsetY = (Math.random() - 0.5) * 40;
-      spawnSwarm(swarmCenter.x + offsetX, swarmCenter.y + offsetY);
+      spawnSwarm(swarmCenter.x + offsetX, swarmCenter.y + offsetY, monsterLevel);
     }
   }
 
   // 1 Tank
   const tankPos = findSpawnPosition(px, py);
-  if (tankPos) spawnTank(tankPos.x, tankPos.y);
+  if (tankPos) spawnTank(tankPos.x, tankPos.y, monsterLevel);
 
   // 1 Sniper
   const sniperPos = findSpawnPosition(px, py);
-  if (sniperPos) spawnSniper(sniperPos.x, sniperPos.y);
+  if (sniperPos) spawnSniper(sniperPos.x, sniperPos.y, monsterLevel);
 
   // 1 Flanker
   const flankerPos = findSpawnPosition(px, py);
-  if (flankerPos) spawnFlanker(flankerPos.x, flankerPos.y);
+  if (flankerPos) spawnFlanker(flankerPos.x, flankerPos.y, monsterLevel);
 }

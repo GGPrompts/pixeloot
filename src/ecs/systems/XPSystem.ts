@@ -1,6 +1,7 @@
 import { Text, TextStyle } from 'pixi.js';
 import { world } from '../world';
 import { game } from '../../Game';
+import { scaleXP } from '../../core/MonsterScaling';
 
 const players = world.with('player', 'xp', 'level', 'statPoints', 'stats');
 
@@ -43,10 +44,11 @@ export function grantXP(amount: number): void {
 }
 
 /**
- * Returns the base XP for a given enemy type key.
+ * Returns the XP for a given enemy type, scaled by monster level.
  */
-export function getEnemyXP(type: string): number {
-  return BASE_XP[type] ?? 15;
+export function getEnemyXP(type: string, monsterLevel = 1): number {
+  const base = BASE_XP[type] ?? 15;
+  return scaleXP(base, monsterLevel);
 }
 
 /**

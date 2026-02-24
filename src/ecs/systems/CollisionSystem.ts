@@ -91,8 +91,8 @@ export function collisionSystem(dt: number): void {
     // Spawn death particles before removing
     spawnDeathParticles(enemy.position.x, enemy.position.y);
 
-    // Grant XP to player based on enemy type
-    grantXP(getEnemyXP(enemy.enemyType ?? 'rusher'));
+    // Grant XP to player based on enemy type and level
+    grantXP(getEnemyXP(enemy.enemyType ?? 'rusher', enemy.level ?? 1));
 
     if (enemy.sprite) {
       enemy.sprite.removeFromParent();

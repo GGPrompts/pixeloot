@@ -11,7 +11,7 @@ import { firingSystem } from './ecs/systems/FiringSystem';
 import { aiSystem } from './ecs/systems/AISystem';
 import { generateDungeon } from './map/DungeonGenerator';
 import { TileMap } from './map/TileMap';
-import { spawnInitialEnemies } from './entities/EnemySpawner';
+import { WaveSystem } from './entities/WaveSystem';
 import { healthSystem } from './ecs/systems/HealthSystem';
 import { enemyHealthBarSystem } from './ecs/systems/EnemyHealthBarSystem';
 import { updateHUD } from './ui/HUD';
@@ -44,6 +44,7 @@ export class Game {
   private logicAccumulator = 0;
   private prevCPressed = false;
   private gameplayStarted = false;
+  public waveSystem = new WaveSystem();
 
   private constructor(app: Application) {
     this.app = app;
@@ -97,10 +98,8 @@ export class Game {
     // Show class selection screen before gameplay starts
     showClassSelect(() => {
       this.gameplayStarted = true;
+      this.waveSystem.start();
     });
-
-    // Spawn initial enemies
-    spawnInitialEnemies(5);
 
     // Start game loop
     this.startLoop();
@@ -194,6 +193,7 @@ export class Game {
     projectileSystem(dt);
     collisionSystem(dt);
     healthSystem(dt);
+    this.waveSystem.update(dt);
   }
 
   /** Called every render frame for visual-only work. */

@@ -1,14 +1,25 @@
-import { Graphics } from 'pixi.js';
+import { Graphics, Text, TextStyle } from 'pixi.js';
 import { world } from '../world';
 
 const BAR_W = 24;
 const BAR_H = 3;
 const BAR_OFFSET_Y = -14; // above the enemy sprite
 
+const LEVEL_STYLE = new TextStyle({
+  fill: 0xcccccc,
+  fontSize: 8,
+  fontFamily: 'monospace',
+  stroke: { color: 0x000000, width: 2 },
+});
+
 const enemies = world.with('enemy', 'health', 'sprite');
+
+/** Cache for level text children keyed by entity reference. */
+const levelTexts = new WeakMap<object, Text>();
 
 /**
  * Renders small health bars above each enemy that has taken damage.
+ * Shows "Lv.X" next to the health bar when the enemy is damaged.
  * Creates a Graphics child on first damage, then updates width each frame.
  * Called from frameUpdate.
  */
@@ -21,6 +32,8 @@ export function enemyHealthBarSystem(): void {
       if (enemy.enemyHealthBar) {
         enemy.enemyHealthBar.visible = false;
       }
+      const lvText = levelTexts.get(enemy);
+      if (lvText) lvText.visible = false;
       continue;
     }
 
@@ -42,5 +55,18 @@ export function enemyHealthBarSystem(): void {
     bar.rect(-BAR_W / 2, BAR_OFFSET_Y, BAR_W * Math.max(0, ratio), BAR_H).fill({
       color: 0xdd3333,
     });
+
+    // Level text
+    const monsterLevel = enemy.level ?? 1;
+    let lvText = levelTexts.get(enemy);
+    if (!lvText) {
+      lvText = new Text({ text: `Lv.${monsterLevel}`, style: LEVEL_STYLE });
+      lvText.anchor.set(0, 0.5);
+      enemy.sprite.addChild(lvText);
+      levelTexts.set(enemy, lvText);
+    }
+    lvText.text = `Lv.${monsterLevel}`;
+    lvText.position.set(BAR_W / 2 + 2, BAR_OFFSET_Y + BAR_H / 2);
+    lvText.visible = true;
   }
 }

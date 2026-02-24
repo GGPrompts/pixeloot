@@ -1,11 +1,12 @@
 import { Graphics } from 'pixi.js';
 import { world, type Entity } from '../ecs/world';
 import { game } from '../Game';
+import { scaleHealth, scaleDamage } from '../core/MonsterScaling';
 
 /**
  * Spawns a Rusher enemy: a red triangle that chases the player.
  */
-export function spawnRusher(worldX: number, worldY: number): Entity {
+export function spawnRusher(worldX: number, worldY: number, monsterLevel = 1): Entity {
   const g = new Graphics();
 
   // Red triangle pointing right (~16px)
@@ -18,6 +19,9 @@ export function spawnRusher(worldX: number, worldY: number): Entity {
   g.position.set(worldX, worldY);
   game.entityLayer.addChild(g);
 
+  const hp = scaleHealth(30, monsterLevel);
+  const dmg = scaleDamage(10, monsterLevel);
+
   return world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
@@ -25,21 +29,25 @@ export function spawnRusher(worldX: number, worldY: number): Entity {
     baseSpeed: 80,
     enemy: true as const,
     enemyType: 'rusher',
-    health: { current: 30, max: 30 },
-    damage: 10,
+    health: { current: hp, max: hp },
+    damage: dmg,
     sprite: g,
+    level: monsterLevel,
   });
 }
 
 /**
  * Spawns a Swarm enemy: a small orange circle. Weak individually, dangerous in packs.
  */
-export function spawnSwarm(worldX: number, worldY: number): Entity {
+export function spawnSwarm(worldX: number, worldY: number, monsterLevel = 1): Entity {
   const g = new Graphics();
   g.circle(0, 0, 6).fill({ color: 0xff8800 });
 
   g.position.set(worldX, worldY);
   game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(10, monsterLevel);
+  const dmg = scaleDamage(5, monsterLevel);
 
   return world.add({
     position: { x: worldX, y: worldY },
@@ -48,16 +56,17 @@ export function spawnSwarm(worldX: number, worldY: number): Entity {
     baseSpeed: 100,
     enemy: true as const,
     enemyType: 'swarm',
-    health: { current: 10, max: 10 },
-    damage: 5,
+    health: { current: hp, max: hp },
+    damage: dmg,
     sprite: g,
+    level: monsterLevel,
   });
 }
 
 /**
  * Spawns a Tank enemy: a large green hexagon. Slow but very tough.
  */
-export function spawnTank(worldX: number, worldY: number): Entity {
+export function spawnTank(worldX: number, worldY: number, monsterLevel = 1): Entity {
   const g = new Graphics();
 
   // Hexagon ~20px radius
@@ -76,6 +85,9 @@ export function spawnTank(worldX: number, worldY: number): Entity {
   g.position.set(worldX, worldY);
   game.entityLayer.addChild(g);
 
+  const hp = scaleHealth(120, monsterLevel);
+  const dmg = scaleDamage(20, monsterLevel);
+
   return world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
@@ -83,16 +95,17 @@ export function spawnTank(worldX: number, worldY: number): Entity {
     baseSpeed: 40,
     enemy: true as const,
     enemyType: 'tank',
-    health: { current: 120, max: 120 },
-    damage: 20,
+    health: { current: hp, max: hp },
+    damage: dmg,
     sprite: g,
+    level: monsterLevel,
   });
 }
 
 /**
  * Spawns a Sniper enemy: a magenta diamond. Stays at range and fires projectiles.
  */
-export function spawnSniper(worldX: number, worldY: number): Entity {
+export function spawnSniper(worldX: number, worldY: number, monsterLevel = 1): Entity {
   const g = new Graphics();
 
   // Diamond ~12px
@@ -106,6 +119,10 @@ export function spawnSniper(worldX: number, worldY: number): Entity {
   g.position.set(worldX, worldY);
   game.entityLayer.addChild(g);
 
+  const hp = scaleHealth(25, monsterLevel);
+  // Sniper base damage is 0 (projectile carries damage), keep it unscaled
+  const dmg = 0;
+
   return world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
@@ -113,17 +130,18 @@ export function spawnSniper(worldX: number, worldY: number): Entity {
     baseSpeed: 50,
     enemy: true as const,
     enemyType: 'sniper',
-    health: { current: 25, max: 25 },
-    damage: 0,
+    health: { current: hp, max: hp },
+    damage: dmg,
     sprite: g,
     aiTimer: 0,
+    level: monsterLevel,
   });
 }
 
 /**
  * Spawns a Flanker enemy: a yellow crescent/arc shape. Fast, circles then dashes.
  */
-export function spawnFlanker(worldX: number, worldY: number): Entity {
+export function spawnFlanker(worldX: number, worldY: number, monsterLevel = 1): Entity {
   const g = new Graphics();
 
   // Crescent/arc shape ~14px
@@ -135,6 +153,9 @@ export function spawnFlanker(worldX: number, worldY: number): Entity {
   g.position.set(worldX, worldY);
   game.entityLayer.addChild(g);
 
+  const hp = scaleHealth(20, monsterLevel);
+  const dmg = scaleDamage(12, monsterLevel);
+
   return world.add({
     position: { x: worldX, y: worldY },
     velocity: { x: 0, y: 0 },
@@ -142,10 +163,11 @@ export function spawnFlanker(worldX: number, worldY: number): Entity {
     baseSpeed: 130,
     enemy: true as const,
     enemyType: 'flanker',
-    health: { current: 20, max: 20 },
-    damage: 12,
+    health: { current: hp, max: hp },
+    damage: dmg,
     sprite: g,
     aiTimer: 0,
     aiState: 'circling',
+    level: monsterLevel,
   });
 }
