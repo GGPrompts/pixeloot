@@ -3,7 +3,9 @@ import { despawnProjectile } from '../../entities/Projectile';
 import { spawnDeathParticles } from '../../entities/DeathParticles';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { grantXP, getEnemyXP } from './XPSystem';
-import { StatusType, hasStatus, consumeShock } from '../../core/StatusEffects';
+import { StatusType, hasStatus, consumeShock, applyStatus } from '../../core/StatusEffects';
+import { rollDrops } from '../../loot/DropTable';
+import { spawnItemDrop, spawnGoldDrop } from '../../entities/LootDrop';
 
 const HIT_RADIUS = 16;
 const CONTACT_RADIUS = 20;
@@ -56,6 +58,11 @@ export function collisionSystem(dt: number): void {
         enemy.health.current -= dmg;
         spawnDamageNumber(enemy.position.x, enemy.position.y - 10, dmg, 0xffffff);
 
+        // Apply knockback if projectile has knockbackOnHit
+        if (proj.knockbackOnHit && proj.position) {
+          applyStatus(enemy, StatusType.Knockback, proj.position);
+        }
+
         // Flash effect on the enemy sprite
         if (enemy.sprite) {
           enemy.sprite.alpha = 0.3;
@@ -93,6 +100,28 @@ export function collisionSystem(dt: number): void {
 
     // Grant XP to player based on enemy type and level
     grantXP(getEnemyXP(enemy.enemyType ?? 'rusher', enemy.level ?? 1));
+
+    // Roll and spawn loot/gold drops
+    const enemyType = enemy.enemyType ?? 'rusher';
+    const monsterLevel = enemy.level ?? 1;
+    const drops = rollDrops(enemyType, monsterLevel);
+
+    if (drops.gold > 0) {
+      spawnGoldDrop(
+        enemy.position.x + (Math.random() - 0.5) * 16,
+        enemy.position.y + (Math.random() - 0.5) * 16,
+        drops.gold,
+      );
+    }
+
+    for (let i = 0; i < drops.items.length; i++) {
+      // Spread items out slightly so they don't stack perfectly
+      spawnItemDrop(
+        enemy.position.x + (Math.random() - 0.5) * 24,
+        enemy.position.y + (Math.random() - 0.5) * 24,
+        drops.items[i],
+      );
+    }
 
     if (enemy.sprite) {
       enemy.sprite.removeFromParent();

@@ -19,6 +19,7 @@ export enum WeaponType {
   Staff,
   Wand,
   Crossbow,
+  Orb,
 }
 
 export interface BaseItem {
@@ -30,6 +31,7 @@ export interface BaseItem {
   baseStats: BaseStats;
   affixes: Affix[];
   uniqueEffect?: string;
+  weaponType?: WeaponType;
 }
 
 export interface BaseStats {

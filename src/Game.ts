@@ -7,8 +7,11 @@ import { playerFacingSystem } from './ecs/systems/PlayerFacingSystem';
 import { cameraSystem } from './ecs/systems/CameraSystem';
 import { projectileSystem } from './ecs/systems/ProjectileSystem';
 import { collisionSystem } from './ecs/systems/CollisionSystem';
+import { pickupSystem } from './ecs/systems/PickupSystem';
 import { firingSystem } from './ecs/systems/FiringSystem';
 import { aiSystem } from './ecs/systems/AISystem';
+import { bossAISystem } from './ecs/systems/BossAISystem';
+import { updateBossHealthBar } from './ui/BossHealthBar';
 import { generateDungeon } from './map/DungeonGenerator';
 import { TileMap } from './map/TileMap';
 import { WaveSystem } from './entities/WaveSystem';
@@ -21,6 +24,7 @@ import { world } from './ecs/world';
 import { statusEffectSystem } from './ecs/systems/StatusEffectSystem';
 import { initHotbar, updateHotbar } from './ui/SkillHotbar';
 import { showClassSelect, isClassSelectVisible, toggleClassSelect } from './ui/ClassSelect';
+import { updateInventoryPanel, isInventoryOpen } from './ui/InventoryPanel';
 
 const SCREEN_W = 1280;
 const SCREEN_H = 720;
@@ -173,8 +177,9 @@ export class Game {
     }
     this.prevCPressed = cDown;
 
-    // Pause gameplay while class select is open
+    // Pause gameplay while class select or inventory is open
     if (isClassSelectVisible()) return;
+    if (isInventoryOpen()) return;
 
     // Skill system: tick cooldowns and check key input
     skillSystem.tickSkills(dt);
@@ -189,9 +194,11 @@ export class Game {
     statusEffectSystem(dt);
     firingSystem(dt);
     aiSystem(dt);
+    bossAISystem(dt);
     movementSystem(dt);
     projectileSystem(dt);
     collisionSystem(dt);
+    pickupSystem(dt);
     healthSystem(dt);
     this.waveSystem.update(dt);
   }
@@ -206,6 +213,8 @@ export class Game {
     updateHUD();
     updateStatPanel();
     updateHotbar();
+    updateBossHealthBar();
+    updateInventoryPanel();
 
     // FPS counter — update display every 500 ms
     this.frameCount++;

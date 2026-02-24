@@ -1,6 +1,7 @@
 import { World } from 'miniplex';
 import type { Container, Graphics } from 'pixi.js';
 import type { StatusEffect } from '../core/StatusEffects';
+import type { BaseItem } from '../loot/ItemTypes';
 
 export type Entity = {
   position?: { x: number; y: number };
@@ -35,6 +36,13 @@ export type Entity = {
   aiTimer?: number;               // general-purpose AI cooldown timer
   aiState?: string;               // AI behavior state (e.g. 'circling', 'dashing')
   explodeOnDeath?: { radius: number; damage: number }; // AoE explosion when projectile dies
+  homing?: true;                      // projectile gently homes toward nearest enemy
+  knockbackOnHit?: true;              // projectile applies knockback on hit
+  boss?: true;                     // marks entity as a boss
+  bossPhase?: number;              // current boss fight phase (1, 2, 3)
+  lootDrop?: { item: BaseItem };    // item drop on the ground
+  goldDrop?: number;                // gold amount for gold drops
+  pickup?: true;                    // entity can be picked up by walking over it
 };
 
 export const world = new World<Entity>();

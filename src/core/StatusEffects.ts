@@ -68,11 +68,10 @@ export function applyStatus(
     entity.statusEffects = [];
   }
 
-  // Future boss check: immune to stun, half-effective slow
-  // if ((entity as any).boss) {
-  //   if (type === StatusType.Stun) return;
-  //   // half-effective slow handled in system
-  // }
+  // Bosses: immune to stun, half-duration knockback
+  if (entity.boss) {
+    if (type === StatusType.Stun) return;
+  }
 
   // Stun: respect immunity window
   if (type === StatusType.Stun) {

@@ -24,6 +24,10 @@ export interface ProjectileOptions {
   intelligence?: number;
   /** AoE explosion on projectile death (hit or wall). */
   explodeOnDeath?: { radius: number; damage: number };
+  /** Projectile gently homes toward nearest enemy (Orb weapon). */
+  homing?: true;
+  /** Projectile applies knockback on hit (Crossbow weapon). */
+  knockbackOnHit?: true;
 }
 
 function createProjectileSprite(): Graphics {
@@ -91,6 +95,14 @@ export function fireProjectile(
 
   if (options?.explodeOnDeath) {
     entity.explodeOnDeath = { ...options.explodeOnDeath };
+  }
+
+  if (options?.homing) {
+    entity.homing = true as const;
+  }
+
+  if (options?.knockbackOnHit) {
+    entity.knockbackOnHit = true as const;
   }
 
   return world.add(entity as Entity);

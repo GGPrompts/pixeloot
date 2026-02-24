@@ -2,6 +2,7 @@ import { Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker } from './Enemy';
+import { spawnBoss } from './Boss';
 import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
 
 const MIN_PLAYER_DIST = 200;
@@ -298,9 +299,6 @@ export class WaveSystem {
 
   private beginNextWave(): void {
     this.currentWave++;
-    const waveDef = this.currentWave <= PREDEFINED_WAVES.length
-      ? PREDEFINED_WAVES[this.currentWave - 1]
-      : generateWave(this.currentWave);
 
     const pPos = getPlayerPos();
     if (!pPos) return;
@@ -309,6 +307,16 @@ export class WaveSystem {
     const playerQuery = world.with('player', 'level');
     const playerLevel = playerQuery.entities[0]?.level ?? 1;
     this.currentMonsterLevel = getMonsterLevel(playerLevel, DEFAULT_SCALING_CONFIG);
+
+    // Boss wave every 5 waves (5, 10, 15, ...)
+    if (this.currentWave % 5 === 0) {
+      this.spawnBossWave(pPos);
+      return;
+    }
+
+    const waveDef = this.currentWave <= PREDEFINED_WAVES.length
+      ? PREDEFINED_WAVES[this.currentWave - 1]
+      : generateWave(this.currentWave);
 
     // Flatten enemy list
     const typeList: SpawnEntry['type'][] = [];
@@ -322,6 +330,21 @@ export class WaveSystem {
     this.pendingSpawns = buildSpawns(waveDef.formation, typeList, pPos.x, pPos.y);
     this.spawnTimer = 0; // spawn first immediately
     this.state = 'spawning';
+
+    this.showWaveText();
+  }
+
+  /** Spawn a boss-only wave. */
+  private spawnBossWave(pPos: { x: number; y: number }): void {
+    // Find a spawn position away from player
+    const spawnPos = findSpawnPosition(pPos.x, pPos.y)
+      ?? findNearestFloor(pPos.x + SURROUND_DIST, pPos.y);
+
+    spawnBoss(spawnPos.x, spawnPos.y, this.currentMonsterLevel);
+
+    // No staggered spawns needed — go straight to active
+    this.pendingSpawns = [];
+    this.state = 'active';
 
     this.showWaveText();
   }

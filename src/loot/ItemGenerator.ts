@@ -71,5 +71,6 @@ export function generateItem(
     level: itemLevel,
     baseStats,
     affixes,
+    ...(template.weaponType !== undefined && { weaponType: template.weaponType }),
   };
 }

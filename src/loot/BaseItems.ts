@@ -31,6 +31,12 @@ export const WEAPON_TEMPLATES: BaseItemTemplate[] = [
     weaponType: WeaponType.Crossbow,
     baseStats: { damage: 18, attackSpeed: 0.7 },
   },
+  {
+    name: 'Spirit Orb',
+    slot: Slot.Weapon,
+    weaponType: WeaponType.Orb,
+    baseStats: { damage: 9, attackSpeed: 1.1 },
+  },
 ];
 
 export const HELMET_TEMPLATES: BaseItemTemplate[] = [
