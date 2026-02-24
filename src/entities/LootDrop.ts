@@ -1,4 +1,4 @@
-import { Graphics, Text, TextStyle } from 'pixi.js';
+import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { BaseItem, Rarity } from '../loot/ItemTypes';
@@ -48,9 +48,12 @@ export function spawnItemDrop(x: number, y: number, item: BaseItem): void {
  * Draws a small yellow circle with the gold amount as text.
  */
 export function spawnGoldDrop(x: number, y: number, amount: number): void {
+  const container = new Container();
+
   const g = new Graphics();
   g.circle(0, 0, 4);
   g.fill({ color: 0xffd700 });
+  container.addChild(g);
 
   const label = new Text({
     text: `${amount}`,
@@ -64,14 +67,14 @@ export function spawnGoldDrop(x: number, y: number, amount: number): void {
   });
   label.anchor.set(0.5, 1);
   label.position.set(0, -6);
-  g.addChild(label);
+  container.addChild(label);
 
-  g.position.set(x, y);
-  game.entityLayer.addChild(g);
+  container.position.set(x, y);
+  game.entityLayer.addChild(container);
 
   world.add({
     position: { x, y },
-    sprite: g,
+    sprite: container,
     goldDrop: amount,
     pickup: true,
   });

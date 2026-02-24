@@ -154,9 +154,9 @@ class SkillSystem {
     const screenMouse = input.getMousePosition();
     const mousePos = screenToWorld(screenMouse.x, screenMouse.y);
 
-    // LMB (mouse button 0)
+    // LMB (mouse button 0) — hold-to-fire, cooldown rate-limits
     const lmb = input.isMouseDown(0);
-    if (lmb && !this.prevLMB) {
+    if (lmb) {
       this.tryUseSlot('lmb', playerPos, mousePos);
     }
     this.prevLMB = lmb;

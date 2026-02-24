@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Text, TextStyle } from 'pixi.js';
+import { Application, Container, Graphics, Text, TextStyle, Ticker } from 'pixi.js';
 import { Fonts, FontSize, Colors } from './ui/UITheme';
 import { InputManager } from './core/InputManager';
 import { createPlayer } from './entities/Player';
@@ -9,7 +9,7 @@ import { cameraSystem } from './ecs/systems/CameraSystem';
 import { projectileSystem } from './ecs/systems/ProjectileSystem';
 import { collisionSystem } from './ecs/systems/CollisionSystem';
 import { pickupSystem } from './ecs/systems/PickupSystem';
-import { firingSystem } from './ecs/systems/FiringSystem';
+
 import { aiSystem } from './ecs/systems/AISystem';
 import { bossAISystem } from './ecs/systems/BossAISystem';
 import { updateBossHealthBar } from './ui/BossHealthBar';
@@ -42,6 +42,22 @@ import { checkNPCClick, updateComingSoonText } from './entities/NPC';
 import { updateSkillAssignPanel, isSkillAssignOpen, toggleSkillAssignPanel } from './ui/SkillAssignPanel';
 import { updateRangeIndicators } from './ui/RangeIndicator';
 import { SCREEN_W, SCREEN_H, TILE_SIZE, LOGIC_FPS, LOGIC_STEP } from './core/constants';
+
+/**
+ * PixiJS v8 Ticker kills the entire game loop if any listener throws
+ * (requestAnimationFrame is never re-scheduled). Patch _tick to add
+ * error recovery so the loop survives individual listener errors.
+ */
+function patchTickerErrorRecovery(ticker: Ticker): void {
+  const origUpdate = ticker.update.bind(ticker);
+  ticker.update = (currentTime?: number) => {
+    try {
+      origUpdate(currentTime);
+    } catch (err) {
+      console.error('[Ticker] listener error (game loop preserved):', err);
+    }
+  };
+}
 
 export class Game {
   public app: Application;
@@ -146,6 +162,9 @@ export class Game {
         });
       }
     });
+
+    // Patch ticker to survive errors in listeners (PixiJS kills the loop on throw)
+    patchTickerErrorRecovery(this.app.ticker);
 
     // Start game loop
     this.startLoop();
@@ -313,12 +332,15 @@ export class Game {
         const p = playerEntities[0];
         if (!p.dead && !p.inputDisabled) {
           skillSystem.checkInput(p.position);
+        } else {
+          // Keep prev-input state current while stunned/dead so rising edges
+          // aren't eaten when the player regains control
+          skillSystem.resetPrevInput();
         }
       }
     }
 
     statusEffectSystem(dt);
-    firingSystem(dt);
     aiSystem(dt);
     bossAISystem(dt);
     movementSystem(dt);
