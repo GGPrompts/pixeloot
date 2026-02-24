@@ -157,7 +157,7 @@ export class Game {
       const autoSaveSlot = await getAutoSave();
       if (autoSaveSlot?.id != null) {
         const shouldLoad = confirm(
-          `Autosave found: Lv.${autoSaveSlot.level} ${autoSaveSlot.classType} (Wave ${autoSaveSlot.level})\nLoad autosave?`,
+          `Autosave found: Lv.${autoSaveSlot.level} ${autoSaveSlot.classType}\nLoad autosave?`,
         );
         if (shouldLoad) {
           await loadGame(autoSaveSlot.id);
