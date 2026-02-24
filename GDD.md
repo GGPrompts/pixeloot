@@ -381,7 +381,7 @@ Monster Level = max(Map Base Level, Player Level - 2) + Map Tier Bonus
 - Lose a percentage of gold on death (5-10%)
 - Respawn at map entrance
 - No corpse run, no XP loss
-- Hardcore mode option: permadeath with separate leaderboard
+- Hardcore mode: deferred until core balance is proven. Add permadeath + separate leaderboard once death scenarios feel fair
 
 ---
 
@@ -426,7 +426,7 @@ Persistent chat panel at the bottom of the screen - visible whether you're in to
 | **General** | Anything goes, main social space |
 | **Trading** | Item links + offers, negotiations |
 | **LFG** | Looking for group (future co-op feature) |
-| **Hardcore** | Separate community for HC players |
+| **Hardcore** | Separate community for HC players (added when HC mode ships) |
 
 - Players can **link items** in chat (hover to see stats)
 - Click a player's name to **whisper** (private message)
@@ -621,5 +621,5 @@ src/
 - Seasons/ladder resets for the social layer?
 - Mobile support? (touch controls would need design work, twin-stick style could work)
 - Should maps have a timer for bonus loot (speed-clear incentive)?
-- Hardcore-only trade server vs shared?
+- Hardcore mode: when to introduce, separate economy or shared?
 - Co-op: future feature? How does monster scaling work in a party?
