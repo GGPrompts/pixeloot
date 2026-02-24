@@ -54,7 +54,6 @@ const SLOT_LABELS: { key: keyof EquipSlots; label: string }[] = [
 let container: Container | null = null;
 let visible = false;
 let prevIPressed = false;
-let prevEPressed = false;
 let prevEscPressed = false;
 
 let gearSlotContainers: Container[] = [];
@@ -327,7 +326,6 @@ function refreshSlots(): void {
 export function updateInventoryPanel(): void {
   const input = InputManager.instance;
   const iDown = input.isPressed('KeyI');
-  const eDown = input.isPressed('KeyE');
   const escDown = input.isPressed('Escape');
 
   if (escDown && !prevEscPressed && visible) {
@@ -336,12 +334,11 @@ export function updateInventoryPanel(): void {
     hideTooltip();
     prevEscPressed = escDown;
     prevIPressed = iDown;
-    prevEPressed = eDown;
     return;
   }
   prevEscPressed = escDown;
 
-  if ((iDown && !prevIPressed) || (eDown && !prevEPressed)) {
+  if (iDown && !prevIPressed) {
     visible = !visible;
 
     if (!container) {
@@ -358,7 +355,6 @@ export function updateInventoryPanel(): void {
   }
 
   prevIPressed = iDown;
-  prevEPressed = eDown;
 
   if (visible && container) {
     refreshSlots();

@@ -183,6 +183,20 @@ class SkillSystem {
     this.prevE = e;
   }
 
+  /**
+   * Reset previous input state so rising-edge detection works correctly
+   * after panels close or returning from town. Call when checkInput is
+   * NOT being called (panels open, in town) so stale prev state doesn't
+   * eat the next real input.
+   */
+  resetPrevInput(): void {
+    const input = InputManager.instance;
+    this.prevLMB = input.isMouseDown(0);
+    this.prevRMB = input.isMouseDown(2);
+    this.prevSpace = input.isPressed('Space');
+    this.prevE = input.isPressed('KeyE');
+  }
+
   /** Get skill states as a 4-element array [lmb, rmb, space, e] for hotbar display. */
   getSkills(): readonly (SkillState | null)[] {
     return [this.slots.lmb, this.slots.rmb, this.slots.space, this.slots.e];

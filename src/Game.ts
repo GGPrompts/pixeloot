@@ -280,14 +280,15 @@ export class Game {
     }
 
     // Pause gameplay while class select, inventory, save/load, or map device is open
-    if (isClassSelectVisible()) return;
-    if (isInventoryOpen()) return;
-    if (isSaveLoadPanelOpen()) return;
-    if (isMapDeviceOpen()) return;
-    if (isVendorOpen()) return;
-    if (isCraftingPanelOpen()) return;
-    if (isStashOpen()) return;
-    if (isSkillAssignOpen()) return;
+    const panelOpen = isClassSelectVisible() || isInventoryOpen() || isSaveLoadPanelOpen()
+      || isMapDeviceOpen() || isVendorOpen() || isCraftingPanelOpen()
+      || isStashOpen() || isSkillAssignOpen();
+
+    if (panelOpen) {
+      // Keep prev-input state current so rising edges work when panel closes
+      skillSystem.resetPrevInput();
+      return;
+    }
 
     // Skill system: tick cooldowns every frame
     skillSystem.tickSkills(dt);
@@ -301,6 +302,8 @@ export class Game {
         checkNPCClick(worldPos.x, worldPos.y);
       }
       this.prevMouseDown = mouseDown;
+      // Keep skill prev-input current while in town
+      skillSystem.resetPrevInput();
     } else {
       this.prevMouseDown = InputManager.instance.isMouseDown(0);
 
