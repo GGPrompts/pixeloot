@@ -613,13 +613,41 @@ src/
 - [ ] Leaderboards
 - [ ] Cloud save sync
 
+### M7: Mobile Trade Companion
+- [ ] Responsive web UI for chat + trade (no canvas, HTML/CSS only)
+- [ ] Same Supabase auth (login on phone with same account)
+- [ ] Chat channels with item linking (tap to view stats)
+- [ ] Browse own inventory and stash
+- [ ] Initiate and negotiate trades from phone
+- [ ] Push notifications for trade offers / whispers (Supabase Realtime)
+- [ ] "Looking to sell" / "Looking to buy" listing posts
+
+---
+
+## Platform Strategy
+
+### Game Client (PC Only)
+- **Mouse + keyboard required** - cursor-aim projectiles, skill hotkeys, inventory drag-and-drop
+- **Landscape 16:9** - base resolution 1280x720, scales up to 1920x1080+
+- No touch controls, no portrait mode, no mobile game client
+- Enforce minimum viewport size, show "PC required" message on small screens
+
+### Mobile Trade Companion (Phone/Tablet)
+- **Lightweight web app** - responsive HTML/CSS, no PixiJS, no canvas
+- **Same account** - Supabase auth, same inventory/stash data as PC client
+- **Chat + trade only** - browse channels, negotiate deals, manage listings
+- **Always-on engagement** - check trade chat from bed, respond to offers on the bus
+- Separate URL (e.g., `/companion` or subdomain) from the game client
+- Works in any mobile browser, no app store needed
+
+This split keeps the game feeling premium on PC while the social/economy layer stays accessible everywhere - the parts that create community and keep players engaged between sessions.
+
 ---
 
 ## Open Questions
 - Mana system: per-skill cooldowns, shared mana pool, or hybrid?
 - Skill acquisition: drops only, vendor, or level-based unlocks?
 - Seasons/ladder resets for the social layer?
-- Mobile support? (touch controls would need design work, twin-stick style could work)
 - Should maps have a timer for bonus loot (speed-clear incentive)?
 - Hardcore mode: when to introduce, separate economy or shared?
 - Co-op: future feature? How does monster scaling work in a party?
