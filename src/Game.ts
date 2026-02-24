@@ -76,7 +76,10 @@ export class Game {
 
     // Initialize input manager
     InputManager.init(app.canvas as HTMLCanvasElement);
+  }
 
+  /** Called after the singleton is set, so modules can access `game`. */
+  private initEntities(): void {
     // Create player entity
     createPlayer();
 
@@ -103,7 +106,11 @@ export class Game {
 
     document.body.appendChild(app.canvas);
 
-    return new Game(app);
+    const g = new Game(app);
+    // Set singleton before initEntities so modules importing `game` can access it
+    game = g;
+    g.initEntities();
+    return g;
   }
 
   /** Draws a subtle cyan grid covering the viewport. */
