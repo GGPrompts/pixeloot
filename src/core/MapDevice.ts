@@ -7,7 +7,7 @@
 
 import { Graphics } from 'pixi.js';
 import type { MapItem, MapModifier } from '../loot/MapItem';
-import { generateDungeon } from '../map/DungeonGenerator';
+import { generateDungeon, ensureConnectivity } from '../map/DungeonGenerator';
 import { TileMap } from '../map/TileMap';
 import { postProcessDungeon } from '../map/MapPostProcessor';
 import { getRandomMapDesign } from '../map/MapDesignRegistry';
@@ -108,6 +108,9 @@ export function activateMap(mapItem: MapItem): void {
   // 4b. Apply layout variant post-processing
   const layoutDesign = getRandomMapDesign();
   postProcessDungeon(dungeonData, layoutDesign, tier);
+
+  // 4c. Re-validate connectivity after post-processing (layout transforms can create islands)
+  ensureConnectivity(dungeonData.tiles, dungeonData.width, dungeonData.height, dungeonData.spawn);
 
   // 5. Replace the tile map
   // Remove old world layer children and re-draw

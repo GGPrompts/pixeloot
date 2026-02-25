@@ -48,8 +48,9 @@ export function healthSystem(dt: number): void {
     (player.potionCooldown === undefined || player.potionCooldown <= 0) &&
     player.health.current < player.health.max
   ) {
-    world.addComponent(player, 'potionCooldown', POTION_COOLDOWN);
-    world.addComponent(player, 'hotTimer', POTION_DURATION);
+    // Direct assignment — addComponent silently no-ops if the component already exists
+    player.potionCooldown = POTION_COOLDOWN;
+    player.hotTimer = POTION_DURATION;
     sfxPlayer.play('potion_use');
     hotAccumulator = 0;
     const totalHeal = player.health.max * POTION_HEAL_PERCENT;
