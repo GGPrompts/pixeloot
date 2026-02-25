@@ -10,13 +10,19 @@ import { hasModifier } from '../../core/MapDevice';
 import { spawnMapDrop } from '../../entities/MapDrop';
 import { spawnGemDrop } from '../../entities/GemDrop';
 import { getDamageReduction } from '../../core/ComputedStats';
-import { spawnMiniSplitter } from '../../entities/Enemy';
+import { spawnMiniSplitter, recordCorpse } from '../../entities/Enemy';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { spawnHitSparks } from '../../entities/HitSparks';
 import { shake } from './CameraSystem';
 import { game } from '../../Game';
 import { Graphics } from 'pixi.js';
 import { hasEffect, activateFrenzy, isFrenzyActive } from '../../core/UniqueEffects';
+
+/** Overcharger death buff constants */
+const OVERCHARGER_BUFF_RADIUS = 160;
+const OVERCHARGER_BUFF_DURATION = 5;
+const OVERCHARGER_BUFF_DAMAGE_MULT = 0.25;
+const OVERCHARGER_BUFF_SPEED_MULT = 0.15;
 
 /** Mirror reflect cooldown */
 const MIRROR_REFLECT_COOLDOWN = 2;
@@ -312,6 +318,55 @@ export function collisionSystem(dt: number): void {
       }
     }
 
+    // Record corpse position for Necromancer raise mechanic
+    recordCorpse(enemy.position.x, enemy.position.y);
+
+    // Linker: if one dies, mark the partner as enraged
+    if (enemy.enemyType === 'linker' && enemy.linkedPartner) {
+      const partner = enemy.linkedPartner as typeof enemy;
+      if (partner && !partner.dead && partner.health && partner.health.current > 0) {
+        partner.linkerEnraged = true;
+        partner.speed = (partner.baseSpeed ?? 70) * 2;
+      }
+      // Clean up beam sprite
+      if (enemy.linkerBeamSprite) {
+        (enemy.linkerBeamSprite as Graphics).removeFromParent();
+        (enemy.linkerBeamSprite as Graphics).destroy();
+        enemy.linkerBeamSprite = undefined;
+      }
+    }
+
+    // Overcharger: on death, buff all nearby enemies
+    if (enemy.enemyType === 'overcharger') {
+      for (const other of enemies) {
+        if (other === enemy || other.dead) continue;
+        // Don't stack the buff
+        if (other.overchargerDeathBuff) continue;
+        const odx = other.position.x - enemy.position.x;
+        const ody = other.position.y - enemy.position.y;
+        if (odx * odx + ody * ody < OVERCHARGER_BUFF_RADIUS * OVERCHARGER_BUFF_RADIUS) {
+          other.overchargerDeathBuff = true;
+          other.overchargerBuffTimer = OVERCHARGER_BUFF_DURATION;
+          // Store originals before buffing
+          other.overchargerOrigSpeed = other.speed;
+          other.overchargerOrigDamage = other.damage;
+          // Apply buff
+          if (other.speed !== undefined) {
+            other.speed = Math.round(other.speed * (1 + OVERCHARGER_BUFF_SPEED_MULT));
+          }
+          if (other.damage !== undefined) {
+            other.damage = Math.round(other.damage * (1 + OVERCHARGER_BUFF_DAMAGE_MULT));
+          }
+          // Visual: electric blue aura
+          if (other.sprite) {
+            other.sprite.tint = 0x44ccff;
+          }
+        }
+      }
+      // Visual: electric pulse explosion
+      spawnOverchargerDeathPulse(enemy.position.x, enemy.position.y);
+    }
+
     // Spawn death particles before removing
     spawnDeathParticles(enemy.position.x, enemy.position.y);
     sfxPlayer.play('enemy_death');
@@ -465,8 +520,8 @@ export function collisionSystem(dt: number): void {
         enemy.chargerDir = undefined;
       }
 
-      // Warper: apply Shock on contact
-      if (enemy.enemyType === 'warper') {
+      // Warper, Overcharger, Linker (enraged): apply Shock on contact
+      if (enemy.enemyType === 'warper' || enemy.enemyType === 'overcharger' || (enemy.enemyType === 'linker' && enemy.linkerEnraged)) {
         applyStatus(player, StatusType.Shock, enemy.position);
       }
 
@@ -602,6 +657,59 @@ function spawnExplosionParticles(x: number, y: number): void {
       g.position.y += vy * (1 / 60);
       g.alpha = 1 - t;
       if (t >= 1) {
+        g.removeFromParent();
+        g.destroy();
+      } else {
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+  }
+}
+
+// ── Overcharger death pulse visual ─────────────────────────────────────
+function spawnOverchargerDeathPulse(x: number, y: number): void {
+  // Electric blue expanding ring
+  const ring = new Graphics();
+  ring.circle(0, 0, 10).stroke({ color: 0x44ccff, width: 3, alpha: 0.8 });
+  ring.position.set(x, y);
+  game.effectLayer.addChild(ring);
+
+  const start = performance.now();
+  const expand = () => {
+    const elapsed = performance.now() - start;
+    const t = Math.min(elapsed / 500, 1);
+    const r = 10 + t * (OVERCHARGER_BUFF_RADIUS - 10);
+    ring.clear();
+    ring.circle(0, 0, r).stroke({ color: 0x44ccff, width: 3, alpha: 0.8 * (1 - t) });
+    if (t >= 1) {
+      ring.removeFromParent();
+      ring.destroy();
+    } else {
+      requestAnimationFrame(expand);
+    }
+  };
+  requestAnimationFrame(expand);
+
+  // Electric particles
+  for (let i = 0; i < 10; i++) {
+    const g = new Graphics();
+    g.circle(0, 0, 3).fill({ color: 0x88eeff });
+    g.position.set(x, y);
+    game.effectLayer.addChild(g);
+
+    const angle = (Math.PI * 2 * i) / 10 + (Math.random() - 0.5) * 0.5;
+    const speed = 120 * (0.5 + Math.random() * 0.5);
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    const pStart = performance.now();
+    const tick = () => {
+      const elapsed = performance.now() - pStart;
+      const pt = Math.min(elapsed / 400, 1);
+      g.position.x += vx * (1 / 60);
+      g.position.y += vy * (1 / 60);
+      g.alpha = 1 - pt;
+      if (pt >= 1) {
         g.removeFromParent();
         g.destroy();
       } else {

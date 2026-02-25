@@ -8,7 +8,7 @@ import { applyStatus, StatusType } from '../../core/StatusEffects';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { getDamageReduction } from '../../core/ComputedStats';
 import { Container } from 'pixi.js';
-import { spawnSwarm } from '../../entities/Enemy';
+import { spawnSwarm, spawnRusher, getCorpsePositions, consumeCorpse } from '../../entities/Enemy';
 
 const enemies = world.with('enemy', 'position', 'velocity', 'speed');
 const players = world.with('player', 'position');
@@ -98,6 +98,27 @@ const TRAPPER_MAX_TRAPS = 3;          // max active traps per trapper
 const TRAPPER_TRAP_RADIUS = 40;       // px: trap AoE radius
 const TRAPPER_TRAP_LIFETIME = 8;      // seconds before unactivated trap despawns
 const TRAPPER_TRAP_ARM_DELAY = 0.5;   // seconds before trap becomes active
+
+/** Linker behavior constants */
+const LINKER_ORBIT_RADIUS = 120;         // px: orbit distance from player
+const LINKER_BEAM_DAMAGE_PER_SEC = 12;   // base damage per second from beam
+const LINKER_ENRAGED_SPEED_MULT = 2;     // speed multiplier when partner dies
+
+/** Mimic behavior constants */
+const MIMIC_FIRE_INTERVAL = 2;           // seconds between projectile fires
+
+/** Necromancer behavior constants */
+const NECROMANCER_RAISE_INTERVAL = 6;    // seconds between raise attempts
+const NECROMANCER_RAISE_RANGE = 300;     // px: max distance to a corpse to raise
+const NECROMANCER_MAX_RAISED = 3;        // max active raised enemies
+const NECROMANCER_CHANNEL_TIME = 2;      // seconds to channel a raise
+const NECROMANCER_FLEE_DIST = 150;       // px: tries to stay this far from player
+
+/** Overcharger behavior constants */
+const OVERCHARGER_BUFF_RADIUS = 160;     // px: death buff range (design says 150, slightly increased)
+const OVERCHARGER_BUFF_DURATION = 5;     // seconds buff lasts
+const OVERCHARGER_BUFF_DAMAGE = 0.25;    // +25% damage buff
+const OVERCHARGER_BUFF_SPEED = 0.15;     // +15% speed buff
 
 /** Spawner behavior constants */
 const SPAWNER_SPAWN_INTERVAL = 4;     // seconds between spawns
@@ -1364,6 +1385,311 @@ export function aiSystem(dt: number): void {
         break;
       }
 
+      // ── Linker: pair-bonded enemies with damage beam ──────────────────
+      case 'linker': {
+        const partner = enemy.linkedPartner as typeof enemy | undefined;
+        const partnerAlive = partner && !partner.dead && partner.health && partner.health.current > 0;
+
+        if (enemy.linkerEnraged || !partnerAlive) {
+          // Enraged: partner is dead, chase at double speed
+          if (!enemy.linkerEnraged) {
+            enemy.linkerEnraged = true;
+            enemy.speed = (enemy.baseSpeed ?? 70) * LINKER_ENRAGED_SPEED_MULT;
+            // Clean up beam sprite
+            if (enemy.linkerBeamSprite) {
+              enemy.linkerBeamSprite.removeFromParent();
+              enemy.linkerBeamSprite.destroy();
+              enemy.linkerBeamSprite = undefined;
+            }
+          }
+          const dir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = dir.x * enemy.speed;
+          enemy.velocity.y = dir.y * enemy.speed;
+        } else {
+          // Paired: orbit player on opposite sides
+          // Determine which side this linker is on using a consistent ordering
+          const isFirst = (enemy as object) < (partner as object);
+          const sideAngle = isFirst ? 0 : Math.PI;
+
+          // Compute desired position: orbit at LINKER_ORBIT_RADIUS from player
+          const angleToPlayer = Math.atan2(
+            enemy.position.y - player.position.y,
+            enemy.position.x - player.position.x,
+          );
+          // Slowly rotate around the player
+          if (enemy.aiTimer !== undefined) {
+            enemy.aiTimer += dt;
+          }
+          const orbitAngle = (enemy.aiTimer ?? 0) * 0.8 + sideAngle;
+          const targetX = player.position.x + Math.cos(orbitAngle) * LINKER_ORBIT_RADIUS;
+          const targetY = player.position.y + Math.sin(orbitAngle) * LINKER_ORBIT_RADIUS;
+
+          const tdx = targetX - enemy.position.x;
+          const tdy = targetY - enemy.position.y;
+          const tlen = Math.sqrt(tdx * tdx + tdy * tdy);
+          if (tlen > 2) {
+            enemy.velocity.x = (tdx / tlen) * enemy.speed;
+            enemy.velocity.y = (tdy / tlen) * enemy.speed;
+          } else {
+            enemy.velocity.x = 0;
+            enemy.velocity.y = 0;
+          }
+
+          // Draw beam between the pair and check for player intersection
+          if (enemy.linkerBeamSprite && partner.position) {
+            const beam = enemy.linkerBeamSprite as Graphics;
+            beam.clear();
+
+            // Draw pulsing electric line
+            const pulseAlpha = 0.5 + 0.3 * Math.sin((enemy.aiTimer ?? 0) * 8);
+            beam.moveTo(enemy.position.x, enemy.position.y)
+              .lineTo(partner.position.x, partner.position.y)
+              .stroke({ color: 0xffaa00, width: 3, alpha: pulseAlpha });
+
+            // Check if player crosses the beam (point-to-line-segment distance)
+            const ax = enemy.position.x, ay = enemy.position.y;
+            const bx = partner.position.x, by = partner.position.y;
+            const px = player.position.x, py = player.position.y;
+
+            const abx = bx - ax, aby = by - ay;
+            const apx = px - ax, apy = py - ay;
+            const abLenSq = abx * abx + aby * aby;
+            if (abLenSq > 0) {
+              const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / abLenSq));
+              const closestX = ax + t * abx;
+              const closestY = ay + t * aby;
+              const distSq = (px - closestX) * (px - closestX) + (py - closestY) * (py - closestY);
+              const BEAM_HIT_RADIUS = 12;
+
+              if (distSq < BEAM_HIT_RADIUS * BEAM_HIT_RADIUS && player.health) {
+                // Deal beam damage (per second, scaled by dt)
+                const rawDmg = (enemy.damage ?? LINKER_BEAM_DAMAGE_PER_SEC) * dt;
+                const dr = getDamageReduction(enemy.level ?? 1);
+                const beamDmg = Math.max(1, Math.round(rawDmg * (1 - dr)));
+                player.health.current -= beamDmg;
+                if (beamDmg >= 2) {
+                  spawnDamageNumber(player.position.x, player.position.y - 10, beamDmg, 0xffaa00);
+                }
+                // Apply Shock
+                applyStatus(player, StatusType.Shock, { x: closestX, y: closestY });
+                if (player.health.current <= 0) player.health.current = 0;
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      // ── Mimic: mirrors player movement inversely ──────────────────────
+      case 'mimic': {
+        // Initialize anchor and player tracking on first frame
+        if (!enemy.mimicAnchor) {
+          // Anchor is the midpoint between player and mimic at spawn
+          enemy.mimicAnchor = {
+            x: (enemy.position.x + player.position.x) / 2,
+            y: (enemy.position.y + player.position.y) / 2,
+          };
+          enemy.mimicPlayerLast = { x: player.position.x, y: player.position.y };
+        }
+
+        // Calculate player delta since last frame
+        const lastPx = enemy.mimicPlayerLast!.x;
+        const lastPy = enemy.mimicPlayerLast!.y;
+        const playerDx = player.position.x - lastPx;
+        const playerDy = player.position.y - lastPy;
+
+        // Mirror: move in opposite direction
+        let newX = enemy.position.x - playerDx;
+        let newY = enemy.position.y - playerDy;
+
+        // Wall collision: slide along wall instead of going through
+        if (game.tileMap) {
+          const tile = game.tileMap.worldToTile(newX, newY);
+          if (game.tileMap.blocksMovement(tile.x, tile.y)) {
+            // Try horizontal only
+            const tileH = game.tileMap.worldToTile(newX, enemy.position.y);
+            if (!game.tileMap.blocksMovement(tileH.x, tileH.y)) {
+              newY = enemy.position.y; // slide horizontal
+            } else {
+              // Try vertical only
+              const tileV = game.tileMap.worldToTile(enemy.position.x, newY);
+              if (!game.tileMap.blocksMovement(tileV.x, tileV.y)) {
+                newX = enemy.position.x; // slide vertical
+              } else {
+                newX = enemy.position.x;
+                newY = enemy.position.y; // stuck
+              }
+            }
+          }
+        }
+
+        // Set velocity based on computed movement
+        enemy.velocity.x = (newX - enemy.position.x) / Math.max(dt, 1 / 60);
+        enemy.velocity.y = (newY - enemy.position.y) / Math.max(dt, 1 / 60);
+
+        // Update player tracking
+        enemy.mimicPlayerLast = { x: player.position.x, y: player.position.y };
+
+        // Fire projectile at player every 2 seconds
+        if (enemy.mimicFireTimer !== undefined) {
+          enemy.mimicFireTimer -= dt;
+          if (enemy.mimicFireTimer <= 0) {
+            enemy.mimicFireTimer = MIMIC_FIRE_INTERVAL;
+            const proj = fireEnemyProjectile(
+              enemy.position.x, enemy.position.y,
+              player.position.x, player.position.y,
+            );
+            proj.damage = enemy.damage ?? 10;
+            proj.level = enemy.level;
+          }
+        }
+        break;
+      }
+
+      // ── Necromancer: flee and revive dead enemies ─────────────────────
+      case 'necromancer': {
+        // Count active raised children
+        const raisedQuery = world.with('enemy', 'raisedByNecromancer');
+        let raisedCount = 0;
+        for (const child of raisedQuery) {
+          if (child.raisedByNecromancer === enemy && !child.dead) {
+            raisedCount++;
+          }
+        }
+        enemy.necromancerChildCount = raisedCount;
+
+        // Flee from player
+        const necFleeDir = getChaseDirection(
+          enemy.position.x, enemy.position.y,
+          player.position.x, player.position.y,
+        );
+        if (len < NECROMANCER_FLEE_DIST) {
+          enemy.velocity.x = -necFleeDir.x * enemy.speed;
+          enemy.velocity.y = -necFleeDir.y * enemy.speed;
+        } else {
+          // Far enough - strafe slowly
+          enemy.velocity.x = -ny * enemy.speed * 0.3;
+          enemy.velocity.y = nx * enemy.speed * 0.3;
+        }
+
+        // Channeling a raise
+        if (enemy.necromancerChanneling) {
+          // Slow down while channeling
+          enemy.velocity.x *= 0.2;
+          enemy.velocity.y *= 0.2;
+
+          if (enemy.necromancerChannelTimer !== undefined) {
+            enemy.necromancerChannelTimer -= dt;
+            // Visual: pulsing scale during channel
+            if (enemy.sprite) {
+              const pulse = 1 + 0.1 * Math.sin((enemy.necromancerChannelTimer ?? 0) * 10);
+              enemy.sprite.scale.set(pulse, pulse);
+            }
+
+            if (enemy.necromancerChannelTimer <= 0) {
+              // Channel complete - raise a Rusher at the nearest corpse
+              const corpses = getCorpsePositions();
+              let nearest: typeof corpses[0] | null = null;
+              let nearestDistSq = Infinity;
+              for (const c of corpses) {
+                const cdx = c.x - enemy.position.x;
+                const cdy = c.y - enemy.position.y;
+                const cdSq = cdx * cdx + cdy * cdy;
+                if (cdSq < nearestDistSq && cdSq < NECROMANCER_RAISE_RANGE * NECROMANCER_RAISE_RANGE) {
+                  nearestDistSq = cdSq;
+                  nearest = c;
+                }
+              }
+
+              if (nearest && raisedCount < NECROMANCER_MAX_RAISED) {
+                // Spawn a raised Rusher at the corpse position with 50% HP and purple tint
+                const raised = spawnRusher(nearest.x, nearest.y, enemy.level ?? 1);
+                raised.raisedByNecromancer = enemy;
+                if (raised.health) {
+                  raised.health.max = Math.round(raised.health.max * 0.5);
+                  raised.health.current = raised.health.max;
+                }
+                // Purple tint to distinguish from normal
+                if (raised.sprite) {
+                  raised.sprite.tint = 0xaa66ff;
+                }
+                consumeCorpse(nearest);
+
+                // Visual: dark purple beam from necromancer to corpse position
+                const beamLine = new Graphics();
+                beamLine.moveTo(enemy.position.x, enemy.position.y)
+                  .lineTo(nearest.x, nearest.y)
+                  .stroke({ color: 0x8844aa, width: 3, alpha: 0.8 });
+                game.effectLayer.addChild(beamLine);
+                const beamStart = performance.now();
+                const fadeBeam = () => {
+                  const elapsed = performance.now() - beamStart;
+                  const t = Math.min(elapsed / 500, 1);
+                  beamLine.alpha = 1 - t;
+                  if (t >= 1) {
+                    beamLine.removeFromParent();
+                    beamLine.destroy();
+                  } else {
+                    requestAnimationFrame(fadeBeam);
+                  }
+                };
+                requestAnimationFrame(fadeBeam);
+
+                sfxPlayer.play('hit_magic');
+              }
+
+              enemy.necromancerChanneling = false;
+              if (enemy.sprite) enemy.sprite.scale.set(1, 1);
+            }
+          }
+        } else {
+          // Raise timer
+          if (enemy.necromancerRaiseTimer !== undefined) {
+            enemy.necromancerRaiseTimer -= dt;
+            if (enemy.necromancerRaiseTimer <= 0 && raisedCount < NECROMANCER_MAX_RAISED) {
+              // Check if any corpses are in range
+              const corpses = getCorpsePositions();
+              let hasCorpse = false;
+              for (const c of corpses) {
+                const cdx = c.x - enemy.position.x;
+                const cdy = c.y - enemy.position.y;
+                if (cdx * cdx + cdy * cdy < NECROMANCER_RAISE_RANGE * NECROMANCER_RAISE_RANGE) {
+                  hasCorpse = true;
+                  break;
+                }
+              }
+
+              if (hasCorpse) {
+                // Start channeling
+                enemy.necromancerChanneling = true;
+                enemy.necromancerChannelTimer = NECROMANCER_CHANNEL_TIME;
+              }
+              enemy.necromancerRaiseTimer = NECROMANCER_RAISE_INTERVAL;
+            }
+          }
+        }
+        break;
+      }
+
+      // ── Overcharger: slow chase, death buff handled in CollisionSystem ─
+      case 'overcharger': {
+        // Slow chase via flow field
+        const ocDir = getChaseDirection(
+          enemy.position.x, enemy.position.y,
+          player.position.x, player.position.y,
+        );
+        enemy.velocity.x = ocDir.x * enemy.speed;
+        enemy.velocity.y = ocDir.y * enemy.speed;
+
+        // Tick down overcharger buff timer on all enemies that have it
+        // (This is done once per frame via the overcharger case to avoid a separate loop,
+        //  but only the first overcharger processes it per frame)
+        break;
+      }
+
       // 'rusher' and 'tank' both chase directly (tank is just slower)
       default: {
         const dir = getChaseDirection(
@@ -1379,6 +1705,30 @@ export function aiSystem(dt: number): void {
     // Rotate sprite to face movement direction
     if (enemy.sprite) {
       enemy.sprite.rotation = Math.atan2(enemy.velocity.y, enemy.velocity.x);
+    }
+  }
+
+  // ── Tick overcharger buff timers on all buffed enemies ───────────────
+  for (const enemy of enemies) {
+    if (enemy.overchargerDeathBuff && enemy.overchargerBuffTimer !== undefined) {
+      enemy.overchargerBuffTimer -= dt;
+      if (enemy.overchargerBuffTimer <= 0) {
+        // Remove buff: restore original stats
+        enemy.overchargerDeathBuff = false;
+        if (enemy.overchargerOrigSpeed !== undefined) {
+          enemy.speed = enemy.overchargerOrigSpeed;
+          enemy.overchargerOrigSpeed = undefined;
+        }
+        if (enemy.overchargerOrigDamage !== undefined) {
+          enemy.damage = enemy.overchargerOrigDamage;
+          enemy.overchargerOrigDamage = undefined;
+        }
+        // Remove blue aura tint
+        if (enemy.sprite) {
+          enemy.sprite.tint = 0xffffff;
+        }
+        enemy.overchargerBuffTimer = undefined;
+      }
     }
   }
 }

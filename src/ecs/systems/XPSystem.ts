@@ -29,6 +29,10 @@ const BASE_XP: Record<string, number> = {
   phaser: 20,
   burrower: 30,
   warper: 15,
+  linker: 20,
+  mimic: 25,
+  necromancer: 35,
+  overcharger: 40,
 };
 
 /**

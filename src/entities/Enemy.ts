@@ -4,6 +4,43 @@ import { game } from '../Game';
 import { scaleHealth, scaleDamage } from '../core/MonsterScaling';
 import { hasModifier } from '../core/MapDevice';
 
+// ── Corpse tracking for Necromancer ────────────────────────────────────
+export interface CorpseRecord {
+  x: number;
+  y: number;
+  time: number; // timestamp when enemy died
+}
+const MAX_CORPSE_AGE = 30; // seconds before corpse record expires
+const _corpsePositions: CorpseRecord[] = [];
+
+/** Record a death position for Necromancer raise mechanic. */
+export function recordCorpse(x: number, y: number): void {
+  _corpsePositions.push({ x, y, time: performance.now() / 1000 });
+}
+
+/** Get all valid corpse positions, pruning expired ones. */
+export function getCorpsePositions(): CorpseRecord[] {
+  const now = performance.now() / 1000;
+  // Prune old corpses
+  for (let i = _corpsePositions.length - 1; i >= 0; i--) {
+    if (now - _corpsePositions[i].time > MAX_CORPSE_AGE) {
+      _corpsePositions.splice(i, 1);
+    }
+  }
+  return _corpsePositions;
+}
+
+/** Remove a specific corpse after it has been raised. */
+export function consumeCorpse(corpse: CorpseRecord): void {
+  const idx = _corpsePositions.indexOf(corpse);
+  if (idx >= 0) _corpsePositions.splice(idx, 1);
+}
+
+/** Clear all corpse records (e.g., on wave reset or town). */
+export function clearCorpses(): void {
+  _corpsePositions.length = 0;
+}
+
 /**
  * Apply active map modifiers to a freshly spawned enemy entity.
  * - hp_boost: +20% HP
@@ -927,6 +964,214 @@ export function spawnTrapper(worldX: number, worldY: number, monsterLevel = 1): 
     aiTimer: 0,
     trapperPlaceTimer: 3, // place trap every 3s
     trapperTrapCount: 0,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Linker pair: two gold semicircles connected by a damage beam.
+ * Always spawns as a pair. Returns both entities.
+ */
+export function spawnLinkerPair(worldX: number, worldY: number, monsterLevel = 1): [Entity, Entity] {
+  const makeLinker = (x: number, y: number, flipX: number): Entity => {
+    const g = new Graphics();
+
+    // Semicircle, ~10px radius, flat edge faces away from partner
+    g.arc(0, 0, 10, -Math.PI / 2, Math.PI / 2)
+      .lineTo(0, 10)
+      .lineTo(0, -10)
+      .closePath()
+      .fill({ color: 0xffaa00 });
+    if (flipX < 0) g.scale.x = -1;
+
+    g.position.set(x, y);
+    game.entityLayer.addChild(g);
+
+    const hp = scaleHealth(25, monsterLevel);
+    const dmg = scaleDamage(12, monsterLevel);
+
+    const entity = world.add({
+      position: { x, y },
+      velocity: { x: 0, y: 0 },
+      speed: 70,
+      baseSpeed: 70,
+      enemy: true as const,
+      enemyType: 'linker',
+      health: { current: hp, max: hp },
+      damage: dmg,
+      sprite: g,
+      aiTimer: 0,
+      aiState: 'paired',
+      linkerEnraged: false,
+      level: monsterLevel,
+    });
+    applyMapModifiers(entity);
+    return entity;
+  };
+
+  // Spawn pair offset by ~80px on opposite sides
+  const a = makeLinker(worldX - 40, worldY, 1);
+  const b = makeLinker(worldX + 40, worldY, -1);
+
+  // Link the pair together
+  a.linkedPartner = b;
+  b.linkedPartner = a;
+
+  // Create beam sprite (will be updated in AISystem)
+  const beam = new Graphics();
+  game.effectLayer.addChild(beam);
+  a.linkerBeamSprite = beam;
+
+  return [a, b];
+}
+
+/**
+ * Spawns a single Linker (used by WaveSystem which expects single-spawn functions).
+ * Internally spawns a pair; the second linker is a bonus.
+ */
+export function spawnLinker(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const [a] = spawnLinkerPair(worldX, worldY, monsterLevel);
+  return a;
+}
+
+/**
+ * Spawns a Mimic enemy: a dark red chevron that mirrors player movement.
+ */
+export function spawnMimic(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Chevron shape (player echo) - dark red
+  g.moveTo(-10, -8)
+    .lineTo(0, 0)
+    .lineTo(-10, 8)
+    .lineTo(-6, 8)
+    .lineTo(2, 0)
+    .lineTo(-6, -8)
+    .closePath()
+    .fill({ color: 0xcc3333 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(35, monsterLevel);
+  const dmg = scaleDamage(10, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 0,      // speed is controlled by player movement mirroring
+    baseSpeed: 0,
+    enemy: true as const,
+    enemyType: 'mimic',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    aiState: 'mirroring',
+    mimicFireTimer: 2,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Necromancer enemy: a dark magenta inverted triangle. Flees and revives dead enemies.
+ */
+export function spawnNecromancer(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Inverted triangle (point down), ~14px, with skull-like dot pattern
+  g.moveTo(-12, -10)
+    .lineTo(12, -10)
+    .lineTo(0, 12)
+    .closePath()
+    .fill({ color: 0x8844aa });
+  // Skull-like dots (two eyes, one mouth)
+  g.circle(-4, -4, 2).fill({ color: 0xff88ff });
+  g.circle(4, -4, 2).fill({ color: 0xff88ff });
+  g.circle(0, 2, 1.5).fill({ color: 0xff88ff });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(45, monsterLevel);
+  const dmg = scaleDamage(6, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 50,
+    baseSpeed: 50,
+    enemy: true as const,
+    enemyType: 'necromancer',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    aiState: 'fleeing',
+    necromancerRaiseTimer: 6, // first raise after 6s
+    necromancerChildCount: 0,
+    necromancerChanneling: false,
+    necromancerChannelTimer: 0,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns an Overcharger enemy: an electric blue double-hexagon. Slow tank that buffs allies on death.
+ */
+export function spawnOvercharger(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Outer hexagon ~18px radius
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const px = Math.cos(angle) * 18;
+    const py = Math.sin(angle) * 18;
+    if (i === 0) g.moveTo(px, py);
+    else g.lineTo(px, py);
+  }
+  g.closePath().stroke({ color: 0x44ccff, width: 2 });
+
+  // Inner hexagon ~10px radius
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2;
+    const px = Math.cos(angle) * 10;
+    const py = Math.sin(angle) * 10;
+    if (i === 0) g.moveTo(px, py);
+    else g.lineTo(px, py);
+  }
+  g.closePath().fill({ color: 0x44ccff, alpha: 0.6 });
+
+  // Crackling energy lines between inner and outer
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI / 3) * i - Math.PI / 2 + Math.PI / 6;
+    g.moveTo(Math.cos(angle) * 10, Math.sin(angle) * 10)
+      .lineTo(Math.cos(angle) * 18, Math.sin(angle) * 18)
+      .stroke({ color: 0x88eeff, width: 1, alpha: 0.7 });
+  }
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(90, monsterLevel);
+  const dmg = scaleDamage(15, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 35,
+    baseSpeed: 35,
+    enemy: true as const,
+    enemyType: 'overcharger',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
     level: monsterLevel,
   });
   applyMapModifiers(entity);

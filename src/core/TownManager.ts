@@ -17,6 +17,7 @@ import { spawnTownNPCs, removeAllNPCs, NPC_DEFS } from '../entities/NPC';
 import { autoSave } from '../save/SaveManager';
 import { inventory } from './Inventory';
 import { getComputedStats } from './ComputedStats';
+import { clearCorpses } from '../entities/Enemy';
 
 const TILE_SIZE = 32;
 
@@ -39,6 +40,9 @@ export function enterTown(): void {
 
   // Clear any active map modifiers
   clearMapModifiers();
+
+  // Clear corpse records from Necromancer system
+  clearCorpses();
 
   // Auto-collect all ground loot before clearing
   collectAllLoot();

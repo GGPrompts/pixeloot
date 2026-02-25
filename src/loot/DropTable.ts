@@ -28,6 +28,10 @@ const ITEM_DROP_CHANCE: Record<string, number> = {
   lobber: 0.15,
   swooper: 0.10,
   trapper: 0.18,
+  linker: 0.15,
+  mimic: 0.15,
+  necromancer: 0.20,
+  overcharger: 0.22,
   boss: 1.0,
 };
 

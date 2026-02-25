@@ -79,6 +79,21 @@ export type Entity = {
   swooperSide?: number;             // swooper: alternating swoop side (+1 or -1)
   trapperPlaceTimer?: number;       // trapper: cooldown for trap placement (every 3s)
   trapperTrapCount?: number;        // trapper: number of active traps (max 3)
+  linkedPartner?: object;           // linker: reference to the paired linker entity
+  linkerEnraged?: boolean;          // linker: partner died, now in enraged chase mode
+  linkerBeamSprite?: Container;     // linker: beam visual between linked pair
+  mimicAnchor?: { x: number; y: number }; // mimic: center point for mirror movement
+  mimicPlayerLast?: { x: number; y: number }; // mimic: last known player position for delta tracking
+  mimicFireTimer?: number;          // mimic: cooldown for projectile fire (every 2s)
+  necromancerRaiseTimer?: number;   // necromancer: cooldown for raise dead (every 6s)
+  necromancerChildCount?: number;   // necromancer: number of active raised enemies (max 3)
+  necromancerChanneling?: boolean;  // necromancer: currently channeling a raise
+  necromancerChannelTimer?: number; // necromancer: time left on raise channel (2s)
+  raisedByNecromancer?: object;     // reference to parent necromancer entity
+  overchargerDeathBuff?: boolean;   // flag: enemy has been buffed by overcharger death
+  overchargerBuffTimer?: number;    // seconds remaining on overcharger death buff
+  overchargerOrigSpeed?: number;    // original speed before overcharger buff
+  overchargerOrigDamage?: number;   // original damage before overcharger buff
 };
 
 export const world = new World<Entity>();
