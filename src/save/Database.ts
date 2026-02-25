@@ -2,6 +2,8 @@ import Dexie, { type EntityTable } from 'dexie';
 import type { BaseItem } from '../loot/ItemTypes';
 import type { EquipSlots } from '../core/Inventory';
 import type { StashSaveData } from '../core/Stash';
+import type { MapItem } from '../loot/MapItem';
+import type { Gem } from '../loot/Gems';
 
 // ---- Data interfaces ----
 
@@ -13,15 +15,27 @@ export interface SaveSlot {
   level: number;
 }
 
+/** Shared state that persists across class switches. */
 export interface PlayerStateData {
   saveId: number;
+  gold: number;
+  classType: string; // last active class
+  maps?: MapItem[];
+  gems?: Gem[];
+}
+
+/** Per-class state: level, xp, stats, gear, skills. */
+export interface ClassStateData {
+  id?: number; // auto-increment
+  saveId: number;
+  classType: string; // 'Ranger' or 'Mage'
   level: number;
   xp: number;
   statPoints: number;
   stats: { dexterity: number; intelligence: number; vitality: number; focus: number };
-  gold: number;
   health: { current: number; max: number };
-  classType: string;
+  equipped: Record<keyof EquipSlots, BaseItem | null>;
+  backpack: (BaseItem | null)[];
   rmbSkillName?: string;
   eSkillName?: string;
 }
@@ -30,6 +44,8 @@ export interface InventoryData {
   saveId: number;
   equipped: Record<keyof EquipSlots, BaseItem | null>;
   backpack: (BaseItem | null)[];
+  maps?: MapItem[];
+  gems?: Gem[];
 }
 
 export interface WorldStateData {
@@ -50,6 +66,7 @@ type PixelootDB = Dexie & {
   inventoryState: EntityTable<InventoryData, 'saveId'>;
   worldState: EntityTable<WorldStateData, 'saveId'>;
   stashState: EntityTable<StashData, 'saveId'>;
+  classState: EntityTable<ClassStateData, 'id'>;
 };
 
 const db = new Dexie('pixeloot') as PixelootDB;
@@ -67,6 +84,15 @@ db.version(2).stores({
   inventoryState: 'saveId',
   worldState: 'saveId',
   stashState: 'saveId',
+});
+
+db.version(3).stores({
+  saves: '++id, name, timestamp',
+  playerState: 'saveId',
+  inventoryState: 'saveId',
+  worldState: 'saveId',
+  stashState: 'saveId',
+  classState: '++id, [saveId+classType]',
 });
 
 export { db };

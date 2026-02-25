@@ -7,6 +7,7 @@ import {
   Colors, Fonts, FontSize, drawPanelBg, drawPixelBorder, makeCloseButton,
 } from './UITheme';
 import { InputManager } from '../core/InputManager';
+import { switchClass } from '../save/SaveManager';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
@@ -115,12 +116,13 @@ function selectClass(option: ClassOption): void {
   if (selectionMade) return;
   selectionMade = true;
 
-  skillSystem.setClass(option.skills, option.name);
-  hideClassSelect();
-
-  if (onSelectCallback) {
-    onSelectCallback();
-  }
+  // Use switchClass for per-class progression (saves current class, loads target)
+  switchClass(option.name).then(() => {
+    hideClassSelect();
+    if (onSelectCallback) {
+      onSelectCallback();
+    }
+  });
 }
 
 /**

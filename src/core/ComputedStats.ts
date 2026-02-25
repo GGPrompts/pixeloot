@@ -7,6 +7,8 @@ import {
   getAttackSpeedMultiplier,
   getCooldownMultiplier,
 } from '../ecs/systems/StatEffects';
+// UniqueEffects passive modifiers are checked at their point of use
+// (StatusEffectSystem, SkillSystem, CollisionSystem, skill execute functions)
 
 // ── FinalStats Interface ────────────────────────────────────────────
 

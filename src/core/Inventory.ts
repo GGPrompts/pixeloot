@@ -2,6 +2,7 @@ import { BaseItem, Slot } from '../loot/ItemTypes';
 import type { MapItem } from '../loot/MapItem';
 import type { Gem } from '../loot/Gems';
 import { markStatsDirty } from './ComputedStats';
+import { world } from '../ecs/world';
 
 export interface EquipSlots {
   weapon: BaseItem | null;
@@ -83,6 +84,10 @@ export class Inventory {
     const item = this.backpack[backpackIndex];
     if (!item) return;
 
+    // Check level requirement
+    const player = world.with('player', 'level').entities[0];
+    if (player && item.level > player.level) return;
+
     // Find the appropriate equip slot
     const slotKey = this.getEquipSlotKey(item);
     if (!slotKey) return;
@@ -106,6 +111,38 @@ export class Inventory {
     this.equipped[slot] = null;
     markStatsDirty();
     this.onGearChange?.();
+  }
+
+  /** Save current equipped + backpack state. */
+  getGearState(): { equipped: EquipSlots; backpack: (BaseItem | null)[] } {
+    return {
+      equipped: { ...this.equipped } as EquipSlots,
+      backpack: [...this.backpack],
+    };
+  }
+
+  /** Restore equipped + backpack from saved state, clearing everything first. */
+  setGearState(state: { equipped: EquipSlots; backpack: (BaseItem | null)[] }): void {
+    const equipKeys = Object.keys(this.equipped) as (keyof EquipSlots)[];
+    for (const key of equipKeys) {
+      this.equipped[key] = state.equipped[key] ?? null;
+    }
+    for (let i = 0; i < this.backpack.length; i++) {
+      this.backpack[i] = state.backpack[i] ?? null;
+    }
+    markStatsDirty();
+    this.onGearChange?.();
+  }
+
+  /** Clear all equipped gear and backpack slots. */
+  clearGear(): void {
+    const equipKeys = Object.keys(this.equipped) as (keyof EquipSlots)[];
+    for (const key of equipKeys) {
+      this.equipped[key] = null;
+    }
+    for (let i = 0; i < this.backpack.length; i++) {
+      this.backpack[i] = null;
+    }
   }
 
   /** Get the equip slot key for a given item. For rings, prefer empty slot. */
