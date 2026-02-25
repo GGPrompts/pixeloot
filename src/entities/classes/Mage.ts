@@ -8,8 +8,19 @@ import { spawnDeathParticles } from '../DeathParticles';
 import { applyStatus, StatusType } from '../../core/StatusEffects';
 import { shake } from '../../ecs/systems/CameraSystem';
 import { spawnHitSparks } from '../HitSparks';
-import { hasEffect } from '../../core/UniqueEffects';
+import {
+  hasEffect,
+  setMindstormNovaCallback,
+  checkManaforgeRefund,
+  activateFlickerstep,
+  applyGravityWellPull,
+  activatePhasewalkInvisibility,
+  scheduleRecursionEcho,
+  setRecursionNovaCallback,
+  isEchoNova,
+} from '../../core/UniqueEffects';
 import { hasExtraProjectileConditional } from '../../core/ConditionalAffixSystem';
+import { skillSystem } from '../../core/SkillSystem';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
@@ -25,13 +36,19 @@ const fireball: SkillDef = {
   slotType: 'primary',
   targetType: 'projectile',
   execute(playerPos, mousePos) {
+    // Frostfire Scepter: tint Fireball blue-white when converting to Chill
+    const frostfire = hasEffect('frostfire_conversion');
+    const fbColor = frostfire ? 0x88ccff : 0xff4400;
+
     const proj = fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, {
       speed: 400,
       damage: 30,
       radius: 8,
-      color: 0xff4400,
+      color: fbColor,
       lifetime: 3,
     });
+    // Tag as fireball for Frostfire Scepter conversion in CollisionSystem
+    (proj as import('../../ecs/world').Entity).isFireball = true;
     // Inferno Staff: mark projectile to spawn burning ground on impact
     if (hasEffect('inferno_burning_ground')) {
       (proj as import('../../ecs/world').Entity).burningGround = true;
@@ -48,9 +65,10 @@ const fireball: SkillDef = {
         speed: 400,
         damage: 30,
         radius: 8,
-        color: 0xff4400,
+        color: fbColor,
         lifetime: 3,
       });
+      (proj2 as import('../../ecs/world').Entity).isFireball = true;
       if (hasEffect('inferno_burning_ground')) {
         (proj2 as import('../../ecs/world').Entity).burningGround = true;
       }
@@ -76,14 +94,31 @@ const frostNova: SkillDef = {
     const px = playerPos.x;
     const py = playerPos.y;
 
-    // Deal damage and apply Slow to all enemies in radius
+    // Tome of Recursion: echo nova uses half radius and half damage
+    const echoNova = isEchoNova();
+    const novaRadius = echoNova ? 64 : FROST_NOVA_RADIUS;
+    const novaDamage = echoNova ? Math.round(FROST_NOVA_DAMAGE * 0.5) : FROST_NOVA_DAMAGE;
+
+    // Count hits for Manaforge Ring refund
+    let novaHitCount = 0;
+
+    // Frostfire Scepter: swap Slow → Burn on Frost Nova
+    const frostfireActive = hasEffect('frostfire_conversion');
+
+    // Deal damage and apply status to all enemies in radius
     for (const enemy of enemies) {
       const dx = enemy.position.x - px;
       const dy = enemy.position.y - py;
-      if (dx * dx + dy * dy < FROST_NOVA_RADIUS * FROST_NOVA_RADIUS) {
-        enemy.health.current -= FROST_NOVA_DAMAGE;
-        spawnDamageNumber(enemy.position.x, enemy.position.y - 10, FROST_NOVA_DAMAGE, 0x66ccff);
-        applyStatus(enemy, StatusType.Slow, playerPos);
+      if (dx * dx + dy * dy < novaRadius * novaRadius) {
+        enemy.health.current -= novaDamage;
+        const dmgColor = frostfireActive ? 0xff6600 : 0x66ccff;
+        spawnDamageNumber(enemy.position.x, enemy.position.y - 10, novaDamage, dmgColor);
+        if (frostfireActive) {
+          applyStatus(enemy, StatusType.Burn, playerPos);
+        } else {
+          applyStatus(enemy, StatusType.Slow, playerPos);
+        }
+        novaHitCount++;
 
         if (enemy.sprite) {
           enemy.sprite.alpha = 0.3;
@@ -100,7 +135,22 @@ const frostNova: SkillDef = {
       }
     }
 
-    // Visual: expanding cyan/white ring
+    // Manaforge Ring: refund 30% cooldown if 3+ enemies hit
+    // Determine which slot fired this nova for refund targeting
+    const novaSlots: ('rmb' | 'e')[] = ['rmb', 'e'];
+    for (const slotKey of novaSlots) {
+      const slotState = skillSystem.getSlot(slotKey);
+      if (slotState?.def.name === 'Frost Nova') {
+        checkManaforgeRefund(novaHitCount, slotKey, skillSystem);
+        break;
+      }
+    }
+
+    // Frostfire visual: orange-red ring instead of cyan
+    const ringStroke = frostfireActive ? 0xff6600 : 0x88eeff;
+    const ringFill = frostfireActive ? 0xff4400 : 0x66ccff;
+
+    // Visual: expanding ring
     const ring = new Graphics();
     ring.position.set(px, py);
     game.effectLayer.addChild(ring);
@@ -109,11 +159,11 @@ const frostNova: SkillDef = {
     const onTick = (t: { deltaTime: number }) => {
       elapsed += t.deltaTime / 60;
       const progress = Math.min(elapsed / 0.3, 1);
-      const currentRadius = FROST_NOVA_RADIUS * progress;
+      const currentRadius = novaRadius * progress;
 
       ring.clear();
-      ring.circle(0, 0, currentRadius).stroke({ width: 3, color: 0x88eeff, alpha: 0.8 * (1 - progress) });
-      ring.circle(0, 0, currentRadius).fill({ color: 0x66ccff, alpha: 0.15 * (1 - progress) });
+      ring.circle(0, 0, currentRadius).stroke({ width: 3, color: ringStroke, alpha: 0.8 * (1 - progress) });
+      ring.circle(0, 0, currentRadius).fill({ color: ringFill, alpha: 0.15 * (1 - progress) });
 
       if (progress >= 1) {
         game.app.ticker.remove(onTick);
@@ -122,6 +172,9 @@ const frostNova: SkillDef = {
       }
     };
     game.app.ticker.add(onTick);
+
+    // Tome of Recursion: schedule a smaller echo nova 1s later
+    scheduleRecursionEcho(px, py);
   },
 };
 
@@ -153,9 +206,12 @@ const lightningChain: SkillDef = {
     const maxBounces = hasEffect('cascade_extra_bounces') ? CHAIN_MAX_BOUNCES + 3 : CHAIN_MAX_BOUNCES;
     const decay = hasEffect('cascade_extra_bounces') ? 0.7 : CHAIN_DECAY;
 
+    // Conduit Pendant: arc starts from player position instead of cursor
+    const conduitActive = hasEffect('conduit_self_arc');
+
     // Find the nearest enemy to cursor within range, then bounce
-    let currentX = mousePos.x;
-    let currentY = mousePos.y;
+    let currentX = conduitActive ? _playerPos.x : mousePos.x;
+    let currentY = conduitActive ? _playerPos.y : mousePos.y;
     let range = CHAIN_INITIAL_RANGE;
 
     for (let bounce = 0; bounce < maxBounces; bounce++) {
@@ -189,6 +245,10 @@ const lightningChain: SkillDef = {
       bestEnemy.health.current -= dmg;
       spawnDamageNumber(bestEnemy.position.x, bestEnemy.position.y - 10, dmg, 0xffff00);
       applyStatus(bestEnemy, StatusType.Shock);
+      // Conduit Pendant: each arc also applies Chill
+      if (conduitActive) {
+        applyStatus(bestEnemy, StatusType.Chill);
+      }
 
       if (bestEnemy.sprite) {
         bestEnemy.sprite.alpha = 0.3;
@@ -208,13 +268,24 @@ const lightningChain: SkillDef = {
       range = CHAIN_BOUNCE_RANGE;
     }
 
+    // Manaforge Ring: refund 30% cooldown if 3+ enemies hit
+    for (const slotKey of ['rmb', 'e'] as const) {
+      const slotState = skillSystem.getSlot(slotKey);
+      if (slotState?.def.name === 'Lightning Chain') {
+        checkManaforgeRefund(hitTargets.length, slotKey, skillSystem);
+        break;
+      }
+    }
+
     // Visual: draw lightning lines between targets
     if (hitTargets.length > 0) {
       const lightning = new Graphics();
       game.effectLayer.addChild(lightning);
 
-      // Draw line from cursor to first target, then between targets
-      const points = [{ x: mousePos.x, y: mousePos.y }, ...hitTargets];
+      // Draw line from origin to first target, then between targets
+      // Conduit Pendant: starts from player position
+      const origin = conduitActive ? { x: _playerPos.x, y: _playerPos.y } : { x: mousePos.x, y: mousePos.y };
+      const points = [origin, ...hitTargets];
       for (let i = 0; i < points.length - 1; i++) {
         drawLightningSegment(lightning, points[i], points[i + 1]);
       }
@@ -320,6 +391,12 @@ const teleport: SkillDef = {
       frostNova.execute({ x: originX, y: originY }, { x: originX, y: originY });
     }
 
+    // Flickerstep Shroud: +30% attack speed for 2s after movement skill
+    activateFlickerstep();
+
+    // Phasewalk Boots: grant 1s invisibility after movement skill
+    activatePhasewalkInvisibility();
+
     // Visual: particle burst at origin and destination
     spawnTeleportParticles(originX, originY);
     spawnTeleportParticles(destX, destY);
@@ -423,7 +500,7 @@ const arcaneWall: SkillDef = {
 
         // Only mark tiles that are in bounds and not already solid
         if (tile.x >= 0 && tile.y >= 0 && tile.x < tileMap.width && tile.y < tileMap.height) {
-          if (tileMap.tiles[tile.y][tile.x] !== 1) {
+          if (!tileMap.blocksMovement(tile.x, tile.y)) {
             // Check if we already recorded this tile
             const alreadyRecorded = wallTiles.some((wt) => wt.tx === tile.x && wt.ty === tile.y);
             if (!alreadyRecorded) {
@@ -520,6 +597,9 @@ const meteor: SkillDef = {
         const progress = Math.min(elapsed / METEOR_DELAY, 1);
         const currentRadius = METEOR_RADIUS * progress;
 
+        // Gravity Well Staff: pull enemies toward impact during telegraph
+        applyGravityWellPull(t.deltaTime / 60, tx, ty, enemies);
+
         telegraph.clear();
         // Outer warning ring
         telegraph.circle(0, 0, currentRadius)
@@ -541,6 +621,7 @@ const meteor: SkillDef = {
           spawnHitSparks(tx, ty, 'fire');
 
           // Deal damage to all enemies in radius
+          let meteorHitCount = 0;
           for (const enemy of enemies) {
             const dx = enemy.position.x - tx;
             const dy = enemy.position.y - ty;
@@ -548,6 +629,7 @@ const meteor: SkillDef = {
               enemy.health.current -= METEOR_DAMAGE;
               spawnDamageNumber(enemy.position.x, enemy.position.y - 10, METEOR_DAMAGE, 0xff6600);
               applyStatus(enemy, StatusType.Burn, { x: tx, y: ty });
+              meteorHitCount++;
 
               if (enemy.sprite) {
                 enemy.sprite.alpha = 0.3;
@@ -561,6 +643,15 @@ const meteor: SkillDef = {
                 if (enemy.sprite) enemy.sprite.removeFromParent();
                 world.remove(enemy);
               }
+            }
+          }
+
+          // Manaforge Ring: refund 30% cooldown if 3+ enemies hit
+          for (const slotKey of ['rmb', 'e'] as const) {
+            const slotState = skillSystem.getSlot(slotKey);
+            if (slotState?.def.name === 'Meteor') {
+              checkManaforgeRefund(meteorHitCount, slotKey, skillSystem);
+              break;
             }
           }
 
@@ -594,6 +685,20 @@ const meteor: SkillDef = {
     game.app.ticker.add(onTick);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Register Mindstorm Crown callback (fires a free Frost Nova at player pos)
+// ---------------------------------------------------------------------------
+setMindstormNovaCallback((px: number, py: number) => {
+  frostNova.execute({ x: px, y: py }, { x: px, y: py });
+});
+
+// ---------------------------------------------------------------------------
+// Register Tome of Recursion callback (fires echo Frost Nova)
+// ---------------------------------------------------------------------------
+setRecursionNovaCallback((px: number, py: number) => {
+  frostNova.execute({ x: px, y: py }, { x: px, y: py });
+});
 
 // ---------------------------------------------------------------------------
 // Export all Mage skills

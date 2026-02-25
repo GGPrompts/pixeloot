@@ -16,7 +16,7 @@ import { spawnHitSparks } from '../../entities/HitSparks';
 import { shake } from './CameraSystem';
 import { game } from '../../Game';
 import { Graphics } from 'pixi.js';
-import { hasEffect, activateFrenzy, isFrenzyActive } from '../../core/UniqueEffects';
+import { hasEffect, activateFrenzy, isFrenzyActive, recordMindstormKill, tryThornweaveReflect, trySentinelBlock, breakPhasewalkInvisibility, isPhasewalkInvisible } from '../../core/UniqueEffects';
 import { fireProjectile } from '../../entities/Projectile';
 import {
   trackDamageTaken,
@@ -250,6 +250,13 @@ export function collisionSystem(dt: number): void {
           dmg = Math.round(dmg * 2);
         }
 
+        // Ember Quiver: burning enemies take +10% damage from Ranger projectiles
+        if (proj.isRangerProjectile && hasEffect('ember_quiver_burn')) {
+          if (hasStatus(enemy, StatusType.Burn)) {
+            dmg = Math.round(dmg * 1.1);
+          }
+        }
+
         // Conditional affix: status-on-target damage bonus (e.g., +damage vs burning)
         const statusDmgBonus = getStatusOnTargetDamageBonus(enemy);
         if (statusDmgBonus > 0) {
@@ -277,6 +284,16 @@ export function collisionSystem(dt: number): void {
 
         // Track multi-hit for conditional affix system
         frameHitCount++;
+
+        // Ember Quiver: all Ranger projectiles apply Burn on hit
+        if (proj.isRangerProjectile && hasEffect('ember_quiver_burn')) {
+          applyStatus(enemy, StatusType.Burn, proj.position);
+        }
+
+        // Frostfire Scepter: Fireball projectiles apply Chill instead of default
+        if (proj.isFireball && hasEffect('frostfire_conversion')) {
+          applyStatus(enemy, StatusType.Chill, proj.position);
+        }
 
         // Apply knockback if projectile has knockbackOnHit
         if (proj.knockbackOnHit && proj.position) {
@@ -510,6 +527,12 @@ export function collisionSystem(dt: number): void {
       activateFrenzy();
     }
 
+    // Mindstorm Crown: track kills for 5-in-4s Frost Nova trigger
+    if (hasEffect('mindstorm_killstreak_nova') && players.entities.length > 0) {
+      const pl = players.entities[0];
+      recordMindstormKill(pl.position.x, pl.position.y);
+    }
+
     // Ricochet Longbow: on kill, bounce a projectile to nearest enemy within 128px
     if (hasEffect('ricochet_on_kill')) {
       let nearestBounce: (typeof enemies.entities)[number] | null = null;
@@ -627,9 +650,17 @@ export function collisionSystem(dt: number): void {
         applyStatus(player, StatusType.Burn, enemy.position);
       }
 
+      // Thornweave Mantle: reflect 15% of damage as nova
+      tryThornweaveReflect(
+        enemy.damage,
+        player.position.x,
+        player.position.y,
+        enemies,
+        spawnDamageNumber,
+      );
+
       if (player.health.current <= 0) {
         player.health.current = 0;
-        // Player death handling can be added later
       }
 
       break; // Only one hit per frame
@@ -644,6 +675,14 @@ export function collisionSystem(dt: number): void {
     const distSq = dx * dx + dy * dy;
 
     if (distSq < HIT_RADIUS * HIT_RADIUS) {
+      // Sentinel Ward: block one enemy projectile every 3s when below 50% HP
+      const healthRatio = player.health.max > 0 ? player.health.current / player.health.max : 1;
+      if (trySentinelBlock(player.position.x, player.position.y, healthRatio)) {
+        // Projectile blocked - destroy it, no damage taken
+        enemyProjsToDespawn.push(proj);
+        continue;
+      }
+
       const reducedProjDmg = reduceDamage(proj.damage, proj.level ?? 1);
       player.health.current -= reducedProjDmg;
       trackDamageTaken();
@@ -660,6 +699,15 @@ export function collisionSystem(dt: number): void {
       if (hasModifier('fire_enchanted')) {
         applyStatus(player, StatusType.Burn, proj.position);
       }
+
+      // Thornweave Mantle: reflect 15% of damage as nova
+      tryThornweaveReflect(
+        proj.damage,
+        player.position.x,
+        player.position.y,
+        enemies,
+        spawnDamageNumber,
+      );
 
       if (player.health.current <= 0) {
         player.health.current = 0;

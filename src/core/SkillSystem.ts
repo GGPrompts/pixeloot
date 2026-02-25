@@ -2,8 +2,9 @@ import { InputManager } from './InputManager';
 import { getComputedStats } from './ComputedStats';
 import { sfxPlayer } from '../audio/SFXManager';
 import { screenToWorld } from '../Game';
-import { hasEffect, isFrenzyActive } from './UniqueEffects';
+import { hasEffect, isFrenzyActive, isFlickerstepActive, breakPhasewalkInvisibility } from './UniqueEffects';
 import { trackSkillUsed, trackMovementSkillUsed } from './ConditionalAffixSystem';
+import { isHazardCdFrozen } from './HazardSystem';
 
 export type SlotType = 'primary' | 'movement' | 'assignable';
 export type TargetType = 'projectile' | 'self_aoe' | 'cursor_aoe' | 'cursor_target' | 'movement' | 'self_place';
@@ -118,8 +119,11 @@ class SkillSystem {
     }
   }
 
-  /** Decrease cooldowns each tick. */
+  /** Decrease cooldowns each tick. Paused when player is in a null zone (cd freeze). */
   tickSkills(dt: number): void {
+    // Null zone hazard: cooldowns do not tick
+    if (isHazardCdFrozen()) return;
+
     for (const key of SLOTS) {
       const skill = this.slots[key];
       if (skill && skill.cooldownRemaining > 0) {
@@ -144,6 +148,9 @@ class SkillSystem {
     trackSkillUsed();
     if (slot === 'space') {
       trackMovementSkillUsed();
+    } else {
+      // Attacking (non-movement skill) breaks Phasewalk invisibility
+      breakPhasewalkInvisibility();
     }
     const castSfx = this._activeClass === 'mage' ? 'cast_mage' : 'cast_ranger';
     sfxPlayer.play(castSfx);
@@ -154,6 +161,8 @@ class SkillSystem {
       let atkSpeed = stats.attackSpeed;
       // Essence Conduit frenzy: +20% attack speed
       if (isFrenzyActive()) atkSpeed *= 1.2;
+      // Flickerstep Shroud: +30% attack speed for 2s after movement skill
+      if (isFlickerstepActive()) atkSpeed *= 1.3;
       cd /= atkSpeed;
     }
     // Band of Echoes: 15% chance to not trigger cooldown

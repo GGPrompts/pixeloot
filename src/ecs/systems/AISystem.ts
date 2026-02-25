@@ -9,6 +9,7 @@ import { sfxPlayer } from '../../audio/SFXManager';
 import { getDamageReduction } from '../../core/ComputedStats';
 import { Container } from 'pixi.js';
 import { spawnSwarm, spawnRusher, getCorpsePositions, consumeCorpse } from '../../entities/Enemy';
+import { isPhasewalkInvisible } from '../../core/UniqueEffects';
 
 const enemies = world.with('enemy', 'position', 'velocity', 'speed');
 const players = world.with('player', 'position');
@@ -162,6 +163,9 @@ export function aiSystem(dt: number): void {
     updateFlowField(player.position.x, player.position.y, game.tileMap);
   }
 
+  // Phasewalk Boots: when player is invisible, enemies wander randomly
+  const playerInvisible = isPhasewalkInvisible();
+
   for (const enemy of enemies) {
     const dx = player.position.x - enemy.position.x;
     const dy = player.position.y - enemy.position.y;
@@ -171,6 +175,14 @@ export function aiSystem(dt: number): void {
 
     const nx = dx / len;
     const ny = dy / len;
+
+    // If player is invisible, enemies lose aggro and wander
+    if (playerInvisible) {
+      const wanderAngle = Math.random() * Math.PI * 2;
+      enemy.velocity.x = Math.cos(wanderAngle) * enemy.speed * 0.3;
+      enemy.velocity.y = Math.sin(wanderAngle) * enemy.speed * 0.3;
+      continue;
+    }
 
     const type = enemy.enemyType ?? 'rusher';
 

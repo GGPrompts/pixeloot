@@ -12,6 +12,7 @@ import { pickupSystem } from './ecs/systems/PickupSystem';
 
 import { aiSystem } from './ecs/systems/AISystem';
 import { bossAISystem } from './ecs/systems/BossAISystem';
+import { bossSignatureSystem } from './ecs/systems/BossSignatureSystem';
 import { updateBossHealthBar } from './ui/BossHealthBar';
 import { generateDungeon } from './map/DungeonGenerator';
 import { TileMap } from './map/TileMap';
@@ -45,6 +46,22 @@ import { updateRangeIndicators } from './ui/RangeIndicator';
 import { SCREEN_W, SCREEN_H, TILE_SIZE, LOGIC_FPS, LOGIC_STEP } from './core/constants';
 import { conditionalAffixSystem } from './core/ConditionalAffixSystem';
 import { markStatsDirty } from './core/ComputedStats';
+import { updateHazards } from './core/HazardSystem';
+import {
+  tickSteadyAim,
+  tickFlickerstep,
+  tickRootwalker,
+  tickTrailblazer,
+  setEffectLayer,
+  tickThornweave,
+  tickPhasewalkInvisibility,
+  isPhasewalkInvisible,
+  tickGamblerCharm,
+  setGamblerRefreshCallback,
+  tickSentinelWard,
+} from './core/UniqueEffects';
+import { applyStatus, StatusType } from './core/StatusEffects';
+import { spawnDamageNumber } from './ui/DamageNumbers';
 
 /** Returns true if any UI panel is currently open (used to prevent multiple panels). */
 export function isAnyPanelOpen(): boolean {
@@ -150,6 +167,17 @@ export class Game {
 
   /** Called after the singleton is set, so modules can access `game`. */
   private initEntities(): void {
+    // Set effect layer reference for UniqueEffects (Trailblazer patches)
+    setEffectLayer(this.effectLayer);
+
+    // Register Gambler's Charm skill refresh callback
+    setGamblerRefreshCallback(() => {
+      const skills = skillSystem.getSkills();
+      for (const skill of skills) {
+        if (skill) skill.cooldownRemaining = 0;
+      }
+    });
+
     // Create player entity
     createPlayer();
 
@@ -355,12 +383,54 @@ export class Game {
     statusEffectSystem(dt);
     aiSystem(dt);
     bossAISystem(dt);
+    bossSignatureSystem(dt);
     movementSystem(dt);
     projectileSystem(dt);
     collisionSystem(dt);
     pickupSystem(dt);
+    updateHazards(dt);
     healthSystem(dt);
     this.waveSystem.update(dt);
+
+    // Unique effect ticks
+    {
+      const pEnts = world.with('player', 'position', 'velocity', 'health').entities;
+      if (pEnts.length > 0) {
+        const p = pEnts[0];
+        const vx = p.velocity.x;
+        const vy = p.velocity.y;
+        tickSteadyAim(dt, p.position.x, p.position.y, vx, vy);
+        tickFlickerstep(dt);
+        tickRootwalker(dt, vx, vy);
+        tickThornweave(dt);
+        tickPhasewalkInvisibility(dt);
+        tickGamblerCharm(dt);
+
+        // Store player position for Gambler's Charm visual feedback
+        (globalThis as Record<string, unknown>).__gamblerPlayerPos = { x: p.position.x, y: p.position.y };
+
+        // Sentinel Ward: orbiting shield visual + state
+        const healthRatio = p.health.current / p.health.max;
+        tickSentinelWard(dt, p.position.x, p.position.y, healthRatio);
+
+        // Phasewalk Boots: ghost alpha while invisible
+        if (isPhasewalkInvisible() && p.sprite) {
+          p.sprite.alpha = 0.3;
+        }
+
+        const enemyEnts = world.with('enemy', 'position', 'health').entities;
+        tickTrailblazer(
+          dt,
+          p.position.x,
+          p.position.y,
+          vx,
+          vy,
+          enemyEnts,
+          (enemy) => applyStatus(enemy as import('./ecs/world').Entity, StatusType.Burn),
+          spawnDamageNumber,
+        );
+      }
+    }
 
     // Evaluate conditional affixes and mark stats dirty so bonuses are re-computed
     conditionalAffixSystem(dt);

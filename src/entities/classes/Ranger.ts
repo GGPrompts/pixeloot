@@ -6,11 +6,30 @@ import { game } from '../../Game';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { spawnDeathParticles } from '../DeathParticles';
 import { applyStatus, hasStatus, StatusType } from '../../core/StatusEffects';
-import { hasEffect } from '../../core/UniqueEffects';
+import {
+  hasEffect,
+  consumeSteadyAim,
+  activateFlickerstep,
+  activatePhasewalkInvisibility,
+} from '../../core/UniqueEffects';
 import { hasExtraProjectileConditional } from '../../core/ConditionalAffixSystem';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
+
+/** Fire a Ranger projectile tagged for Ember Quiver + Steady Aim wall-pierce. */
+function fireRangerProjectile(
+  fromX: number, fromY: number, targetX: number, targetY: number,
+  options?: Parameters<typeof fireProjectile>[4],
+  wallPierce = false,
+): ReturnType<typeof fireProjectile> {
+  const proj = fireProjectile(fromX, fromY, targetX, targetY, options);
+  (proj as import('../../ecs/world').Entity).isRangerProjectile = true;
+  if (wallPierce) {
+    (proj as import('../../ecs/world').Entity).wallPiercing = true;
+  }
+  return proj;
+}
 
 // ---------------------------------------------------------------------------
 // Skill 1 - Power Shot (cooldown 3s)
@@ -23,11 +42,15 @@ const powerShot: SkillDef = {
   slotType: 'primary',
   targetType: 'projectile',
   execute(playerPos, mousePos) {
+    // Whisperstring Steady Aim: +40% damage + wall-piercing on next shot
+    const steadyAim = consumeSteadyAim();
+    const baseDmg = steadyAim ? Math.round(40 * 1.4) : 40;
+
     const opts = {
       speed: 800,
-      damage: 40,
+      damage: baseDmg,
       radius: 8,
-      color: 0xffff00,
+      color: steadyAim ? 0xffffff : 0xffff00,
       piercing: true as const,
       lifetime: 3,
     };
@@ -46,10 +69,10 @@ const powerShot: SkillDef = {
         const angle = baseAngle - halfSpread + step * i;
         const tx = playerPos.x + Math.cos(angle) * 500;
         const ty = playerPos.y + Math.sin(angle) * 500;
-        fireProjectile(playerPos.x, playerPos.y, tx, ty, opts);
+        fireRangerProjectile(playerPos.x, playerPos.y, tx, ty, opts, steadyAim);
       }
     } else {
-      fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, opts);
+      fireRangerProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, opts, steadyAim);
       // Heart of the Grid or 25+ Dex conditional: +1 projectile (slight offset)
       if (hasEffect('grid_extra_projectile') || hasExtraProjectileConditional()) {
         const dx = mousePos.x - playerPos.x;
@@ -58,7 +81,7 @@ const powerShot: SkillDef = {
         const offsetAngle = baseAngle + (8 * Math.PI) / 180;
         const tx = playerPos.x + Math.cos(offsetAngle) * 500;
         const ty = playerPos.y + Math.sin(offsetAngle) * 500;
-        fireProjectile(playerPos.x, playerPos.y, tx, ty, opts);
+        fireRangerProjectile(playerPos.x, playerPos.y, tx, ty, opts, steadyAim);
       }
     }
   },
@@ -93,7 +116,7 @@ const multiShot: SkillDef = {
       // Target far away along that angle
       const targetX = playerPos.x + Math.cos(angle) * 500;
       const targetY = playerPos.y + Math.sin(angle) * 500;
-      fireProjectile(playerPos.x, playerPos.y, targetX, targetY);
+      fireRangerProjectile(playerPos.x, playerPos.y, targetX, targetY);
     }
   },
 };
@@ -224,17 +247,16 @@ const evasiveRoll: SkillDef = {
     const nx = dirX / len;
     const ny = dirY / len;
 
-    // Teleport player
-    const newX = playerPos.x + nx * ROLL_DISTANCE;
-    const newY = playerPos.y + ny * ROLL_DISTANCE;
+    // Phasewalk Boots: +50% roll distance
+    const rollDist = hasEffect('phasewalk_enhanced_mobility') ? ROLL_DISTANCE * 1.5 : ROLL_DISTANCE;
 
     // Clamp to non-solid tile (step along the direction and find last valid position)
     const steps = 10;
     let finalX = playerPos.x;
     let finalY = playerPos.y;
     for (let i = 1; i <= steps; i++) {
-      const testX = playerPos.x + (nx * ROLL_DISTANCE * i) / steps;
-      const testY = playerPos.y + (ny * ROLL_DISTANCE * i) / steps;
+      const testX = playerPos.x + (nx * rollDist * i) / steps;
+      const testY = playerPos.y + (ny * rollDist * i) / steps;
       const tile = game.tileMap.worldToTile(testX, testY);
       if (game.tileMap.isSolid(tile.x, tile.y)) break;
       finalX = testX;
@@ -251,6 +273,12 @@ const evasiveRoll: SkillDef = {
 
     // Grant invulnerability
     world.addComponent(player, 'invulnTimer', ROLL_INVULN);
+
+    // Flickerstep Shroud: +30% attack speed for 2s after movement skill
+    activateFlickerstep();
+
+    // Phasewalk Boots: grant 1s invisibility after movement skill
+    activatePhasewalkInvisibility();
   },
 };
 
@@ -347,8 +375,11 @@ const trap: SkillDef = {
   slotType: 'assignable',
   targetType: 'self_place',
   execute(playerPos, _mousePos) {
+    // Warden's Sigil: increase trap max from 3 to 6
+    const maxTraps = hasEffect('warden_enhanced_traps') ? 6 : TRAP_MAX_ACTIVE;
+
     // Enforce max active traps - remove oldest if at limit
-    while (activeTraps.length >= TRAP_MAX_ACTIVE) {
+    while (activeTraps.length >= maxTraps) {
       cleanupTrap(activeTraps[0]);
     }
 
@@ -363,10 +394,13 @@ const trap: SkillDef = {
     trapGraphic.alpha = 0.4;
     game.worldLayer.addChild(trapGraphic);
 
+    // Warden's Sigil: traps arm instantly instead of after 0.5s delay
+    const armDelay = hasEffect('warden_enhanced_traps') ? 0 : TRAP_ARM_DELAY;
+
     const activeTrap: ActiveTrap = {
       x: tx,
       y: ty,
-      armed: false,
+      armed: armDelay === 0,
       elapsed: 0,
       graphic: trapGraphic,
       destroyed: false,
@@ -383,7 +417,7 @@ const trap: SkillDef = {
       activeTrap.elapsed += t.deltaTime / 60;
 
       // Arm after delay
-      if (!activeTrap.armed && activeTrap.elapsed >= TRAP_ARM_DELAY) {
+      if (!activeTrap.armed && activeTrap.elapsed >= armDelay) {
         activeTrap.armed = true;
       }
 

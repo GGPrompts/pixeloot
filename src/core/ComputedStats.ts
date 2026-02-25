@@ -8,8 +8,7 @@ import {
   getCooldownMultiplier,
 } from '../ecs/systems/StatEffects';
 import { getConditionalBonuses } from './ConditionalAffixSystem';
-// UniqueEffects passive modifiers are checked at their point of use
-// (StatusEffectSystem, SkillSystem, CollisionSystem, skill execute functions)
+import { isRootwalkerActive, getGamblerBuff } from './UniqueEffects';
 
 // ── FinalStats Interface ────────────────────────────────────────────
 
@@ -174,6 +173,22 @@ export function recalculateStats(): FinalStats {
   affixes.hpRegen += condBonuses.hpRegen;
   affixes.percentMoveSpeed += condBonuses.percentMoveSpeed;
   affixes.percentCDR += condBonuses.percentCDR;
+
+  // Rootwalkers: +20% damage and +25 flat armor while stationary
+  if (isRootwalkerActive()) {
+    affixes.percentDamage += 20;
+    affixes.flatArmor += 25;
+  }
+
+  // Gambler's Charm: random buff for 5s
+  const gamblerBuff = getGamblerBuff();
+  if (gamblerBuff === 'damage') {
+    affixes.percentDamage += 30;
+  } else if (gamblerBuff === 'speed') {
+    affixes.percentMoveSpeed += 30;
+  } else if (gamblerBuff === 'armor') {
+    affixes.flatArmor += 50;
+  }
 
   const dex = playerStats?.dexterity ?? 0;
   const int = playerStats?.intelligence ?? 0;
