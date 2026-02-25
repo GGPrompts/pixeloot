@@ -92,6 +92,39 @@ export const ZONE_THEMES: Record<string, ZoneTheme> = {
     wallColor: 0x3a2a3a,
     accentColor: 0xff44ff,
   },
+  rust_hollow: {
+    name: 'Rust Hollow',
+    backgroundColor: 0x1a1210,
+    gridColor: 0xcc8844,
+    gridAlpha: 0.05,
+    wallColor: 0x3a2a1a,
+    accentColor: 0xcc8844,
+  },
+  signal_spire: {
+    name: 'Signal Spire',
+    backgroundColor: 0x0a0a20,
+    gridColor: 0x6688ff,
+    gridAlpha: 0.07,
+    wallColor: 0x1a1a40,
+    accentColor: 0x6688ff,
+  },
+  memory_leak: {
+    name: 'Memory Leak',
+    backgroundColor: 0x0f0a1a,
+    gridColor: 0xaa44ff,
+    gridAlpha: 0.05,
+    wallColor: 0x201830,
+    accentColor: 0xaa44ff,
+  },
+  null_sector: {
+    name: 'Null Sector',
+    backgroundColor: 0x020202,
+    gridColor: 0x333333,
+    gridAlpha: 0.03,
+    wallColor: 0x0a0a0a,
+    accentColor: 0xffffff,
+    enemyTintMultiplier: 0.8,
+  },
 };
 
 /** All theme keys for random selection. */
