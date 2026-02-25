@@ -149,6 +149,12 @@ export class Inventory {
     }
   }
 
+  /** Check if a given item (by id) is currently equipped in any slot. */
+  isItemEquipped(item: BaseItem): boolean {
+    const slots = Object.values(this.equipped);
+    return slots.some((eq) => eq !== null && eq.id === item.id);
+  }
+
   /** Get the equip slot key for a given item. For rings, prefer empty slot. */
   private getEquipSlotKey(item: BaseItem): keyof EquipSlots | null {
     switch (item.slot) {

@@ -200,6 +200,37 @@ export function makeCloseButton(
   return btn;
 }
 
+// ── Equipped Badge ───────────────────────────────────────────────────
+
+/**
+ * Draw a green "E" badge in the top-right corner of a slot to indicate the item is equipped.
+ */
+export function drawEquippedBadge(g: Graphics, x: number, y: number, slotSize: number): void {
+  const badgeSize = 22;
+  const bx = x + slotSize - badgeSize - 2;
+  const by = y + 2;
+  g.rect(bx, by, badgeSize, badgeSize).fill({ color: 0x1a3a1a, alpha: 0.95 });
+  g.rect(bx, by, badgeSize, badgeSize).stroke({ width: 2, color: Colors.accentLime });
+}
+
+/**
+ * Create a Text element for the "E" label inside an equipped badge.
+ * Position it relative to the slot container (top-right corner).
+ */
+export function makeEquippedBadgeLabel(slotSize: number): Text {
+  const badgeSize = 22;
+  const label = new Text({
+    text: 'E',
+    style: new TextStyle({
+      fill: Colors.accentLime,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
+    }),
+  });
+  label.position.set(slotSize - badgeSize + 2, 4);
+  return label;
+}
+
 // ── Utility ───────────────────────────────────────────────────────────
 
 /**

@@ -15,7 +15,8 @@ import {
 } from '../core/Vendor';
 import {
   Colors, Fonts, FontSize,
-  getRarityColor, abbreviate, drawPanelBg, drawSlotBg, makeCloseButton,
+  getRarityColor, abbreviate, drawPanelBg, drawSlotBg, drawPixelBorder, makeCloseButton,
+  drawEquippedBadge, makeEquippedBadgeLabel,
 } from './UITheme';
 import { showItemTooltip, showItemTooltipWithCompare, showTooltip, hideTooltip, buildItemTooltipText, buildMapTooltipText } from './Tooltip';
 
@@ -58,6 +59,8 @@ let prevEscPressed = false;
 let vendorItems: VendorItem[] = [];
 let vendorMaps: VendorMapItem[] = [];
 let goldText: Text | null = null;
+let confirmOverlay: Container | null = null;
+let pendingSellIdx: number | null = null;
 
 function getPlayerGold(): number {
   const players = world.with('player', 'gold').entities;
@@ -83,6 +86,116 @@ function showFeedback(msg: string, color: number): void {
     feedbackText.visible = true;
     feedbackTimer = 2.0;
   }
+}
+
+// --- Confirmation Dialog ---
+
+function showConfirmSell(backpackIdx: number): void {
+  if (!container) return;
+  hideConfirmDialog();
+
+  const item = inventory.backpack[backpackIdx];
+  if (!item) return;
+
+  pendingSellIdx = backpackIdx;
+  const overlay = new Container();
+
+  // Dim background
+  const dimBg = new Graphics();
+  dimBg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).fill({ color: 0x000000, alpha: 0.6 });
+  dimBg.eventMode = 'static';
+  dimBg.on('pointertap', () => hideConfirmDialog());
+  overlay.addChild(dimBg);
+
+  // Dialog box
+  const dlgW = 420;
+  const dlgH = 160;
+  const dlgX = PANEL_X + (PANEL_W - dlgW) / 2;
+  const dlgY = PANEL_Y + (PANEL_H - dlgH) / 2;
+  const dlgBg = new Graphics();
+  drawPanelBg(dlgBg, dlgX, dlgY, dlgW, dlgH, { highlight: Colors.accentRed, shadow: Colors.borderShadow });
+  overlay.addChild(dlgBg);
+
+  const warnText = new Text({
+    text: 'EQUIPPED ITEM',
+    style: new TextStyle({
+      fill: Colors.accentRed,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
+    }),
+  });
+  warnText.position.set(dlgX + dlgW / 2 - warnText.width / 2, dlgY + 16);
+  overlay.addChild(warnText);
+
+  const msgText = new Text({
+    text: `Sell "${abbreviate(item.name, 24)}" for ${getSellPrice(item)}g?\nThis item is currently equipped!`,
+    style: new TextStyle({
+      fill: Colors.textPrimary,
+      fontSize: FontSize.base,
+      fontFamily: Fonts.body,
+      wordWrap: true,
+      wordWrapWidth: dlgW - 40,
+    }),
+  });
+  msgText.position.set(dlgX + 20, dlgY + 48);
+  overlay.addChild(msgText);
+
+  // Confirm button
+  const confirmBtn = new Graphics();
+  confirmBtn.rect(0, 0, 120, 36).fill({ color: 0x3a1a1a, alpha: 0.95 });
+  drawPixelBorder(confirmBtn, 0, 0, 120, 36, { borderWidth: 2, highlight: Colors.accentRed, shadow: Colors.borderShadow });
+  confirmBtn.position.set(dlgX + dlgW / 2 - 130, dlgY + dlgH - 50);
+  confirmBtn.eventMode = 'static';
+  confirmBtn.cursor = 'pointer';
+  const confirmLabel = new Text({
+    text: 'SELL',
+    style: new TextStyle({
+      fill: Colors.accentRed,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.display,
+    }),
+  });
+  confirmLabel.position.set(34, 8);
+  confirmBtn.addChild(confirmLabel);
+  confirmBtn.on('pointertap', () => {
+    if (pendingSellIdx !== null) {
+      sellItem(pendingSellIdx);
+    }
+    hideConfirmDialog();
+  });
+  overlay.addChild(confirmBtn);
+
+  // Cancel button
+  const cancelBtn = new Graphics();
+  cancelBtn.rect(0, 0, 120, 36).fill({ color: Colors.slotBg, alpha: 0.95 });
+  drawPixelBorder(cancelBtn, 0, 0, 120, 36, { borderWidth: 2, highlight: Colors.borderHighlight, shadow: Colors.borderShadow });
+  cancelBtn.position.set(dlgX + dlgW / 2 + 10, dlgY + dlgH - 50);
+  cancelBtn.eventMode = 'static';
+  cancelBtn.cursor = 'pointer';
+  const cancelLabel = new Text({
+    text: 'CANCEL',
+    style: new TextStyle({
+      fill: Colors.textPrimary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.display,
+    }),
+  });
+  cancelLabel.position.set(18, 8);
+  cancelBtn.addChild(cancelLabel);
+  cancelBtn.on('pointertap', () => hideConfirmDialog());
+  overlay.addChild(cancelBtn);
+
+  confirmOverlay = overlay;
+  container.addChild(overlay);
+}
+
+function hideConfirmDialog(): void {
+  if (confirmOverlay && container) {
+    container.removeChild(confirmOverlay);
+    confirmOverlay.destroy({ children: true });
+    confirmOverlay = null;
+  }
+  pendingSellIdx = null;
 }
 
 // --- Panel Creation ---
@@ -326,8 +439,17 @@ function refreshPanel(): void {
 
       if (item) {
         const color = getRarityColor(item.rarity);
+        const isEquipped = inventory.isItemEquipped(item);
         drawSlotBg(slotBg, 0, 0, SLOT_SIZE, color);
+        if (isEquipped) {
+          drawEquippedBadge(slotBg, 0, 0, SLOT_SIZE);
+        }
         slotC.addChild(slotBg);
+
+        if (isEquipped) {
+          const badge = makeEquippedBadgeLabel(SLOT_SIZE);
+          slotC.addChild(badge);
+        }
 
         const nameText = new Text({
           text: item.name,
@@ -358,7 +480,14 @@ function refreshPanel(): void {
         slotBg.eventMode = 'static';
         slotBg.cursor = 'pointer';
         const bpIdx = idx;
-        slotBg.on('pointertap', () => sellItem(bpIdx));
+        slotBg.on('pointertap', () => {
+          const bpItem = inventory.backpack[bpIdx];
+          if (bpItem && inventory.isItemEquipped(bpItem)) {
+            showConfirmSell(bpIdx);
+          } else {
+            sellItem(bpIdx);
+          }
+        });
         slotBg.on('pointerover', (e: FederatedPointerEvent) => {
           const bpItem = inventory.backpack[bpIdx];
           if (bpItem) {
