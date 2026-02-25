@@ -11,6 +11,7 @@ import { markStatsDirty } from '../core/ComputedStats';
 import {
   Colors, Fonts, FontSize, RARITY_COLORS,
   abbreviate, drawPanelBg, drawSlotBg, drawPixelBorder, makeCloseButton,
+  drawEquippedBadge, makeEquippedBadgeLabel,
 } from './UITheme';
 import { showItemTooltip, hideTooltip } from './Tooltip';
 
@@ -46,6 +47,8 @@ let selectedGem: Gem | null = null;
 let selectedGemTargetIdx: number | null = null;
 let feedbackText: Text | null = null;
 let feedbackTimer = 0;
+let confirmOverlay: Container | null = null;
+let pendingSalvageIdx: number | null = null;
 
 function showFeedback(message: string, color: number): void {
   if (feedbackText) {
@@ -53,6 +56,123 @@ function showFeedback(message: string, color: number): void {
     feedbackText.style.fill = color;
   }
   feedbackTimer = 2;
+}
+
+// --- Confirmation Dialog ---
+
+function showConfirmSalvage(backpackIdx: number): void {
+  if (!container) return;
+  hideConfirmDialog();
+
+  const item = inventory.backpack[backpackIdx];
+  if (!item) return;
+
+  pendingSalvageIdx = backpackIdx;
+  const overlay = new Container();
+
+  // Dim background
+  const dimBg = new Graphics();
+  dimBg.rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H).fill({ color: 0x000000, alpha: 0.6 });
+  dimBg.eventMode = 'static';
+  dimBg.on('pointertap', () => hideConfirmDialog());
+  overlay.addChild(dimBg);
+
+  // Dialog box
+  const dlgW = 420;
+  const dlgH = 160;
+  const dlgX = PANEL_X + (PANEL_W - dlgW) / 2;
+  const dlgY = PANEL_Y + (PANEL_H - dlgH) / 2;
+  const dlgBg = new Graphics();
+  drawPanelBg(dlgBg, dlgX, dlgY, dlgW, dlgH, { highlight: Colors.accentRed, shadow: Colors.borderShadow });
+  overlay.addChild(dlgBg);
+
+  const warnText = new Text({
+    text: 'EQUIPPED ITEM',
+    style: new TextStyle({
+      fill: Colors.accentRed,
+      fontSize: FontSize.xs,
+      fontFamily: Fonts.display,
+    }),
+  });
+  warnText.position.set(dlgX + dlgW / 2 - warnText.width / 2, dlgY + 16);
+  overlay.addChild(warnText);
+
+  const msgText = new Text({
+    text: `Salvage "${abbreviate(item.name, 24)}"?\nThis item is currently equipped!`,
+    style: new TextStyle({
+      fill: Colors.textPrimary,
+      fontSize: FontSize.base,
+      fontFamily: Fonts.body,
+      wordWrap: true,
+      wordWrapWidth: dlgW - 40,
+    }),
+  });
+  msgText.position.set(dlgX + 20, dlgY + 48);
+  overlay.addChild(msgText);
+
+  // Confirm button
+  const confirmBtn = new Graphics();
+  confirmBtn.rect(0, 0, 140, 36).fill({ color: 0x3a1a1a, alpha: 0.95 });
+  drawPixelBorder(confirmBtn, 0, 0, 140, 36, { borderWidth: 2, highlight: Colors.accentRed, shadow: Colors.borderShadow });
+  confirmBtn.position.set(dlgX + dlgW / 2 - 150, dlgY + dlgH - 50);
+  confirmBtn.eventMode = 'static';
+  confirmBtn.cursor = 'pointer';
+  const confirmLabel = new Text({
+    text: 'SALVAGE',
+    style: new TextStyle({
+      fill: Colors.accentRed,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.display,
+    }),
+  });
+  confirmLabel.position.set(22, 8);
+  confirmBtn.addChild(confirmLabel);
+  confirmBtn.on('pointertap', () => {
+    if (pendingSalvageIdx !== null) {
+      const itm = inventory.backpack[pendingSalvageIdx];
+      if (itm) {
+        const result = salvageItem(itm);
+        inventory.backpack[pendingSalvageIdx] = null;
+        hideTooltip();
+        showFeedback(`Salvaged: +${result.amount} ${MATERIAL_NAMES[result.material]}`, MATERIAL_COLORS[result.material]);
+      }
+    }
+    hideConfirmDialog();
+    rebuildPanel();
+  });
+  overlay.addChild(confirmBtn);
+
+  // Cancel button
+  const cancelBtn = new Graphics();
+  cancelBtn.rect(0, 0, 140, 36).fill({ color: Colors.slotBg, alpha: 0.95 });
+  drawPixelBorder(cancelBtn, 0, 0, 140, 36, { borderWidth: 2, highlight: Colors.borderHighlight, shadow: Colors.borderShadow });
+  cancelBtn.position.set(dlgX + dlgW / 2 + 10, dlgY + dlgH - 50);
+  cancelBtn.eventMode = 'static';
+  cancelBtn.cursor = 'pointer';
+  const cancelLabel = new Text({
+    text: 'CANCEL',
+    style: new TextStyle({
+      fill: Colors.textPrimary,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.display,
+    }),
+  });
+  cancelLabel.position.set(22, 8);
+  cancelBtn.addChild(cancelLabel);
+  cancelBtn.on('pointertap', () => hideConfirmDialog());
+  overlay.addChild(cancelBtn);
+
+  confirmOverlay = overlay;
+  container.addChild(overlay);
+}
+
+function hideConfirmDialog(): void {
+  if (confirmOverlay && container) {
+    container.removeChild(confirmOverlay);
+    confirmOverlay.destroy({ children: true });
+    confirmOverlay = null;
+  }
+  pendingSalvageIdx = null;
 }
 
 function createPanel(): Container {
@@ -177,7 +297,16 @@ function buildSalvageSection(): void {
 
     if (item) {
       const color = RARITY_COLORS[item.rarity];
+      const isEquipped = inventory.isItemEquipped(item);
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, color);
+      if (isEquipped) {
+        drawEquippedBadge(slotBg, 0, 0, SLOT_SIZE);
+      }
+
+      if (isEquipped) {
+        const badge = makeEquippedBadgeLabel(SLOT_SIZE);
+        slotBg.addChild(badge);
+      }
 
       const nameText = new Text({
         text: abbreviate(item.name, 10),
@@ -213,7 +342,7 @@ function buildSalvageSection(): void {
             fontFamily: Fonts.body,
           }),
         });
-        socketText.position.set(SLOT_SIZE - 16, 3);
+        socketText.position.set(SLOT_SIZE - 16, isEquipped ? 26 : 3);
         slotBg.addChild(socketText);
       }
 
@@ -223,6 +352,10 @@ function buildSalvageSection(): void {
       slotBg.on('pointertap', () => {
         const itm = inventory.backpack[idx];
         if (!itm) return;
+        if (inventory.isItemEquipped(itm)) {
+          showConfirmSalvage(idx);
+          return;
+        }
         const result = salvageItem(itm);
         inventory.backpack[idx] = null;
         hideTooltip();
@@ -414,9 +547,18 @@ function buildCraftingSection(): void {
 
       const isTarget = selectedCraftTargetIdx === i;
       const color = RARITY_COLORS[item.rarity];
+      const isEquipped = inventory.isItemEquipped(item);
 
       const slotBg = new Graphics();
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isTarget ? Colors.accentCyan : color);
+      if (isEquipped) {
+        drawEquippedBadge(slotBg, 0, 0, SLOT_SIZE);
+      }
+
+      if (isEquipped) {
+        const badge = makeEquippedBadgeLabel(SLOT_SIZE);
+        slotBg.addChild(badge);
+      }
 
       const nameText = new Text({
         text: abbreviate(item.name, 10),
