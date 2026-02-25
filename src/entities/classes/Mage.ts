@@ -26,26 +26,30 @@ const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
 
 // ---------------------------------------------------------------------------
-// Skill 1 - Fireball (cooldown 4s)
-// Large orange/red projectile that explodes on impact with AoE splash
+// Skill 1 - Magic Missile (cooldown 0.5s)
+// Small homing projectile with cyan/purple visual, lower damage
 // ---------------------------------------------------------------------------
 const fireball: SkillDef = {
-  name: 'Fireball',
+  name: 'Magic Missile',
   key: '1',
   cooldown: 0.5,
   slotType: 'primary',
   targetType: 'projectile',
   execute(playerPos, mousePos) {
-    // Frostfire Scepter: tint Fireball blue-white when converting to Chill
+    // Frostfire Scepter: tint blue-white when converting to Chill
     const frostfire = hasEffect('frostfire_conversion');
-    const fbColor = frostfire ? 0x88ccff : 0xff4400;
+    const missileColor = frostfire ? 0x88ccff : 0x44ccff;
+    const missileColor2 = frostfire ? 0xaaddff : 0xaa66ff;
 
     const proj = fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, {
-      speed: 400,
-      damage: 30,
-      radius: 8,
-      color: fbColor,
+      speed: 500,
+      damage: 20,
+      radius: 5,
+      color: missileColor,
+      color2: missileColor2,
       lifetime: 3,
+      shape: 'missile',
+      homing: true,
     });
     // Tag as fireball for Frostfire Scepter conversion in CollisionSystem
     (proj as import('../../ecs/world').Entity).isFireball = true;
@@ -62,11 +66,14 @@ const fireball: SkillDef = {
       const tx = playerPos.x + Math.cos(offsetAngle) * 500;
       const ty = playerPos.y + Math.sin(offsetAngle) * 500;
       const proj2 = fireProjectile(playerPos.x, playerPos.y, tx, ty, {
-        speed: 400,
-        damage: 30,
-        radius: 8,
-        color: fbColor,
+        speed: 500,
+        damage: 20,
+        radius: 5,
+        color: missileColor,
+        color2: missileColor2,
         lifetime: 3,
+        shape: 'missile',
+        homing: true,
       });
       (proj2 as import('../../ecs/world').Entity).isFireball = true;
       if (hasEffect('inferno_burning_ground')) {

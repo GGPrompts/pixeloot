@@ -9,6 +9,7 @@ import type { EquipSlots } from '../core/Inventory';
 import type { BaseItem } from '../loot/ItemTypes';
 import { markStatsDirty, applyComputedToEntity, setPlayerStats } from '../core/ComputedStats';
 import { applyStatEffects } from '../ecs/systems/StatEffects';
+import { updatePlayerSprite } from '../entities/Player';
 
 const AUTOSAVE_NAME = '__autosave__';
 
@@ -103,6 +104,9 @@ function applyClassState(classData: ClassStateData): void {
   setPlayerStats(player.stats!);
   markStatsDirty();
   applyStatEffects(player as Parameters<typeof applyStatEffects>[0]);
+
+  // Update player sprite to match new class
+  updatePlayerSprite();
 }
 
 // ---- Public API ----

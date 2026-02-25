@@ -8,6 +8,7 @@ import { hasCryoBarrier, hitCryoBarrier } from '../../core/HazardSystem';
 const projectiles = world.with('projectile', 'position', 'velocity', 'lifetime');
 const enemyProjectiles = world.with('enemyProjectile', 'position', 'velocity', 'lifetime');
 const homingProjectiles = world.with('projectile', 'position', 'velocity', 'homing');
+const rotatingProjectiles = world.with('rotateWithVelocity', 'velocity', 'sprite');
 const enemiesForHoming = world.with('enemy', 'position', 'health');
 
 /** Max steering angle per frame in radians (~3 degrees). */
@@ -106,6 +107,11 @@ function updateHoming(): void {
 export function projectileSystem(dt: number): void {
   // Steer homing projectiles before movement/despawn checks
   updateHoming();
+
+  // Rotate sprites that track velocity direction (arrows, missiles)
+  for (const proj of rotatingProjectiles) {
+    proj.sprite.rotation = Math.atan2(proj.velocity.y, proj.velocity.x);
+  }
 
   // Collect entities to despawn (avoid mutating during iteration)
   const toDespawn: Entity[] = [];

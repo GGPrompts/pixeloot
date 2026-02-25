@@ -32,11 +32,11 @@ function fireRangerProjectile(
 }
 
 // ---------------------------------------------------------------------------
-// Skill 1 - Power Shot (cooldown 3s)
-// Large, fast, piercing projectile
+// Skill 1 - Arrow Shot (cooldown 0.4s)
+// Fast arrow-shaped projectile, moderate damage
 // ---------------------------------------------------------------------------
 const powerShot: SkillDef = {
-  name: 'Power Shot',
+  name: 'Arrow Shot',
   key: '1',
   cooldown: 0.4,
   slotType: 'primary',
@@ -44,15 +44,16 @@ const powerShot: SkillDef = {
   execute(playerPos, mousePos) {
     // Whisperstring Steady Aim: +40% damage + wall-piercing on next shot
     const steadyAim = consumeSteadyAim();
-    const baseDmg = steadyAim ? Math.round(40 * 1.4) : 40;
+    const baseDmg = steadyAim ? Math.round(25 * 1.4) : 25;
 
     const opts = {
-      speed: 800,
+      speed: 900,
       damage: baseDmg,
       radius: 8,
-      color: steadyAim ? 0xffffff : 0xffff00,
+      color: steadyAim ? 0xffffff : 0xddcc44,
       piercing: true as const,
       lifetime: 3,
+      shape: 'arrow' as const,
     };
 
     // Splinterbow: fire 3 arrows in a narrow spread instead of 1
