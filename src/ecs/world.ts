@@ -55,6 +55,14 @@ export type Entity = {
   bomberFuse?: number;              // bomber: fuse countdown (0.6s), undefined = not yet triggered
   chargerDir?: { x: number; y: number }; // charger: locked dash direction during charge
   selfStunTimer?: number;           // charger: self-stun after hitting a wall
+  mirrorReflectCooldown?: number;   // mirror: 0 = can reflect, >0 = cracked (2s cooldown)
+  phaserPhaseTimer?: number;        // phaser: cycles between solid/phased states
+  phaserSolid?: boolean;            // phaser: true = solid (hittable), false = phased (invulnerable)
+  burrowed?: boolean;               // burrower: true = underground (invulnerable + hidden)
+  burrowSurfaceTimer?: number;      // burrower: time until next surface/burrow transition
+  warperTeleportTimer?: number;     // warper: time until next teleport
+  warperPostFireTimer?: number;     // warper: stationary window after firing (0.8s)
+  invulnerable?: boolean;           // generic invulnerability flag (phaser phased, burrower underground)
 };
 
 export const world = new World<Entity>();

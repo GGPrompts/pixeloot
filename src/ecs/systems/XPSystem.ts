@@ -25,6 +25,10 @@ const BASE_XP: Record<string, number> = {
   bomber: 10,
   charger: 35,
   pulsar: 30,
+  mirror: 25,
+  phaser: 20,
+  burrower: 30,
+  warper: 15,
 };
 
 /**

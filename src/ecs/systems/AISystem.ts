@@ -7,6 +7,7 @@ import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { applyStatus, StatusType } from '../../core/StatusEffects';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { getDamageReduction } from '../../core/ComputedStats';
+import { Container } from 'pixi.js';
 
 const enemies = world.with('enemy', 'position', 'velocity', 'speed');
 const players = world.with('player', 'position');
@@ -35,6 +36,26 @@ const CHARGER_DASH_TIME = 0.5;     // seconds
 const PULSAR_PULSE_INTERVAL = 3;   // seconds between pulses
 const PULSAR_PULSE_WINDUP = 0.5;   // seconds telegraph
 const PULSAR_PULSE_RADIUS = 80;    // px
+
+/** Mirror behavior constants */
+const MIRROR_ORBIT_RADIUS = 180;   // px orbit distance from player
+const MIRROR_REFLECT_COOLDOWN = 2; // seconds cracked after reflecting
+
+/** Phaser behavior constants */
+const PHASER_SOLID_DURATION = 1.5;  // seconds solid (hittable)
+const PHASER_PHASE_DURATION = 1.5;  // seconds phased (invulnerable)
+
+/** Burrower behavior constants */
+const BURROWER_BURROW_TIME = 3;     // seconds underground
+const BURROWER_SURFACE_TIME = 2;    // seconds surfaced
+const BURROWER_SURFACE_RANGE = 50;  // px: surface when this close to player
+const BURROWER_STUN_RADIUS = 30;    // px: stun AoE on surfacing
+
+/** Warper behavior constants */
+const WARPER_TELEPORT_INTERVAL = 2.5; // seconds between teleports
+const WARPER_POST_FIRE_DURATION = 0.8; // seconds stationary after firing
+const WARPER_TELEPORT_MIN_DIST = 80;  // px: minimum distance from player after teleport
+const WARPER_TELEPORT_MAX_DIST = 200; // px: maximum distance from player after teleport
 
 /**
  * Get the direction toward the player for an enemy, using the flow field
@@ -386,6 +407,279 @@ export function aiSystem(dt: number): void {
             }
           }
         }
+        break;
+      }
+
+      case 'mirror': {
+        // Orbit the player at MIRROR_ORBIT_RADIUS, always facing the player
+        const orbitAngle = Math.atan2(
+          enemy.position.y - player.position.y,
+          enemy.position.x - player.position.x,
+        );
+        // Tangential velocity for orbiting (counterclockwise)
+        const tangentX = -Math.sin(orbitAngle);
+        const tangentY = Math.cos(orbitAngle);
+        // Radial correction to maintain orbit distance
+        const currentDist = len;
+        const radialError = currentDist - MIRROR_ORBIT_RADIUS;
+        const radialX = -Math.cos(orbitAngle); // toward player
+        const radialY = -Math.sin(orbitAngle);
+        const radialWeight = radialError * 0.05; // gentle correction
+        enemy.velocity.x = (tangentX + radialX * radialWeight) * enemy.speed;
+        enemy.velocity.y = (tangentY + radialY * radialWeight) * enemy.speed;
+
+        // Tick reflect cooldown
+        if (enemy.mirrorReflectCooldown !== undefined && enemy.mirrorReflectCooldown > 0) {
+          enemy.mirrorReflectCooldown -= dt;
+          if (enemy.mirrorReflectCooldown <= 0) {
+            enemy.mirrorReflectCooldown = 0;
+            enemy.aiState = 'reflecting';
+            // Restore bright visual
+            if (enemy.sprite) enemy.sprite.alpha = 1;
+          }
+        }
+        break;
+      }
+
+      case 'phaser': {
+        // Tick phase timer
+        if (enemy.phaserPhaseTimer !== undefined) {
+          enemy.phaserPhaseTimer -= dt;
+          if (enemy.phaserPhaseTimer <= 0) {
+            // Toggle phase state
+            if (enemy.phaserSolid) {
+              // Transition to phased (invulnerable)
+              enemy.phaserSolid = false;
+              enemy.aiState = 'phased';
+              enemy.phaserPhaseTimer = PHASER_PHASE_DURATION;
+              enemy.invulnerable = true;
+              enemy.damage = 0; // cannot deal damage while phased
+            } else {
+              // Transition to solid (vulnerable)
+              enemy.phaserSolid = true;
+              enemy.aiState = 'solid';
+              enemy.phaserPhaseTimer = PHASER_SOLID_DURATION;
+              enemy.invulnerable = undefined;
+              // Restore damage (recalculated from base)
+              enemy.damage = enemy.damage; // keep current
+            }
+          }
+        }
+
+        // Visual: alpha based on phase state with smooth fade
+        if (enemy.sprite) {
+          const targetAlpha = enemy.phaserSolid ? 1 : 0.15;
+          const currentAlpha = enemy.sprite.alpha;
+          const fadeSpeed = 5; // per second
+          if (currentAlpha < targetAlpha) {
+            enemy.sprite.alpha = Math.min(targetAlpha, currentAlpha + fadeSpeed * dt);
+          } else if (currentAlpha > targetAlpha) {
+            enemy.sprite.alpha = Math.max(targetAlpha, currentAlpha - fadeSpeed * dt);
+          }
+        }
+
+        // Chase via flow field regardless of phase state
+        const phaserDir = getChaseDirection(
+          enemy.position.x, enemy.position.y,
+          player.position.x, player.position.y,
+        );
+        enemy.velocity.x = phaserDir.x * enemy.speed;
+        enemy.velocity.y = phaserDir.y * enemy.speed;
+        break;
+      }
+
+      case 'burrower': {
+        // Tick surface/burrow timer
+        if (enemy.burrowSurfaceTimer !== undefined) {
+          enemy.burrowSurfaceTimer -= dt;
+        }
+
+        if (enemy.burrowed) {
+          // Underground: chase via flow field, invisible + invulnerable
+          const burrowDir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = burrowDir.x * enemy.speed;
+          enemy.velocity.y = burrowDir.y * enemy.speed;
+
+          // Rumble visual: jitter dust circle position slightly
+          if (enemy.sprite && (enemy.sprite as Container).children) {
+            const dust = (enemy.sprite as Container).children[1];
+            if (dust) {
+              dust.position.x = (Math.random() - 0.5) * 2;
+              dust.position.y = (Math.random() - 0.5) * 2;
+            }
+          }
+
+          // Surface when close to player OR timer expired
+          const shouldSurface = len <= BURROWER_SURFACE_RANGE || (enemy.burrowSurfaceTimer !== undefined && enemy.burrowSurfaceTimer <= 0);
+          if (shouldSurface) {
+            // Surface with stun AoE
+            enemy.burrowed = false;
+            enemy.invulnerable = undefined;
+            enemy.aiState = 'surfaced';
+            enemy.burrowSurfaceTimer = BURROWER_SURFACE_TIME;
+
+            // Show chevron, hide dust
+            if (enemy.sprite && (enemy.sprite as Container).children) {
+              const chevron = (enemy.sprite as Container).children[0];
+              const dust = (enemy.sprite as Container).children[1];
+              if (chevron) chevron.visible = true;
+              if (dust) dust.visible = false;
+            }
+
+            // Stun AoE on surfacing
+            if (len <= BURROWER_STUN_RADIUS && player.health) {
+              const rawDmg = enemy.damage ?? 18;
+              const dr = getDamageReduction(enemy.level ?? 1);
+              const stunDmg = Math.max(1, Math.round(rawDmg * (1 - dr)));
+              player.health.current -= stunDmg;
+              spawnDamageNumber(player.position.x, player.position.y - 10, stunDmg, 0x886633);
+              applyStatus(player, StatusType.Stun, enemy.position);
+              sfxPlayer.play('hit_physical');
+              if (player.health.current <= 0) player.health.current = 0;
+            }
+
+            // Visual: expanding dust ring
+            const dustRing = new Graphics();
+            dustRing.circle(0, 0, 8).stroke({ color: 0x886633, width: 2, alpha: 0.6 });
+            dustRing.position.set(enemy.position.x, enemy.position.y);
+            game.effectLayer.addChild(dustRing);
+            const ringStart = performance.now();
+            const expandDust = () => {
+              const elapsed = performance.now() - ringStart;
+              const t = Math.min(elapsed / 300, 1);
+              const r = 8 + t * (BURROWER_STUN_RADIUS - 8);
+              dustRing.clear();
+              dustRing.circle(0, 0, r).stroke({ color: 0x886633, width: 2, alpha: 0.6 * (1 - t) });
+              if (t >= 1) {
+                dustRing.removeFromParent();
+                dustRing.destroy();
+              } else {
+                requestAnimationFrame(expandDust);
+              }
+            };
+            requestAnimationFrame(expandDust);
+          }
+        } else {
+          // Surfaced: chase normally
+          const surfaceDir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = surfaceDir.x * enemy.speed;
+          enemy.velocity.y = surfaceDir.y * enemy.speed;
+
+          // Re-burrow when timer expires
+          if (enemy.burrowSurfaceTimer !== undefined && enemy.burrowSurfaceTimer <= 0) {
+            enemy.burrowed = true;
+            enemy.invulnerable = true;
+            enemy.aiState = 'burrowed';
+            enemy.burrowSurfaceTimer = BURROWER_BURROW_TIME;
+
+            // Hide chevron, show dust
+            if (enemy.sprite && (enemy.sprite as Container).children) {
+              const chevron = (enemy.sprite as Container).children[0];
+              const dust = (enemy.sprite as Container).children[1];
+              if (chevron) chevron.visible = false;
+              if (dust) dust.visible = true;
+            }
+          }
+        }
+        break;
+      }
+
+      case 'warper': {
+        // Tick teleport timer
+        if (enemy.warperTeleportTimer !== undefined) {
+          enemy.warperTeleportTimer -= dt;
+        }
+
+        // Post-fire stationary window
+        if (enemy.warperPostFireTimer !== undefined && enemy.warperPostFireTimer > 0) {
+          enemy.warperPostFireTimer -= dt;
+          enemy.velocity.x = 0;
+          enemy.velocity.y = 0;
+          if (enemy.warperPostFireTimer <= 0) {
+            enemy.warperPostFireTimer = undefined;
+            enemy.aiState = 'moving';
+          }
+          break;
+        }
+
+        // Teleport when timer expires
+        if (enemy.warperTeleportTimer !== undefined && enemy.warperTeleportTimer <= 0) {
+          enemy.warperTeleportTimer = WARPER_TELEPORT_INTERVAL;
+
+          // Find a random walkable tile within range of player
+          let teleportPos: { x: number; y: number } | null = null;
+          for (let attempt = 0; attempt < 20; attempt++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = WARPER_TELEPORT_MIN_DIST + Math.random() * (WARPER_TELEPORT_MAX_DIST - WARPER_TELEPORT_MIN_DIST);
+            const tx = player.position.x + Math.cos(angle) * dist;
+            const ty = player.position.y + Math.sin(angle) * dist;
+            if (game.tileMap) {
+              const tile = game.tileMap.worldToTile(tx, ty);
+              if (!game.tileMap.blocksMovement(tile.x, tile.y)) {
+                teleportPos = game.tileMap.tileToWorld(tile.x, tile.y);
+                break;
+              }
+            }
+          }
+
+          if (teleportPos) {
+            // Spawn afterimage at old position
+            const afterimage = new Graphics();
+            afterimage.moveTo(-12, -10).lineTo(12, -10).lineTo(0, 0).closePath().fill({ color: 0x00cccc, alpha: 0.4 });
+            afterimage.moveTo(-12, 10).lineTo(12, 10).lineTo(0, 0).closePath().fill({ color: 0x00cccc, alpha: 0.4 });
+            afterimage.position.set(enemy.position.x, enemy.position.y);
+            game.effectLayer.addChild(afterimage);
+            const fadeStart = performance.now();
+            const fadeAfterimage = () => {
+              const elapsed = performance.now() - fadeStart;
+              const t = Math.min(elapsed / 500, 1);
+              afterimage.alpha = 0.4 * (1 - t);
+              if (t >= 1) {
+                afterimage.removeFromParent();
+                afterimage.destroy();
+              } else {
+                requestAnimationFrame(fadeAfterimage);
+              }
+            };
+            requestAnimationFrame(fadeAfterimage);
+
+            // Teleport to new position
+            enemy.position.x = teleportPos.x;
+            enemy.position.y = teleportPos.y;
+            if (enemy.sprite) {
+              enemy.sprite.position.set(teleportPos.x, teleportPos.y);
+            }
+
+            // Fire projectile at player immediately
+            fireEnemyProjectile(
+              enemy.position.x,
+              enemy.position.y,
+              player.position.x,
+              player.position.y,
+            );
+
+            // Enter post-fire stationary window
+            enemy.warperPostFireTimer = WARPER_POST_FIRE_DURATION;
+            enemy.aiState = 'firing';
+            enemy.velocity.x = 0;
+            enemy.velocity.y = 0;
+          }
+          break;
+        }
+
+        // Slow movement between teleports
+        const warperDir = getChaseDirection(
+          enemy.position.x, enemy.position.y,
+          player.position.x, player.position.y,
+        );
+        enemy.velocity.x = warperDir.x * enemy.speed;
+        enemy.velocity.y = warperDir.y * enemy.speed;
         break;
       }
 

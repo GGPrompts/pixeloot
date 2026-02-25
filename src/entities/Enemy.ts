@@ -457,3 +457,183 @@ export function spawnPulsar(worldX: number, worldY: number, monsterLevel = 1): E
   applyMapModifiers(entity);
   return entity;
 }
+
+/**
+ * Spawns a Mirror enemy: a pale lavender rhombus. Orbits player and reflects projectiles.
+ */
+export function spawnMirror(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Tall thin rhombus (diamond stretched vertically), ~14px tall, 8px wide
+  g.moveTo(0, -14)
+    .lineTo(8, 0)
+    .lineTo(0, 14)
+    .lineTo(-8, 0)
+    .closePath()
+    .fill({ color: 0xccccff });
+  // Bright edge highlight for reflective sheen
+  g.moveTo(0, -14)
+    .lineTo(8, 0)
+    .lineTo(0, 14)
+    .stroke({ color: 0xeeeeff, width: 2, alpha: 0.8 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(35, monsterLevel);
+  const dmg = scaleDamage(0, monsterLevel); // does not deal contact damage
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 55,
+    baseSpeed: 55,
+    enemy: true as const,
+    enemyType: 'mirror',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    aiState: 'reflecting', // 'reflecting' = active, 'cracked' = on cooldown
+    mirrorReflectCooldown: 0,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Phaser enemy: a light blue diamond outline. Blinks in and out of existence.
+ */
+export function spawnPhaser(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Diamond outline (not filled) with a glowing center dot
+  g.moveTo(0, -12)
+    .lineTo(12, 0)
+    .lineTo(0, 12)
+    .lineTo(-12, 0)
+    .closePath()
+    .stroke({ color: 0x88aaff, width: 2 });
+  g.circle(0, 0, 3).fill({ color: 0x88aaff });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(28, monsterLevel);
+  const dmg = scaleDamage(14, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 85,
+    baseSpeed: 85,
+    enemy: true as const,
+    enemyType: 'phaser',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    aiState: 'solid',
+    phaserPhaseTimer: 1.5, // starts solid for 1.5s
+    phaserSolid: true,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Burrower enemy: a brown downward chevron. Underground ambush predator.
+ */
+export function spawnBurrower(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const container = new Container();
+
+  // Surface form: downward-pointing chevron (V shape), ~12px
+  const chevron = new Graphics();
+  chevron.moveTo(-12, -8)
+    .lineTo(0, 8)
+    .lineTo(12, -8)
+    .lineTo(8, -8)
+    .lineTo(0, 4)
+    .lineTo(-8, -8)
+    .closePath()
+    .fill({ color: 0x886633 });
+  chevron.visible = false; // starts burrowed
+  container.addChild(chevron);
+
+  // Burrowed form: small rumbling dust circle
+  const dust = new Graphics();
+  dust.circle(0, 0, 6).fill({ color: 0x886633, alpha: 0.4 });
+  dust.visible = true; // starts burrowed
+  container.addChild(dust);
+
+  container.position.set(worldX, worldY);
+  game.entityLayer.addChild(container);
+
+  const hp = scaleHealth(40, monsterLevel);
+  const dmg = scaleDamage(18, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 70,
+    baseSpeed: 70,
+    enemy: true as const,
+    enemyType: 'burrower',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: container,
+    aiTimer: 0,
+    aiState: 'burrowed',
+    burrowed: true,
+    burrowSurfaceTimer: 3, // surfaces after 3s initially
+    invulnerable: true,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Warper enemy: a cyan hourglass/bowtie. Teleports and applies Shock.
+ */
+export function spawnWarper(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Hourglass / bowtie shape: two triangles meeting at a point
+  g.moveTo(-12, -10)
+    .lineTo(12, -10)
+    .lineTo(0, 0)
+    .closePath()
+    .fill({ color: 0x00cccc });
+  g.moveTo(-12, 10)
+    .lineTo(12, 10)
+    .lineTo(0, 0)
+    .closePath()
+    .fill({ color: 0x00cccc });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(20, monsterLevel);
+  const dmg = scaleDamage(12, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 40,
+    baseSpeed: 40,
+    enemy: true as const,
+    enemyType: 'warper',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    aiState: 'moving',
+    warperTeleportTimer: 2.5,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}

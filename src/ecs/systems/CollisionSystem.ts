@@ -18,6 +18,9 @@ import { game } from '../../Game';
 import { Graphics } from 'pixi.js';
 import { hasEffect, activateFrenzy, isFrenzyActive } from '../../core/UniqueEffects';
 
+/** Mirror reflect cooldown */
+const MIRROR_REFLECT_COOLDOWN = 2;
+
 /** Apply armor damage reduction to incoming damage, scaled by monster level. */
 function reduceDamage(rawDamage: number, monsterLevel = 1): number {
   const dr = getDamageReduction(monsterLevel);
@@ -75,6 +78,7 @@ export function collisionSystem(dt: number): void {
     // Friendly fire: damage nearby enemies too
     for (const other of enemies) {
       if (other === enemy) continue;
+      if (other.invulnerable) continue; // skip invulnerable enemies
       const odx = other.position.x - enemy.position.x;
       const ody = other.position.y - enemy.position.y;
       if (odx * odx + ody * ody < explodeRadius * explodeRadius) {
@@ -110,6 +114,52 @@ export function collisionSystem(dt: number): void {
       const distSq = dx * dx + dy * dy;
 
       if (distSq < HIT_RADIUS * HIT_RADIUS) {
+        // Invulnerable enemies (phaser phased, burrower underground): skip damage
+        if (enemy.invulnerable) {
+          continue;
+        }
+
+        // Mirror: reflect projectile back toward player
+        if (enemy.enemyType === 'mirror' && enemy.aiState === 'reflecting' && enemy.mirrorReflectCooldown !== undefined && enemy.mirrorReflectCooldown <= 0) {
+          // Reverse projectile direction at 1.5x speed
+          if (proj.velocity) {
+            const speed = Math.sqrt(proj.velocity.x * proj.velocity.x + proj.velocity.y * proj.velocity.y);
+            const newSpeed = speed * 1.5;
+            // Aim reflected projectile at player
+            if (players.entities.length > 0) {
+              const pl = players.entities[0];
+              const rdx = pl.position.x - proj.position.x;
+              const rdy = pl.position.y - proj.position.y;
+              const rlen = Math.sqrt(rdx * rdx + rdy * rdy);
+              if (rlen > 0) {
+                proj.velocity.x = (rdx / rlen) * newSpeed;
+                proj.velocity.y = (rdy / rlen) * newSpeed;
+              }
+            }
+            // Convert to enemy projectile by removing player projectile tag and adding enemy tag
+            world.removeComponent(proj, 'projectile');
+            world.addComponent(proj, 'enemyProjectile', true as const);
+            // Set level for damage reduction calculation
+            if (!proj.level) {
+              world.addComponent(proj, 'level', enemy.level ?? 1);
+            }
+          }
+
+          // Mirror enters cracked state
+          enemy.mirrorReflectCooldown = MIRROR_REFLECT_COOLDOWN;
+          enemy.aiState = 'cracked';
+          if (enemy.sprite) enemy.sprite.alpha = 0.5;
+
+          // Visual flash on reflect
+          spawnDamageNumber(enemy.position.x, enemy.position.y - 10, 0, 0xccccff);
+          sfxPlayer.play('hit_magic');
+
+          consumed = true;
+          break; // projectile is now an enemy projectile, stop checking
+        }
+
+        // Mirror in cracked state: takes double damage (handled below via multiplier)
+
         // Shielder: block projectiles hitting the front face
         if (enemy.shielded && enemy.sprite) {
           // Enemy facing angle (toward player, set by AISystem rotation)
@@ -158,6 +208,11 @@ export function collisionSystem(dt: number): void {
         // Mark: +15% damage taken (not consumed)
         if (hasStatus(enemy, StatusType.Mark)) {
           dmg = Math.round(dmg * 1.15);
+        }
+
+        // Mirror cracked: takes double damage
+        if (enemy.enemyType === 'mirror' && enemy.aiState === 'cracked') {
+          dmg = Math.round(dmg * 2);
         }
 
         // Deal damage
@@ -374,6 +429,11 @@ export function collisionSystem(dt: number): void {
   }
 
   for (const enemy of enemiesWithDamage) {
+    // Skip invulnerable enemies (phaser phased, burrower underground)
+    if (enemy.invulnerable) continue;
+    // Skip phaser in phased state (cannot deal contact damage)
+    if (enemy.enemyType === 'phaser' && !enemy.phaserSolid) continue;
+
     const dx = enemy.position.x - player.position.x;
     const dy = enemy.position.y - player.position.y;
     const distSq = dx * dx + dy * dy;
@@ -403,6 +463,11 @@ export function collisionSystem(dt: number): void {
         enemy.aiState = 'walking';
         enemy.aiTimer = CHARGER_CONTACT_COOLDOWN;
         enemy.chargerDir = undefined;
+      }
+
+      // Warper: apply Shock on contact
+      if (enemy.enemyType === 'warper') {
+        applyStatus(player, StatusType.Shock, enemy.position);
       }
 
       // Fire enchanted modifier: enemies apply Burn on contact
