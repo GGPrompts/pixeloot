@@ -3,6 +3,7 @@ import { game } from '../../Game';
 import { despawnProjectile } from '../../entities/Projectile';
 import type { Entity } from '../world';
 import { TILE_SIZE } from '../../core/constants';
+import { hasCryoBarrier, hitCryoBarrier } from '../../core/HazardSystem';
 
 const projectiles = world.with('projectile', 'position', 'velocity', 'lifetime');
 const enemyProjectiles = world.with('enemyProjectile', 'position', 'velocity', 'lifetime');
@@ -23,8 +24,16 @@ function shouldDespawn(entity: Entity & { position: { x: number; y: number }; li
   entity.lifetime -= dt;
   if (entity.lifetime <= 0) return true;
 
-  const tile = game.tileMap.worldToTile(entity.position.x, entity.position.y);
-  if (game.tileMap.isSolid(tile.x, tile.y)) return true;
+  // Whisperstring Steady Aim: wall-piercing projectiles ignore wall collisions
+  if (!entity.wallPiercing) {
+    const tile = game.tileMap.worldToTile(entity.position.x, entity.position.y);
+    if (game.tileMap.isSolid(tile.x, tile.y)) return true;
+
+    // Cryo barriers: projectiles damage them and get consumed (don't block projectiles, just damage)
+    if (hasCryoBarrier(tile.x, tile.y)) {
+      hitCryoBarrier(tile.x, tile.y, entity.damage ?? 10);
+    }
+  }
 
   const worldW = game.tileMap.width * TILE_SIZE;
   const worldH = game.tileMap.height * TILE_SIZE;

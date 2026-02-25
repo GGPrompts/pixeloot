@@ -12,6 +12,16 @@ import townSong from './tracks/town.json';
 import combatSong from './tracks/combat.json';
 import bossSong from './tracks/boss.json';
 import victorySong from './tracks/victory.json';
+import gridSong from './tracks/grid.json';
+import neonWastesSong from './tracks/neon_wastes.json';
+import reactorCoreSong from './tracks/reactor_core.json';
+import frozenArraySong from './tracks/frozen_array.json';
+import overgrowthSong from './tracks/overgrowth.json';
+import stormNetworkSong from './tracks/storm_network.json';
+import theAbyssSong from './tracks/the_abyss.json';
+import chromaticRiftSong from './tracks/chromatic_rift.json';
+import bossEnrageSong from './tracks/boss_enrage.json';
+import deathSong from './tracks/death.json';
 
 const TRACKS: Record<string, SongData> = {
   menu: menuSong as unknown as SongData,
@@ -19,18 +29,18 @@ const TRACKS: Record<string, SongData> = {
   combat: combatSong as unknown as SongData,
   boss: bossSong as unknown as SongData,
   victory: victorySong as unknown as SongData,
-  // Zone-specific combat tracks (placeholder: fall back to combat until JSON authored)
-  grid: null as unknown as SongData,
-  neon_wastes: null as unknown as SongData,
-  reactor_core: null as unknown as SongData,
-  frozen_array: null as unknown as SongData,
-  overgrowth: null as unknown as SongData,
-  storm_network: null as unknown as SongData,
-  the_abyss: null as unknown as SongData,
-  chromatic_rift: null as unknown as SongData,
+  // Zone-specific combat tracks
+  grid: gridSong as unknown as SongData,
+  neon_wastes: neonWastesSong as unknown as SongData,
+  reactor_core: reactorCoreSong as unknown as SongData,
+  frozen_array: frozenArraySong as unknown as SongData,
+  overgrowth: overgrowthSong as unknown as SongData,
+  storm_network: stormNetworkSong as unknown as SongData,
+  the_abyss: theAbyssSong as unknown as SongData,
+  chromatic_rift: chromaticRiftSong as unknown as SongData,
   // Contextual stingers / overlays
-  enrage: null as unknown as SongData,
-  death: null as unknown as SongData,
+  enrage: bossEnrageSong as unknown as SongData,
+  death: deathSong as unknown as SongData,
 };
 
 /**

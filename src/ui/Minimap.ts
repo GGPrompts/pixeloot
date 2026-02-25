@@ -5,6 +5,10 @@ import { InputManager } from '../core/InputManager';
 import { isInTown } from '../core/TownManager';
 import { Colors, drawPixelBorder } from './UITheme';
 import { SCREEN_W } from '../core/constants';
+import {
+  TILE_WALL, TILE_PILLAR, TILE_PIT, TILE_SLOW_GROUND,
+  TILE_DESTRUCTIBLE, TILE_BRIDGE,
+} from '../map/TileMap';
 
 const MAP_SIZE = 200;
 const MAP_X = SCREEN_W - MAP_SIZE - 10;
@@ -13,6 +17,10 @@ const BG_COLOR = 0x0D0D1A;
 const BG_ALPHA = 0.8;
 const WALL_COLOR = 0x444455;
 const FLOOR_COLOR = 0x222233;
+const PIT_COLOR = 0x000000;
+const PILLAR_COLOR = 0x555566;
+const SLOW_COLOR = 0x223355;
+const BRIDGE_COLOR = 0x554433;
 const PLAYER_COLOR = Colors.accentCyan;
 const ENEMY_COLOR = Colors.accentRed;
 const BOSS_COLOR = Colors.accentGold;
@@ -69,15 +77,29 @@ function renderLayout(): void {
 
   for (let ty = 0; ty < tileH; ty++) {
     for (let tx = 0; tx < tileW; tx++) {
-      const isWall = tileMap.tiles[ty][tx] === 1;
+      const tile = tileMap.tiles[ty][tx];
       const mx = (tx / tileW) * MAP_SIZE;
       const my = (ty / tileH) * MAP_SIZE;
 
-      if (isWall) {
-        layoutGfx.rect(mx, my, dotW, dotH).fill({ color: WALL_COLOR, alpha: 0.6 });
-      } else {
-        layoutGfx.rect(mx, my, dotW, dotH).fill({ color: FLOOR_COLOR, alpha: 0.5 });
+      let color = FLOOR_COLOR;
+      let alpha = 0.5;
+
+      switch (tile) {
+        case TILE_WALL:
+          color = WALL_COLOR; alpha = 0.6; break;
+        case TILE_PILLAR:
+          color = PILLAR_COLOR; alpha = 0.6; break;
+        case TILE_PIT:
+          color = PIT_COLOR; alpha = 0.8; break;
+        case TILE_SLOW_GROUND:
+          color = SLOW_COLOR; alpha = 0.5; break;
+        case TILE_DESTRUCTIBLE:
+          color = WALL_COLOR; alpha = 0.5; break;
+        case TILE_BRIDGE:
+          color = BRIDGE_COLOR; alpha = 0.5; break;
       }
+
+      layoutGfx.rect(mx, my, dotW, dotH).fill({ color, alpha });
     }
   }
 }

@@ -1,0 +1,80 @@
+{
+  "title": "Flatline",
+  "bpm": 72,
+  "rpb": 4,
+  "channels": [
+    { "name": "Lead" },
+    { "name": "Harmony" },
+    { "name": "Bass" },
+    { "name": "Perc" }
+  ],
+  "instruments": [
+    {
+      "name": "Last Breath",
+      "wave": "sine",
+      "a": 0.02,
+      "d": 0.3,
+      "s": 0.3,
+      "r": 0.8,
+      "vol": 0.5
+    },
+    {
+      "name": "Fading Echo",
+      "wave": "triangle",
+      "a": 0.05,
+      "d": 0.3,
+      "s": 0.25,
+      "r": 1.0,
+      "vol": 0.3
+    },
+    {
+      "name": "Ground Fall",
+      "wave": "triangle",
+      "a": 0.01,
+      "d": 0.2,
+      "s": 0.5,
+      "r": 0.5,
+      "vol": 0.6
+    },
+    {
+      "name": "Heartbeat Stop",
+      "wave": "noise",
+      "a": 0.002,
+      "d": 0.15,
+      "s": 0,
+      "r": 0.1,
+      "vol": 0.25,
+      "filterType": "lowpass",
+      "filterFreq": 300,
+      "filterQ": 2
+    }
+  ],
+  "patterns": [
+    {
+      "id": 0,
+      "name": "Flatline",
+      "len": 32,
+      "channels": [
+        [
+          { "r": 0, "n": 69, "i": 0, "d": 8, "v": 10 },
+          { "r": 8, "n": 65, "i": 0, "d": 8, "v": 8 },
+          { "r": 16, "n": 62, "i": 0, "d": 12, "v": 6 }
+        ],
+        [
+          { "r": 0, "n": 62, "i": 1, "d": 24, "v": 8 }
+        ],
+        [
+          { "r": 0, "n": 38, "i": 2, "d": 8, "v": 10 }
+        ],
+        [
+          { "r": 0, "n": 72, "i": 3, "d": 1, "v": 10 },
+          { "r": 4, "n": 72, "i": 3, "d": 1, "v": 7 }
+        ]
+      ]
+    }
+  ],
+  "sequence": [
+    [0, 0, 0, 0]
+  ],
+  "shortEndSeq": 0
+}

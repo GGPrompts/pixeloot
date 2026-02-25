@@ -96,6 +96,9 @@ export type Entity = {
   overchargerOrigSpeed?: number;    // original speed before overcharger buff
   overchargerOrigDamage?: number;   // original damage before overcharger buff
   spawnPosition?: { x: number; y: number }; // projectile spawn position (for distance-based damage scaling)
+  wallPiercing?: true;             // projectile passes through walls (Whisperstring Steady Aim)
+  isFireball?: true;               // projectile is a Mage Fireball (for Frostfire Scepter conversion)
+  isRangerProjectile?: true;       // projectile fired by Ranger class (for Ember Quiver)
 };
 
 export const world = new World<Entity>();

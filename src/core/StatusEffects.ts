@@ -1,4 +1,6 @@
 import type { Entity } from '../ecs/world';
+import { hasEffect } from './UniqueEffects';
+import { spawnDamageNumber } from '../ui/DamageNumbers';
 
 // ── Status Types ───────────────────────────────────────────────────
 export enum StatusType {
@@ -97,6 +99,23 @@ export function applyStatus(
   // If effect already exists, refresh duration instead of stacking
   const existing = entity.statusEffects.find((e) => e.type === type);
   if (existing) {
+    // Resonance Loop: deal 20 bonus damage when reapplying a status the enemy already has
+    // Only on refreshable statuses (Slow, Chill, Burn, Mark), not Shock/Knockback
+    if (
+      hasEffect('resonance_double_status') &&
+      entity.enemy &&
+      entity.health &&
+      (type === StatusType.Slow ||
+        type === StatusType.Chill ||
+        type === StatusType.Burn ||
+        type === StatusType.Mark)
+    ) {
+      entity.health.current -= 20;
+      if (entity.position) {
+        spawnDamageNumber(entity.position.x, entity.position.y - 10, 20, 0xaa44ff);
+      }
+    }
+
     existing.duration = DEFAULT_DURATION[type];
     if (type === StatusType.Burn) {
       existing.tickTimer = 0.5;

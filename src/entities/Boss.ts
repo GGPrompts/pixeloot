@@ -34,6 +34,18 @@ function drawBossShape(
     case 'prism_lord':
       drawPrismLord(g, radius, primary, accent);
       break;
+    case 'void_weaver':
+      drawVoidWeaver(g, radius, primary, accent);
+      break;
+    case 'cryo_matrix':
+      drawCryoMatrix(g, radius, primary, accent);
+      break;
+    case 'arc_tyrant':
+      drawArcTyrant(g, radius, primary, accent);
+      break;
+    case 'recursion':
+      drawRecursion(g, radius, primary, accent);
+      break;
     default:
       drawGenericHexagon(g, radius, primary, accent, id);
       break;
@@ -238,6 +250,177 @@ function drawPrismLord(g: Graphics, radius: number, _primary: number, accent: nu
 
   // Center bright dot
   g.circle(0, 0, 4).fill({ color: 0xffffff, alpha: 0.9 });
+}
+
+/** Void Weaver: 8-point pulsating star with magenta/deep purple body */
+function drawVoidWeaver(g: Graphics, radius: number, primary: number, accent: number): void {
+  // Glow rings
+  for (let ring = 3; ring >= 1; ring--) {
+    const r = radius + ring * 4;
+    g.circle(0, 0, r).stroke({ width: 1.5, color: accent, alpha: 0.2 + ring * 0.05 });
+  }
+
+  // 8-point star shape
+  const outerR = radius;
+  const innerR = radius * 0.5;
+  const points = 8;
+  for (let i = 0; i < points * 2; i++) {
+    const angle = (Math.PI * 2 / (points * 2)) * i - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    const px = Math.cos(angle) * r;
+    const py = Math.sin(angle) * r;
+    if (i === 0) g.moveTo(px, py);
+    else g.lineTo(px, py);
+  }
+  g.closePath();
+  g.fill({ color: primary, alpha: 0.85 });
+  g.stroke({ width: 2, color: accent });
+
+  // Inner void core
+  g.circle(0, 0, radius * 0.2).fill({ color: 0x220044, alpha: 0.9 });
+  g.circle(0, 0, radius * 0.12).fill({ color: accent, alpha: 0.7 });
+}
+
+/** Cryo Matrix: hexagonal core with 6 crystal arm extensions */
+function drawCryoMatrix(g: Graphics, radius: number, primary: number, accent: number): void {
+  // Crystal arm extensions (6 spikes)
+  const armCount = 6;
+  for (let i = 0; i < armCount; i++) {
+    const angle = (Math.PI * 2 / armCount) * i - Math.PI / 2;
+    const tipDist = radius * 1.5;
+    const baseWidth = 0.12;
+
+    g.moveTo(
+      Math.cos(angle - baseWidth) * radius * 0.6,
+      Math.sin(angle - baseWidth) * radius * 0.6,
+    );
+    g.lineTo(Math.cos(angle) * tipDist, Math.sin(angle) * tipDist);
+    g.lineTo(
+      Math.cos(angle + baseWidth) * radius * 0.6,
+      Math.sin(angle + baseWidth) * radius * 0.6,
+    );
+    g.closePath();
+    g.fill({ color: accent, alpha: 0.5 });
+    g.stroke({ width: 1, color: accent, alpha: 0.7 });
+  }
+
+  // Glow rings
+  for (let ring = 2; ring >= 1; ring--) {
+    const r = radius + ring * 3;
+    drawRegularPolygon(g, 6, r);
+    g.stroke({ width: 1.5, color: accent, alpha: 0.25 });
+  }
+
+  // Hexagonal core body
+  drawRegularPolygon(g, 6, radius);
+  g.fill({ color: primary, alpha: 0.85 });
+  g.stroke({ width: 2, color: accent });
+
+  // Inner snowflake pattern
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI * 2 / 6) * i;
+    g.moveTo(0, 0);
+    g.lineTo(Math.cos(angle) * radius * 0.6, Math.sin(angle) * radius * 0.6);
+    g.stroke({ width: 1, color: accent, alpha: 0.4 });
+  }
+
+  // Center crystal
+  g.circle(0, 0, radius * 0.15).fill({ color: 0xffffff, alpha: 0.6 });
+}
+
+/** Arc Tyrant: jagged zigzag bolt shape with sparks */
+function drawArcTyrant(g: Graphics, radius: number, primary: number, accent: number): void {
+  // Glow arcs
+  for (let ring = 3; ring >= 1; ring--) {
+    const r = radius + ring * 3;
+    g.circle(0, 0, r).stroke({ width: 1.5, color: primary, alpha: 0.15 + ring * 0.05 });
+  }
+
+  // Zigzag bolt body (7-sided irregular polygon)
+  const zigPoints = [
+    { x: 0, y: -radius },
+    { x: radius * 0.6, y: -radius * 0.5 },
+    { x: radius * 0.3, y: -radius * 0.1 },
+    { x: radius * 0.8, y: radius * 0.3 },
+    { x: radius * 0.1, y: radius * 0.5 },
+    { x: -radius * 0.4, y: radius * 0.9 },
+    { x: -radius * 0.2, y: radius * 0.2 },
+    { x: -radius * 0.7, y: -radius * 0.1 },
+    { x: -radius * 0.3, y: -radius * 0.5 },
+  ];
+
+  g.moveTo(zigPoints[0].x, zigPoints[0].y);
+  for (let i = 1; i < zigPoints.length; i++) {
+    g.lineTo(zigPoints[i].x, zigPoints[i].y);
+  }
+  g.closePath();
+  g.fill({ color: primary, alpha: 0.9 });
+  g.stroke({ width: 2, color: accent });
+
+  // Lightning spark lines from center
+  for (let i = 0; i < 5; i++) {
+    const angle = (Math.PI * 2 / 5) * i + 0.3;
+    const dist = radius * 0.5;
+    const midX = Math.cos(angle + 0.2) * dist * 0.5;
+    const midY = Math.sin(angle + 0.2) * dist * 0.5;
+    g.moveTo(0, 0);
+    g.lineTo(midX, midY);
+    g.lineTo(Math.cos(angle) * dist, Math.sin(angle) * dist);
+    g.stroke({ width: 2, color: 0xffffff, alpha: 0.6 });
+  }
+
+  // Center energy dot
+  g.circle(0, 0, 5).fill({ color: 0xffffff, alpha: 0.9 });
+}
+
+/** Recursion: Sierpinski fractal triangle */
+function drawRecursion(g: Graphics, radius: number, primary: number, accent: number): void {
+  // Glow rings
+  for (let ring = 2; ring >= 1; ring--) {
+    const r = radius + ring * 4;
+    drawRegularPolygon(g, 3, r);
+    g.stroke({ width: 1.5, color: accent, alpha: 0.2 + ring * 0.05 });
+  }
+
+  // Main triangle
+  drawRegularPolygon(g, 3, radius);
+  g.fill({ color: primary, alpha: 0.85 });
+  g.stroke({ width: 2, color: accent });
+
+  // Inner Sierpinski-style triangle cutout (inverted triangle)
+  const innerR = radius * 0.45;
+  for (let i = 0; i < 3; i++) {
+    const angle = (Math.PI * 2 / 3) * i + Math.PI / 6;
+    const px = Math.cos(angle) * innerR;
+    const py = Math.sin(angle) * innerR;
+    if (i === 0) g.moveTo(px, py);
+    else g.lineTo(px, py);
+  }
+  g.closePath();
+  g.fill({ color: 0x003322, alpha: 0.6 });
+  g.stroke({ width: 1, color: accent, alpha: 0.6 });
+
+  // Three smaller triangles at corners (depth 2 hint)
+  const subR = radius * 0.2;
+  const subDist = radius * 0.55;
+  for (let c = 0; c < 3; c++) {
+    const cAngle = (Math.PI * 2 / 3) * c - Math.PI / 2;
+    const cx = Math.cos(cAngle) * subDist;
+    const cy = Math.sin(cAngle) * subDist;
+    for (let i = 0; i < 3; i++) {
+      const angle = (Math.PI * 2 / 3) * i - Math.PI / 2;
+      const px = cx + Math.cos(angle) * subR;
+      const py = cy + Math.sin(angle) * subR;
+      if (i === 0) g.moveTo(px, py);
+      else g.lineTo(px, py);
+    }
+    g.closePath();
+    g.fill({ color: accent, alpha: 0.3 });
+    g.stroke({ width: 1, color: accent, alpha: 0.5 });
+  }
+
+  // Center dot
+  g.circle(0, 0, 4).fill({ color: accent, alpha: 0.8 });
 }
 
 /** Default hexagon shape for bosses without a custom shape */

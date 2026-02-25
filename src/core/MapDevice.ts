@@ -9,12 +9,15 @@ import { Graphics } from 'pixi.js';
 import type { MapItem, MapModifier } from '../loot/MapItem';
 import { generateDungeon } from '../map/DungeonGenerator';
 import { TileMap } from '../map/TileMap';
+import { postProcessDungeon } from '../map/MapPostProcessor';
+import { getRandomMapDesign } from '../map/MapDesignRegistry';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { applyTheme, getActiveTheme, ZONE_THEMES } from './ZoneThemes';
 import { exitTown, isInTown } from './TownManager';
 import { refreshMinimapLayout } from '../ui/Minimap';
 import { musicPlayer, getZoneTrack } from '../audio/MusicPlayer';
+import { placeHazards, clearHazards } from './HazardSystem';
 
 // ── Active Map State ────────────────────────────────────────────────
 
@@ -102,6 +105,10 @@ export function activateMap(mapItem: MapItem): void {
     Math.max(40, dungeonH),
   );
 
+  // 4b. Apply layout variant post-processing
+  const layoutDesign = getRandomMapDesign();
+  postProcessDungeon(dungeonData, layoutDesign, tier);
+
   // 5. Replace the tile map
   // Remove old world layer children and re-draw
   game.worldLayer.removeChildren();
@@ -110,14 +117,17 @@ export function activateMap(mapItem: MapItem): void {
   game.tileMap.render(game.worldLayer, theme.wallColor);
   refreshMinimapLayout();
 
-  // 6. Update scaling config with tier bonus
+  // 6. Place environmental hazards based on zone theme
+  placeHazards(dungeonData, themeKey, tier);
+
+  // 7. Update scaling config with tier bonus
   // The wave system will pick this up via getActiveScalingConfig()
 
-  // 7. Reset wave system
+  // 8. Reset wave system
   game.waveSystem.currentWave = 0;
   game.waveSystem.start();
 
-  // 8. Teleport player to new spawn
+  // 9. Teleport player to new spawn
   const players = world.with('player', 'position');
   if (players.entities.length > 0) {
     const player = players.entities[0];
@@ -140,6 +150,7 @@ export function clearMapModifiers(): void {
   activeRarityBonus = 0;
   activeTierBonus = 0;
   mapActive = false;
+  clearHazards();
 }
 
 // ── Internal Helpers ────────────────────────────────────────────────

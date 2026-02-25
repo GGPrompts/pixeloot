@@ -1063,10 +1063,1046 @@ function updatePrismShift(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Dimensional Tether -- Void Weaver
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface TetherAnchor {
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  sprite: Graphics | null;
+  regenTimer: number;       // seconds until regen (0 = no regen pending)
+  dead: boolean;
+}
+
+interface VoidWeaverState {
+  anchors: TetherAnchor[];
+  anchorTimer: number;       // cooldown for placing new anchors
+  phase: number;
+  maxAnchors: number;
+  regenEnabled: boolean;     // anchors regenerate after phase 3
+  beamDps: number;
+  visualContainer: Graphics | null;
+}
+
+const ANCHOR_HP_BASE = 60;
+const ANCHOR_REGEN_TIME = 10;
+const BEAM_WIDTH = 20;
+const BEAM_DPS_MULT = 0.5;
+const ANCHOR_RADIUS = 12;
+
+const voidWeaverStates = new WeakMap<object, VoidWeaverState>();
+
+function getVoidWeaverState(boss: object): VoidWeaverState {
+  let s = voidWeaverStates.get(boss);
+  if (!s) {
+    s = {
+      anchors: [],
+      anchorTimer: 4.0,
+      phase: 1,
+      maxAnchors: 2,
+      regenEnabled: false,
+      beamDps: 0,
+      visualContainer: null,
+    };
+    voidWeaverStates.set(boss, s);
+  }
+  return s;
+}
+
+function updateVoidWeaver(
+  boss: (typeof bosses.entities)[number],
+  dt: number,
+  playerX: number, playerY: number,
+): void {
+  const bossType = (boss as { bossType?: string }).bossType;
+  if (bossType !== 'void_weaver') return;
+
+  const state = getVoidWeaverState(boss);
+  const phase = boss.bossPhase ?? 1;
+  const baseDamage = boss.damage ?? 15;
+  state.phase = phase;
+
+  // Configure per phase
+  const anchorsPerPhase = [2, 3, 4, 4];
+  state.maxAnchors = anchorsPerPhase[Math.min(phase - 1, 3)];
+  state.regenEnabled = phase >= 3;
+  state.beamDps = baseDamage * BEAM_DPS_MULT;
+
+  const bx = boss.position.x;
+  const by = boss.position.y;
+
+  // Anchor placement timer
+  const placeCooldowns = [12, 10, 15, 999];
+  state.anchorTimer -= dt;
+  if (state.anchorTimer <= 0) {
+    state.anchorTimer = placeCooldowns[Math.min(phase - 1, 3)];
+    placeAnchors(state, bx, by, baseDamage, phase);
+  }
+
+  // Update anchors: regen, damage checks
+  for (const anchor of state.anchors) {
+    if (anchor.dead) {
+      if (state.regenEnabled) {
+        anchor.regenTimer -= dt;
+        if (anchor.regenTimer <= 0) {
+          anchor.dead = false;
+          anchor.hp = anchor.maxHp;
+          // Re-create sprite
+          if (!anchor.sprite) {
+            const ag = new Graphics();
+            ag.rect(-ANCHOR_RADIUS, -ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 4)
+              .fill({ color: 0x8800cc, alpha: 0.7 });
+            ag.rect(-ANCHOR_RADIUS, -ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 4)
+              .stroke({ width: 2, color: 0xcc44ff });
+            ag.position.set(anchor.x, anchor.y);
+            game.effectLayer.addChild(ag);
+            anchor.sprite = ag;
+          }
+        }
+      }
+      continue;
+    }
+
+    // Check if player projectiles hit anchors (simplified: check entities with projectile tag)
+    const projQuery = world.with('projectile', 'position', 'damage');
+    for (const proj of projQuery) {
+      const dx = proj.position.x - anchor.x;
+      const dy = proj.position.y - anchor.y;
+      if (Math.sqrt(dx * dx + dy * dy) < ANCHOR_RADIUS * 2) {
+        anchor.hp -= proj.damage ?? 10;
+        // Remove the projectile
+        if (proj.lifetime !== undefined) {
+          (proj as { lifetime: number }).lifetime = 0;
+        }
+        if (anchor.hp <= 0) {
+          anchor.dead = true;
+          anchor.regenTimer = ANCHOR_REGEN_TIME;
+          if (anchor.sprite) {
+            anchor.sprite.removeFromParent();
+            anchor.sprite.destroy();
+            anchor.sprite = null;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // Beam damage: check if player crosses any beam between adjacent anchors
+  const liveAnchors = state.anchors.filter(a => !a.dead);
+  if (liveAnchors.length >= 2) {
+    for (let i = 0; i < liveAnchors.length; i++) {
+      const a = liveAnchors[i];
+      const b = liveAnchors[(i + 1) % liveAnchors.length];
+      if (pointToSegmentDist(playerX, playerY, a.x, a.y, b.x, b.y) < BEAM_WIDTH) {
+        const player = players.entities[0];
+        if (player?.health) {
+          player.health.current -= state.beamDps * dt;
+        }
+      }
+    }
+  }
+
+  // Draw visuals
+  if (!state.visualContainer) {
+    state.visualContainer = new Graphics();
+    game.effectLayer.addChild(state.visualContainer);
+  }
+  const g = state.visualContainer;
+  g.clear();
+
+  // Draw beams between live anchors
+  if (liveAnchors.length >= 2) {
+    for (let i = 0; i < liveAnchors.length; i++) {
+      const a = liveAnchors[i];
+      const b = liveAnchors[(i + 1) % liveAnchors.length];
+      const beamAlpha = 0.2 + 0.1 * Math.sin(Date.now() / 200 + i);
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y)
+        .stroke({ width: BEAM_WIDTH, color: 0xcc44ff, alpha: beamAlpha });
+      // Bright center line
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y)
+        .stroke({ width: 3, color: 0xff88ff, alpha: beamAlpha + 0.15 });
+    }
+  }
+
+  // Anchor glow pulsing
+  for (const anchor of state.anchors) {
+    if (anchor.dead) continue;
+    const aAlpha = 0.15 + 0.1 * Math.sin(Date.now() / 300);
+    g.circle(anchor.x, anchor.y, ANCHOR_RADIUS + 6).fill({ color: 0x8800cc, alpha: aAlpha });
+  }
+}
+
+function placeAnchors(
+  state: VoidWeaverState,
+  bossX: number, bossY: number,
+  baseDamage: number, phase: number,
+): void {
+  // Remove dead anchors with expired regen or all if placing fresh set
+  for (const anchor of state.anchors) {
+    if (anchor.sprite) {
+      anchor.sprite.removeFromParent();
+      anchor.sprite.destroy();
+      anchor.sprite = null;
+    }
+  }
+  state.anchors.length = 0;
+
+  const count = state.maxAnchors;
+  const dist = 120 + phase * 20;
+  const hp = ANCHOR_HP_BASE + phase * 20;
+
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.4;
+    const ax = bossX + Math.cos(angle) * dist;
+    const ay = bossY + Math.sin(angle) * dist;
+
+    const ag = new Graphics();
+    ag.rect(-ANCHOR_RADIUS, -ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 4)
+      .fill({ color: 0x8800cc, alpha: 0.7 });
+    ag.rect(-ANCHOR_RADIUS, -ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 2, ANCHOR_RADIUS * 4)
+      .stroke({ width: 2, color: 0xcc44ff });
+    ag.position.set(ax, ay);
+    game.effectLayer.addChild(ag);
+
+    state.anchors.push({
+      x: ax, y: ay,
+      hp, maxHp: hp,
+      sprite: ag,
+      regenTimer: 0,
+      dead: false,
+    });
+  }
+}
+
+/** Distance from point (px, py) to line segment (ax, ay)-(bx, by) */
+function pointToSegmentDist(
+  px: number, py: number,
+  ax: number, ay: number,
+  bx: number, by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt((px - ax) ** 2 + (py - ay) ** 2);
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const nx = ax + t * dx;
+  const ny = ay + t * dy;
+  return Math.sqrt((px - nx) ** 2 + (py - ny) ** 2);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Permafrost -- Cryo Matrix
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface IcePatch {
+  x: number;
+  y: number;
+  radius: number;
+}
+
+interface CrystalArm {
+  angle: number;          // radial position around boss
+  hp: number;
+  maxHp: number;
+  dead: boolean;
+  safeZoneTimer: number;  // safe zone duration after destruction
+  sprite: Graphics | null;
+}
+
+interface CryoMatrixState {
+  icePatches: IcePatch[];
+  iceTimer: number;           // cooldown for new ice patches
+  crystalArms: CrystalArm[];
+  armRegenTimer: number;      // time until arms regenerate
+  slideTimer: number;         // player slide momentum remaining
+  slideDir: { x: number; y: number };
+  phase: number;
+  visualContainer: Graphics | null;
+}
+
+const ICE_PATCH_RADIUS = 48;
+const ICE_SLIDE_DURATION = 0.5;
+const ICE_SLIDE_SPEED = 180;
+const ICE_DPS = 0;             // ice patches don't do direct damage, they cause sliding
+const ARM_HP_BASE = 40;
+const ARM_ORBIT_DIST = 70;
+const ARM_SAFE_ZONE_RADIUS = 60;
+const ARM_SAFE_ZONE_DURATION = 6;
+const ARM_REGEN_TIME = 8;
+
+const cryoStates = new WeakMap<object, CryoMatrixState>();
+
+function getCryoState(boss: object): CryoMatrixState {
+  let s = cryoStates.get(boss);
+  if (!s) {
+    // Initialize 6 crystal arms
+    const arms: CrystalArm[] = [];
+    for (let i = 0; i < 6; i++) {
+      arms.push({
+        angle: (Math.PI * 2 / 6) * i,
+        hp: ARM_HP_BASE,
+        maxHp: ARM_HP_BASE,
+        dead: false,
+        safeZoneTimer: 0,
+        sprite: null,
+      });
+    }
+    s = {
+      icePatches: [],
+      iceTimer: 3.0,
+      crystalArms: arms,
+      armRegenTimer: 0,
+      slideTimer: 0,
+      slideDir: { x: 0, y: 0 },
+      phase: 1,
+      visualContainer: null,
+    };
+    cryoStates.set(boss, s);
+  }
+  return s;
+}
+
+function updateCryoMatrix(
+  boss: (typeof bosses.entities)[number],
+  dt: number,
+  playerX: number, playerY: number,
+): void {
+  const bossType = (boss as { bossType?: string }).bossType;
+  if (bossType !== 'cryo_matrix') return;
+
+  const state = getCryoState(boss);
+  const phase = boss.bossPhase ?? 1;
+  state.phase = phase;
+
+  const bx = boss.position.x;
+  const by = boss.position.y;
+  const player = players.entities[0];
+
+  // Ice patch placement timer
+  const iceCooldowns = [6, 4, 3, 2];
+  state.iceTimer -= dt;
+  if (state.iceTimer <= 0) {
+    state.iceTimer = iceCooldowns[Math.min(phase - 1, 3)];
+    // Place ice at player position
+    state.icePatches.push({ x: playerX, y: playerY, radius: ICE_PATCH_RADIUS + phase * 8 });
+    // Cap ice patches
+    if (state.icePatches.length > 12) state.icePatches.shift();
+  }
+
+  // Check if player is on ice
+  let onIce = false;
+  for (const patch of state.icePatches) {
+    const dx = playerX - patch.x;
+    const dy = playerY - patch.y;
+    if (Math.sqrt(dx * dx + dy * dy) < patch.radius) {
+      // Check if this ice is in a safe zone (near destroyed arm)
+      let inSafeZone = false;
+      for (const arm of state.crystalArms) {
+        if (arm.dead && arm.safeZoneTimer > 0) {
+          const armX = bx + Math.cos(arm.angle) * ARM_ORBIT_DIST;
+          const armY = by + Math.sin(arm.angle) * ARM_ORBIT_DIST;
+          if (Math.sqrt((patch.x - armX) ** 2 + (patch.y - armY) ** 2) < ARM_SAFE_ZONE_RADIUS) {
+            inSafeZone = true;
+            break;
+          }
+        }
+      }
+      if (!inSafeZone) {
+        onIce = true;
+        break;
+      }
+    }
+  }
+
+  // Ice sliding mechanic
+  if (onIce && state.slideTimer <= 0 && player?.velocity) {
+    const vx = player.velocity.x;
+    const vy = player.velocity.y;
+    const vLen = Math.sqrt(vx * vx + vy * vy);
+    if (vLen > 10) {
+      state.slideTimer = ICE_SLIDE_DURATION;
+      state.slideDir = { x: vx / vLen, y: vy / vLen };
+    }
+  }
+
+  if (state.slideTimer > 0 && player?.velocity) {
+    state.slideTimer -= dt;
+    player.velocity.x = state.slideDir.x * ICE_SLIDE_SPEED;
+    player.velocity.y = state.slideDir.y * ICE_SLIDE_SPEED;
+  }
+
+  // Update crystal arms
+  let anyDead = false;
+  for (const arm of state.crystalArms) {
+    // Orbit slowly
+    arm.angle += dt * 0.3;
+
+    if (arm.dead) {
+      anyDead = true;
+      arm.safeZoneTimer -= dt;
+      if (arm.sprite) {
+        arm.sprite.removeFromParent();
+        arm.sprite.destroy();
+        arm.sprite = null;
+      }
+      continue;
+    }
+
+    const armX = bx + Math.cos(arm.angle) * ARM_ORBIT_DIST;
+    const armY = by + Math.sin(arm.angle) * ARM_ORBIT_DIST;
+
+    // Check projectile hits on arms
+    const projQuery = world.with('projectile', 'position', 'damage');
+    for (const proj of projQuery) {
+      const dx = proj.position.x - armX;
+      const dy = proj.position.y - armY;
+      if (Math.sqrt(dx * dx + dy * dy) < 16) {
+        arm.hp -= proj.damage ?? 10;
+        if (proj.lifetime !== undefined) {
+          (proj as { lifetime: number }).lifetime = 0;
+        }
+        if (arm.hp <= 0) {
+          arm.dead = true;
+          arm.safeZoneTimer = ARM_SAFE_ZONE_DURATION;
+          if (arm.sprite) {
+            arm.sprite.removeFromParent();
+            arm.sprite.destroy();
+            arm.sprite = null;
+          }
+        }
+        break;
+      }
+    }
+
+    // Draw arm sprite
+    if (!arm.sprite) {
+      arm.sprite = new Graphics();
+      game.effectLayer.addChild(arm.sprite);
+    }
+    arm.sprite.clear();
+    arm.sprite.rect(-8, -16, 16, 32).fill({ color: 0x88ccff, alpha: 0.7 });
+    arm.sprite.rect(-8, -16, 16, 32).stroke({ width: 2, color: 0xffffff });
+    arm.sprite.position.set(armX, armY);
+  }
+
+  // Arm regeneration
+  if (anyDead) {
+    state.armRegenTimer += dt;
+    if (state.armRegenTimer >= ARM_REGEN_TIME) {
+      state.armRegenTimer = 0;
+      for (const arm of state.crystalArms) {
+        if (arm.dead && arm.safeZoneTimer <= 0) {
+          arm.dead = false;
+          arm.hp = arm.maxHp;
+        }
+      }
+    }
+  } else {
+    state.armRegenTimer = 0;
+  }
+
+  // Draw visuals
+  if (!state.visualContainer) {
+    state.visualContainer = new Graphics();
+    game.effectLayer.addChild(state.visualContainer);
+  }
+  const g = state.visualContainer;
+  g.clear();
+
+  // Draw ice patches
+  for (const patch of state.icePatches) {
+    const iAlpha = 0.12 + 0.04 * Math.sin(Date.now() / 500);
+    g.circle(patch.x, patch.y, patch.radius).fill({ color: 0x88ccff, alpha: iAlpha });
+    g.circle(patch.x, patch.y, patch.radius).stroke({ width: 1, color: 0xffffff, alpha: iAlpha + 0.05 });
+  }
+
+  // Draw safe zones around destroyed arms
+  for (const arm of state.crystalArms) {
+    if (arm.dead && arm.safeZoneTimer > 0) {
+      const armX = bx + Math.cos(arm.angle) * ARM_ORBIT_DIST;
+      const armY = by + Math.sin(arm.angle) * ARM_ORBIT_DIST;
+      const sAlpha = 0.1 + 0.05 * Math.sin(Date.now() / 400);
+      g.circle(armX, armY, ARM_SAFE_ZONE_RADIUS).fill({ color: 0xff8844, alpha: sAlpha });
+      g.circle(armX, armY, ARM_SAFE_ZONE_RADIUS).stroke({ width: 2, color: 0xffaa66, alpha: sAlpha + 0.1 });
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Chain Conductor -- Arc Tyrant
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface LightningRod {
+  x: number;
+  y: number;
+  hp: number;
+  maxHp: number;
+  dead: boolean;
+  sprite: Graphics | null;
+}
+
+interface ArcBeam {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+  remaining: number;
+}
+
+interface ArcTyrantState {
+  rods: LightningRod[];
+  rodTimer: number;          // cooldown for placing rods
+  maxRods: number;
+  beams: ArcBeam[];
+  chainTimer: number;        // cooldown for chain lightning
+  stormCageActive: boolean;
+  stormCageTimer: number;
+  stormCageGapAngle: number;
+  stormCageGapSpeed: number;
+  phase: number;
+  visualContainer: Graphics | null;
+}
+
+const ROD_HP_BASE = 50;
+const ROD_RADIUS = 10;
+const ROD_PROXIMITY_DPS_MULT = 0.3;
+const ROD_PROXIMITY_RANGE = 50;
+const ARC_BEAM_DURATION = 3;
+const ARC_BEAM_WIDTH = 16;
+const ARC_BEAM_DPS_MULT = 0.4;
+const STORM_CAGE_DURATION = 6;
+const STORM_CAGE_GAP_ANGLE = Math.PI / 3; // 60 degree gap
+
+const arcTyrantStates = new WeakMap<object, ArcTyrantState>();
+
+function getArcTyrantState(boss: object): ArcTyrantState {
+  let s = arcTyrantStates.get(boss);
+  if (!s) {
+    s = {
+      rods: [],
+      rodTimer: 3.0,
+      maxRods: 4,
+      beams: [],
+      chainTimer: 4.0,
+      stormCageActive: false,
+      stormCageTimer: 0,
+      stormCageGapAngle: 0,
+      stormCageGapSpeed: 1.2,
+      phase: 1,
+      visualContainer: null,
+    };
+    arcTyrantStates.set(boss, s);
+  }
+  return s;
+}
+
+function updateArcTyrant(
+  boss: (typeof bosses.entities)[number],
+  dt: number,
+  playerX: number, playerY: number,
+): void {
+  const bossType = (boss as { bossType?: string }).bossType;
+  if (bossType !== 'arc_tyrant') return;
+
+  const state = getArcTyrantState(boss);
+  const phase = boss.bossPhase ?? 1;
+  const baseDamage = boss.damage ?? 15;
+  state.phase = phase;
+
+  const bx = boss.position.x;
+  const by = boss.position.y;
+  const player = players.entities[0];
+
+  // Configure per phase
+  const maxRodsPerPhase = [4, 6, 8];
+  state.maxRods = maxRodsPerPhase[Math.min(phase - 1, 2)];
+
+  // Rod placement timer
+  const rodCooldowns = [8, 7, 5];
+  state.rodTimer -= dt;
+  if (state.rodTimer <= 0 && state.rods.filter(r => !r.dead).length < state.maxRods) {
+    state.rodTimer = rodCooldowns[Math.min(phase - 1, 2)];
+    const rodsToPlace = phase >= 2 ? 2 : 1;
+    for (let i = 0; i < rodsToPlace; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 100 + Math.random() * 120;
+      const rx = bx + Math.cos(angle) * dist;
+      const ry = by + Math.sin(angle) * dist;
+
+      const rg = new Graphics();
+      rg.rect(-6, -20, 12, 40).fill({ color: 0xffdd44, alpha: 0.8 });
+      rg.rect(-6, -20, 12, 40).stroke({ width: 2, color: 0xffffff });
+      rg.circle(0, -20, 8).fill({ color: 0xffffff, alpha: 0.6 });
+      rg.position.set(rx, ry);
+      game.effectLayer.addChild(rg);
+
+      state.rods.push({
+        x: rx, y: ry,
+        hp: ROD_HP_BASE + phase * 15,
+        maxHp: ROD_HP_BASE + phase * 15,
+        dead: false,
+        sprite: rg,
+      });
+    }
+  }
+
+  // Chain lightning timer
+  const chainCooldowns = [4, 3, 1.5];
+  state.chainTimer -= dt;
+  if (state.chainTimer <= 0) {
+    state.chainTimer = chainCooldowns[Math.min(phase - 1, 2)];
+    fireChainLightning(state, bx, by, baseDamage, phase);
+  }
+
+  // Storm Cage (phase 3)
+  if (phase >= 3 && !state.stormCageActive) {
+    // Storm cage activates periodically in phase 3
+    state.stormCageTimer -= dt;
+    if (state.stormCageTimer <= 0) {
+      state.stormCageActive = true;
+      state.stormCageTimer = STORM_CAGE_DURATION;
+      state.stormCageGapAngle = Math.atan2(playerY - by, playerX - bx);
+    }
+  }
+
+  if (state.stormCageActive) {
+    state.stormCageTimer -= dt;
+    state.stormCageGapAngle += state.stormCageGapSpeed * dt;
+
+    // Damage player if outside the gap
+    const angleToBoss = Math.atan2(playerY - by, playerX - bx);
+    let angleDiff = angleToBoss - state.stormCageGapAngle;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+    const playerDist = Math.sqrt((playerX - bx) ** 2 + (playerY - by) ** 2);
+    const cageRadius = 160;
+    const cageBand = 30;
+
+    if (Math.abs(playerDist - cageRadius) < cageBand && Math.abs(angleDiff) > STORM_CAGE_GAP_ANGLE / 2) {
+      if (player?.health) {
+        player.health.current -= baseDamage * ARC_BEAM_DPS_MULT * dt;
+      }
+    }
+
+    if (state.stormCageTimer <= 0) {
+      state.stormCageActive = false;
+      state.stormCageTimer = 12; // next cage cooldown
+    }
+  }
+
+  // Update rods: projectile hit detection and proximity damage
+  for (let i = state.rods.length - 1; i >= 0; i--) {
+    const rod = state.rods[i];
+    if (rod.dead) continue;
+
+    // Proximity damage to player
+    const dx = playerX - rod.x;
+    const dy = playerY - rod.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < ROD_PROXIMITY_RANGE && player?.health) {
+      player.health.current -= baseDamage * ROD_PROXIMITY_DPS_MULT * dt;
+    }
+
+    // Check projectile hits
+    const projQuery = world.with('projectile', 'position', 'damage');
+    for (const proj of projQuery) {
+      const pdx = proj.position.x - rod.x;
+      const pdy = proj.position.y - rod.y;
+      if (Math.sqrt(pdx * pdx + pdy * pdy) < ROD_RADIUS * 2) {
+        rod.hp -= proj.damage ?? 10;
+        if (proj.lifetime !== undefined) {
+          (proj as { lifetime: number }).lifetime = 0;
+        }
+        if (rod.hp <= 0) {
+          rod.dead = true;
+          if (rod.sprite) {
+            rod.sprite.removeFromParent();
+            rod.sprite.destroy();
+            rod.sprite = null;
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // Remove dead rods from array
+  state.rods = state.rods.filter(r => !r.dead || r.sprite !== null);
+
+  // Update arc beams
+  for (let i = state.beams.length - 1; i >= 0; i--) {
+    state.beams[i].remaining -= dt;
+    if (state.beams[i].remaining <= 0) {
+      state.beams.splice(i, 1);
+      continue;
+    }
+
+    // Damage player crossing beams
+    const beam = state.beams[i];
+    if (pointToSegmentDist(playerX, playerY, beam.fromX, beam.fromY, beam.toX, beam.toY) < ARC_BEAM_WIDTH) {
+      if (player?.health) {
+        player.health.current -= baseDamage * ARC_BEAM_DPS_MULT * dt;
+      }
+    }
+  }
+
+  // Draw visuals
+  if (!state.visualContainer) {
+    state.visualContainer = new Graphics();
+    game.effectLayer.addChild(state.visualContainer);
+  }
+  const g = state.visualContainer;
+  g.clear();
+
+  // Arc beams
+  for (const beam of state.beams) {
+    const bAlpha = 0.25 + 0.15 * Math.sin(beam.remaining * 8);
+    g.moveTo(beam.fromX, beam.fromY).lineTo(beam.toX, beam.toY)
+      .stroke({ width: ARC_BEAM_WIDTH, color: 0xffdd44, alpha: bAlpha });
+    g.moveTo(beam.fromX, beam.fromY).lineTo(beam.toX, beam.toY)
+      .stroke({ width: 3, color: 0xffffff, alpha: bAlpha + 0.15 });
+  }
+
+  // Rod glow
+  for (const rod of state.rods) {
+    if (rod.dead) continue;
+    const rAlpha = 0.1 + 0.08 * Math.sin(Date.now() / 300);
+    g.circle(rod.x, rod.y, ROD_PROXIMITY_RANGE).stroke({ width: 1, color: 0xffdd44, alpha: rAlpha });
+  }
+
+  // Storm cage visual
+  if (state.stormCageActive) {
+    const cageRadius = 160;
+    const segCount = 24;
+    for (let i = 0; i < segCount; i++) {
+      const segAngle = (Math.PI * 2 / segCount) * i;
+      let angleDiff = segAngle - state.stormCageGapAngle;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+      if (Math.abs(angleDiff) > STORM_CAGE_GAP_ANGLE / 2) {
+        const sx = bx + Math.cos(segAngle) * cageRadius;
+        const sy = by + Math.sin(segAngle) * cageRadius;
+        const ex = bx + Math.cos(segAngle + Math.PI * 2 / segCount) * cageRadius;
+        const ey = by + Math.sin(segAngle + Math.PI * 2 / segCount) * cageRadius;
+        const cAlpha = 0.3 + 0.15 * Math.sin(Date.now() / 100 + i);
+        g.moveTo(sx, sy).lineTo(ex, ey)
+          .stroke({ width: 8, color: 0xffdd44, alpha: cAlpha });
+      }
+    }
+  }
+}
+
+function fireChainLightning(
+  state: ArcTyrantState,
+  bossX: number, bossY: number,
+  _baseDamage: number, phase: number,
+): void {
+  const liveRods = state.rods.filter(r => !r.dead);
+  if (liveRods.length === 0) return;
+
+  const maxBounces = phase === 1 ? 3 : phase === 2 ? 5 : liveRods.length;
+  const beamDuration = phase === 1 ? ARC_BEAM_DURATION : ARC_BEAM_DURATION + 1;
+
+  // Start from boss, chain to nearest rods
+  let lastX = bossX;
+  let lastY = bossY;
+  const visited = new Set<LightningRod>();
+
+  for (let bounce = 0; bounce < Math.min(maxBounces, liveRods.length); bounce++) {
+    // Find nearest unvisited rod
+    let nearest: LightningRod | null = null;
+    let nearDist = Infinity;
+    for (const rod of liveRods) {
+      if (visited.has(rod)) continue;
+      const dx = rod.x - lastX;
+      const dy = rod.y - lastY;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < nearDist) {
+        nearDist = d;
+        nearest = rod;
+      }
+    }
+    if (!nearest) break;
+
+    visited.add(nearest);
+    state.beams.push({
+      fromX: lastX, fromY: lastY,
+      toX: nearest.x, toY: nearest.y,
+      remaining: beamDuration,
+    });
+    lastX = nearest.x;
+    lastY = nearest.y;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fractal Split -- Recursion
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RecursionCopy {
+  entity: (typeof bosses.entities)[number] | null;
+  damageDealt: number;      // damage dealt to this copy since last split
+  dead: boolean;
+  deathTimer: number;       // seconds since this copy died (for 8s window)
+}
+
+interface RecursionState {
+  copies: RecursionCopy[];
+  splitCount: number;        // number of active copies (1, 2, or 3)
+  phase: number;
+  lastPhase: number;         // to detect transitions
+  merged: boolean;           // phase 4: merged state
+  failedSplits: number;      // times a copy absorbed dead twin (enrage stacks)
+  visualContainer: Graphics | null;
+}
+
+const SPLIT_KILL_WINDOW = 8;      // seconds to kill all copies
+const SPLIT_OFFSET_DIST = 80;
+const COPY_SCALE_FACTOR = 0.85;   // each split makes copies smaller
+const COPY_ALPHA_FACTOR = 0.8;    // each split makes copies more translucent
+
+const recursionStates = new WeakMap<object, RecursionState>();
+
+function getRecursionState(boss: object): RecursionState {
+  let s = recursionStates.get(boss);
+  if (!s) {
+    s = {
+      copies: [],
+      splitCount: 1,
+      phase: 1,
+      lastPhase: 1,
+      merged: false,
+      failedSplits: 0,
+      visualContainer: null,
+    };
+    recursionStates.set(boss, s);
+  }
+  return s;
+}
+
+function updateRecursion(
+  boss: (typeof bosses.entities)[number],
+  dt: number,
+  playerX: number, playerY: number,
+): void {
+  const bossType = (boss as { bossType?: string }).bossType;
+  if (bossType !== 'recursion') return;
+
+  const state = getRecursionState(boss);
+  const phase = boss.bossPhase ?? 1;
+  state.phase = phase;
+
+  const bx = boss.position.x;
+  const by = boss.position.y;
+
+  // Detect phase transitions to trigger splits
+  if (phase !== state.lastPhase) {
+    if (phase === 2 && state.splitCount < 2) {
+      splitBoss(boss, state, 2);
+    } else if (phase === 3 && state.splitCount < 3) {
+      splitBoss(boss, state, 3);
+    } else if (phase === 4 && !state.merged) {
+      mergeCopies(boss, state);
+    }
+    state.lastPhase = phase;
+  }
+
+  // Update copies (phases 2-3)
+  if (state.copies.length > 0 && !state.merged) {
+    let anyDead = false;
+    let allDead = true;
+
+    for (const copy of state.copies) {
+      if (!copy.entity || copy.entity.dead) {
+        if (!copy.dead) {
+          copy.dead = true;
+          copy.deathTimer = SPLIT_KILL_WINDOW;
+        }
+        anyDead = true;
+        if (copy.dead) {
+          copy.deathTimer -= dt;
+        }
+      } else {
+        allDead = false;
+      }
+    }
+
+    // Check the main boss too
+    const mainDead = boss.health.current <= 0;
+
+    if (anyDead && !allDead && !mainDead) {
+      // Check if the kill window expired for any dead copy
+      for (const copy of state.copies) {
+        if (copy.dead && copy.deathTimer <= 0) {
+          // Failed split: surviving copies absorb and heal
+          state.failedSplits++;
+          // Heal boss back to phase threshold
+          const thresholds = [1.0, 0.65, 0.35, 0.1];
+          const healTarget = boss.health.max * (thresholds[Math.min(phase - 1, 3)] ?? 0.35);
+          boss.health.current = Math.max(boss.health.current, healTarget);
+
+          // Apply enrage stacks
+          if (boss.damage !== undefined) {
+            boss.damage = Math.round(boss.damage * 1.15);
+          }
+          if (boss.speed !== undefined) boss.speed *= 1.1;
+
+          // Remove dead copies and reset
+          cleanupRecursionCopies(state);
+          state.splitCount = 1;
+          break;
+        }
+      }
+    }
+  }
+
+  // Visual connections between copies
+  if (!state.visualContainer) {
+    state.visualContainer = new Graphics();
+    game.effectLayer.addChild(state.visualContainer);
+  }
+  const g = state.visualContainer;
+  g.clear();
+
+  // Draw connection lines between boss and copies
+  for (const copy of state.copies) {
+    if (!copy.entity || copy.entity.dead) continue;
+    const cx = copy.entity.position.x;
+    const cy = copy.entity.position.y;
+    const lAlpha = 0.15 + 0.1 * Math.sin(Date.now() / 400);
+    g.moveTo(bx, by).lineTo(cx, cy)
+      .stroke({ width: 2, color: 0x00ff88, alpha: lAlpha });
+  }
+
+  // Merge indicator in phase 4
+  if (state.merged) {
+    const mAlpha = 0.08 + 0.05 * Math.sin(Date.now() / 300);
+    g.circle(bx, by, 50).fill({ color: 0x00ff88, alpha: mAlpha });
+    g.circle(bx, by, 50).stroke({ width: 3, color: 0x44ffcc, alpha: mAlpha + 0.1 });
+  }
+}
+
+function splitBoss(
+  boss: (typeof bosses.entities)[number],
+  state: RecursionState,
+  targetCount: number,
+): void {
+  // Clean up old copies first
+  cleanupRecursionCopies(state);
+
+  const bx = boss.position.x;
+  const by = boss.position.y;
+  const copyCount = targetCount - 1; // boss itself is one of the copies
+
+  state.splitCount = targetCount;
+
+  for (let i = 0; i < copyCount; i++) {
+    const angle = (Math.PI * 2 / targetCount) * (i + 1);
+    const cx = bx + Math.cos(angle) * SPLIT_OFFSET_DIST;
+    const cy = by + Math.sin(angle) * SPLIT_OFFSET_DIST;
+
+    // Create a visual copy with scaled-down sprite
+    const copyG = new Graphics();
+    const copyRadius = 44 * Math.pow(COPY_SCALE_FACTOR, state.splitCount - 1);
+    const copyAlpha = Math.pow(COPY_ALPHA_FACTOR, state.splitCount - 1);
+
+    // Draw a simplified recursion shape for the copy
+    for (let j = 0; j < 3; j++) {
+      const a = (Math.PI * 2 / 3) * j - Math.PI / 2;
+      const px = Math.cos(a) * copyRadius;
+      const py = Math.sin(a) * copyRadius;
+      if (j === 0) copyG.moveTo(px, py);
+      else copyG.lineTo(px, py);
+    }
+    copyG.closePath();
+    copyG.fill({ color: 0x00ff88, alpha: copyAlpha * 0.7 });
+    copyG.stroke({ width: 2, color: 0x44ffcc, alpha: copyAlpha });
+
+    copyG.position.set(cx, cy);
+    game.entityLayer.addChild(copyG);
+
+    // Create the copy entity as a regular enemy (shares boss HP pool concept)
+    const copyHp = Math.round(boss.health.current * 0.5);
+    const copyEntity = world.add({
+      position: { x: cx, y: cy },
+      velocity: { x: 0, y: 0 },
+      speed: (boss.speed ?? 60) * 0.9,
+      baseSpeed: (boss.baseSpeed ?? 60) * 0.9,
+      enemy: true as const,
+      boss: true as const,
+      bossPhase: boss.bossPhase,
+      bossType: 'recursion_copy',
+      enemyType: 'boss',
+      health: { current: copyHp, max: copyHp },
+      damage: Math.round((boss.damage ?? 15) * 0.8),
+      sprite: copyG,
+      level: boss.level ?? 1,
+      aiTimer: 0,
+      aiState: 'chase',
+    });
+
+    state.copies.push({
+      entity: copyEntity as (typeof bosses.entities)[number],
+      damageDealt: 0,
+      dead: false,
+      deathTimer: 0,
+    });
+  }
+
+  // Reduce main boss HP by the amount given to copies
+  boss.health.current = Math.round(boss.health.current * 0.5);
+}
+
+function mergeCopies(
+  boss: (typeof bosses.entities)[number],
+  state: RecursionState,
+): void {
+  // Gather remaining HP from copies
+  for (const copy of state.copies) {
+    if (copy.entity && !copy.entity.dead) {
+      // Add remaining copy HP back to boss
+      boss.health.current += copy.entity.health.current;
+      // Kill the copy entity
+      copy.entity.health.current = 0;
+      (copy.entity as { dead?: true }).dead = true as const;
+      if (copy.entity.sprite) {
+        copy.entity.sprite.removeFromParent();
+        copy.entity.sprite.destroy();
+      }
+    }
+  }
+  state.copies.length = 0;
+  state.merged = true;
+  state.splitCount = 1;
+}
+
+function cleanupRecursionCopies(state: RecursionState): void {
+  for (const copy of state.copies) {
+    if (copy.entity) {
+      if (!copy.entity.dead) {
+        copy.entity.health.current = 0;
+        (copy.entity as { dead?: true }).dead = true as const;
+      }
+      if (copy.entity.sprite) {
+        copy.entity.sprite.removeFromParent();
+        copy.entity.sprite.destroy();
+      }
+    }
+  }
+  state.copies.length = 0;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Cleanup helper -- call when a boss dies to remove persistent visuals
 // ─────────────────────────────────────────────────────────────────────────────
 
-function cleanupBossVisuals(boss: object): void {
+export function cleanupBossVisuals(boss: object): void {
   const grid = gridStates.get(boss);
   if (grid?.visualContainer) {
     grid.visualContainer.removeFromParent();
@@ -1134,6 +2170,79 @@ function cleanupBossVisuals(boss: object): void {
       prism.auraContainer = null;
     }
   }
+
+  const voidW = voidWeaverStates.get(boss);
+  if (voidW) {
+    if (voidW.visualContainer) {
+      voidW.visualContainer.removeFromParent();
+      voidW.visualContainer.destroy();
+      voidW.visualContainer = null;
+    }
+    for (const anchor of voidW.anchors) {
+      if (anchor.sprite) {
+        anchor.sprite.removeFromParent();
+        anchor.sprite.destroy();
+        anchor.sprite = null;
+      }
+    }
+    voidW.anchors.length = 0;
+  }
+
+  const cryo = cryoStates.get(boss);
+  if (cryo) {
+    if (cryo.visualContainer) {
+      cryo.visualContainer.removeFromParent();
+      cryo.visualContainer.destroy();
+      cryo.visualContainer = null;
+    }
+    for (const arm of cryo.crystalArms) {
+      if (arm.sprite) {
+        arm.sprite.removeFromParent();
+        arm.sprite.destroy();
+        arm.sprite = null;
+      }
+    }
+  }
+
+  const arcT = arcTyrantStates.get(boss);
+  if (arcT) {
+    if (arcT.visualContainer) {
+      arcT.visualContainer.removeFromParent();
+      arcT.visualContainer.destroy();
+      arcT.visualContainer = null;
+    }
+    for (const rod of arcT.rods) {
+      if (rod.sprite) {
+        rod.sprite.removeFromParent();
+        rod.sprite.destroy();
+        rod.sprite = null;
+      }
+    }
+    arcT.rods.length = 0;
+    arcT.beams.length = 0;
+  }
+
+  const rec = recursionStates.get(boss);
+  if (rec) {
+    if (rec.visualContainer) {
+      rec.visualContainer.removeFromParent();
+      rec.visualContainer.destroy();
+      rec.visualContainer = null;
+    }
+    cleanupRecursionCopies(rec);
+  }
+
+  // Delete state map entries so no stale references remain
+  gridStates.delete(boss);
+  gravityStates.delete(boss);
+  hiveStates.delete(boss);
+  heatStates.delete(boss);
+  darknessStates.delete(boss);
+  prismStates.delete(boss);
+  voidWeaverStates.delete(boss);
+  cryoStates.delete(boss);
+  arcTyrantStates.delete(boss);
+  recursionStates.delete(boss);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1174,6 +2283,18 @@ export function bossSignatureSystem(dt: number): void {
         break;
       case 'prism_lord':
         updatePrismShift(boss, dt, px, py);
+        break;
+      case 'void_weaver':
+        updateVoidWeaver(boss, dt, px, py);
+        break;
+      case 'cryo_matrix':
+        updateCryoMatrix(boss, dt, px, py);
+        break;
+      case 'arc_tyrant':
+        updateArcTyrant(boss, dt, px, py);
+        break;
+      case 'recursion':
+        updateRecursion(boss, dt, px, py);
         break;
     }
   }

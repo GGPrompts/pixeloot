@@ -14,6 +14,7 @@ import { spawnMiniSplitter, recordCorpse } from '../../entities/Enemy';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { spawnHitSparks } from '../../entities/HitSparks';
 import { shake } from './CameraSystem';
+import { cleanupBossVisuals } from './BossSignatureSystem';
 import { game } from '../../Game';
 import { Graphics } from 'pixi.js';
 import { hasEffect, activateFrenzy, isFrenzyActive, recordMindstormKill, tryThornweaveReflect, trySentinelBlock, breakPhasewalkInvisibility, isPhasewalkInvisible } from '../../core/UniqueEffects';
@@ -574,6 +575,14 @@ export function collisionSystem(dt: number): void {
           spawnDamageNumber(pl.position.x, pl.position.y - 10, reducedExplosion, 0xff6600);
         }
       }
+    }
+
+    // Clean up boss signature visuals (grid lines, darkness overlay, tether
+    // beams, crystal arms, lightning rods, heat rings, etc.) before removing
+    // the entity from the ECS world -- once removed, the bossSignatureSystem
+    // query will no longer include this entity.
+    if ((enemy as { boss?: true }).boss) {
+      cleanupBossVisuals(enemy);
     }
 
     if (enemy.sprite) {

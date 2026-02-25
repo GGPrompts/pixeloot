@@ -5,6 +5,7 @@ import { Pool } from '../pools/Pool';
 import { getProjectileSpeedMultiplier, getDamageMultiplier } from '../ecs/systems/StatEffects';
 import { spawnDamageNumber } from '../ui/DamageNumbers';
 import { spawnDeathParticles } from './DeathParticles';
+import { hasEffect, incrementProjectileCount } from '../core/UniqueEffects';
 
 const PROJECTILE_SPEED = 500;
 const PROJECTILE_RADIUS = 4;
@@ -86,6 +87,7 @@ export function fireProjectile(
     projectile: true as const,
     sprite,
     lifetime,
+    spawnPosition: { x: fromX, y: fromY },
   };
 
   if (options?.piercing) {
@@ -103,6 +105,15 @@ export function fireProjectile(
 
   if (options?.knockbackOnHit) {
     entity.knockbackOnHit = true as const;
+  }
+
+  // Kinetic Band: every 4th player projectile deals double damage + knockback
+  if (hasEffect('kinetic_fourth_shot')) {
+    const count = incrementProjectileCount();
+    if (count % 4 === 0) {
+      entity.damage = (entity.damage ?? 0) * 2;
+      entity.knockbackOnHit = true as const;
+    }
   }
 
   return world.add(entity as Entity);

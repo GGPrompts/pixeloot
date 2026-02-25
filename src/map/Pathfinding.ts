@@ -103,6 +103,16 @@ export function updateFlowField(
 }
 
 /**
+ * Invalidate the cached player tile so the next updateFlowField() call
+ * forces a rebuild. Used when tile walkability changes at runtime
+ * (e.g., glitch tiles toggling between floor and wall).
+ */
+export function invalidateFlowField(): void {
+  lastPlayerTileX = -1;
+  lastPlayerTileY = -1;
+}
+
+/**
  * Get the flow direction at a world position.
  * Returns a unit-ish direction vector pointing toward the player,
  * or null if the tile is a wall / unreachable.
