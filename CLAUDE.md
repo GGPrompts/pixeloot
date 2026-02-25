@@ -44,25 +44,29 @@ The camera centers on the player by offsetting `worldLayer`, `entityLayer`, and 
 
 - `game` (Game.ts) — PixiJS app, render layers, tileMap, game loop
 - `world` (ecs/world.ts) — Miniplex ECS world instance
-- `inventory` (core/Inventory.ts) — player equipment (8 slots + offhand) and 20-slot backpack
+- `inventory` (core/Inventory.ts) — per-class equipment (8 slots) and 20-slot backpack, plus shared maps/gems. `getGearState()`/`setGearState()`/`clearGear()` support class switching. Items have level requirements enforced on equip (`item.level > player.level` blocks equip)
 - `skillSystem` (core/SkillSystem.ts) — slot-based skill management (LMB/RMB/Space/E), assignment, cooldowns
 - `musicPlayer` / `sfxPlayer` — procedural audio (Web Audio API, no external files)
 
 ### Loot System (loot/)
 
-Item generation pipeline: `ItemGenerator` → `AffixRoller` → `NameGenerator`. Items have a rarity (Normal/Magic/Rare/Unique), a slot type, and 0-4 rolled affixes. `DropTable` handles weight-based drops. `UniqueItems.ts` defines fixed-effect uniques. Crafting (salvage/reroll/upgrade/socket) is in `CraftingSystem.ts`.
+Item generation pipeline: `ItemGenerator` → `AffixRoller` → `NameGenerator`. Items have a rarity (Normal/Magic/Rare/Unique), a slot type, and 0-4 rolled affixes. `DropTable` handles weight-based drops. `UniqueItems.ts` defines 12 fixed-effect uniques with `effectId` fields — all 12 have runtime implementations via `UniqueEffects.ts` (skill modifiers, on-kill/on-hit triggers, passives, system hooks like cheat-death). Crafting (salvage/reroll/upgrade/socket/gem removal) is in `Crafting.ts`, UI in `CraftingPanel.ts`.
 
 ### Stats (core/ComputedStats.ts)
 
-Aggregates affixes from all equipped gear into flat + percentage bonuses. Syncs derived values (health, speed, damage) to the player entity. Fires `onGearChange()` callbacks. Two distinct speed stats: **attackSpeed** (from weapons, Dexterity, gear affixes) scales the LMB primary attack cooldown only; **cooldownReduction** (from Focus stat, gear CDR affixes, capped at 40%) scales all 4 skill slot cooldowns. Cooldowns always tick, even while panels are open or in town.
+Aggregates affixes from all equipped gear into flat + percentage bonuses. Syncs derived values (health, speed, damage) to the player entity. Fires `onGearChange()` callbacks. Two distinct speed stats: **attackSpeed** (from weapons, Dexterity, gear affixes) scales the LMB primary attack cooldown only; **cooldownReduction** (from Focus stat, gear CDR affixes, capped at 40%) scales all 4 skill slot cooldowns. Cooldowns always tick, even while panels are open or in town. Armor damage reduction scales with monster level: `getDamageReduction(monsterLevel)` returns `armor / (armor + 100 + 10 * monsterLevel)` per GDD formula.
 
 ### Dungeon Generation and Pathfinding (map/)
 
 Uses rot-js Digger algorithm. `DungeonGenerator.ts` produces a tile grid (~80x50 tiles), widens corridors to 3 tiles in post-processing, `TileMap.ts` renders it. Player spawns in the center of the first room. `Pathfinding.ts` maintains a BFS flow field from the player's tile that enemies query for wall-aware navigation (rebuilt only when the player changes tiles).
 
+### Monster Scaling and Map Modifiers
+
+Monster level = `max(mapBaseLevel, playerLevel - 2) + mapTierBonus`. Map tier (1-5) is wired through `MapDevice.getActiveTierBonus()` into WaveSystem and EnemySpawner. All 7 map modifiers are functional: hp_boost, speed_boost, extra_swarm, fire_enchanted (Burn on hit), explode_on_death (volatile AoE), resist_first_hit (iron skin absorbs first hit), boss_phases (empowered boss with 5 phases). Stat respec available in StatPanel for gold (`level * 50`).
+
 ### Save System (save/)
 
-Dexie (IndexedDB) with tables: saves, playerState, inventoryState, worldState, stashState. Auto-save on key events, optional load on startup.
+Dexie (IndexedDB) with schema v3. Tables: `saves` (slot metadata), `playerState` (shared: gold, maps, gems, last active class), `classState` (per-class: level, XP, stats, equipped gear, backpack, skill assignments), `inventoryState` (legacy v1/v2 compat), `worldState` (wave number), `stashState`. Each class (Ranger/Mage) has independent progression stored in `classState` keyed by `[saveId+classType]`. `switchClass()` in SaveManager.ts saves current class to a staging area (saveId=0) and loads/creates the target class. Auto-save on key events, optional load on startup. Backward-compatible with v1/v2 saves via legacy fallback in `loadGame()`.
 
 ### UI (ui/)
 
@@ -82,7 +86,9 @@ All UI is PixiJS-native (Container/Graphics/Text). Each panel exports an `update
 
 ### Character Classes (entities/classes/)
 
-Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills. Controls: LMB (primary attack, hold-to-fire), RMB (assignable, single-press), Space (movement skill, single-press), E (assignable, single-press). Players assign 2 of 4 assignable skills to RMB/E via the skill assignment panel (J key). Panel hotkeys: I (inventory), V (vendor), K (crafting), M (map device), J (skill assign), C (class select), Tab (stats). Only one panel can be open at a time — `isAnyPanelOpen()` in Game.ts guards all toggles. Each `SkillDef` has `slotType` ('primary'|'movement'|'assignable') and `targetType` for input routing and range indicators. Primary attacks have short base cooldowns (Ranger 0.4s, Mage 0.5s) scaled by attackSpeed; other skills have longer cooldowns scaled by CDR only.
+Ranger (bow/dexterity) and Mage (spell/intelligence), each with 6 skills and **separate progression** (level, XP, stat points, stats, gear, backpack). Shared across classes: gold, maps, gems, stash. Switching classes (C key) saves current class state and loads the other via `switchClass()` in SaveManager.ts. Items have level requirements — can't equip high-level gear on a fresh alt. Transfer items between classes via the shared stash.
+
+Controls: LMB (primary attack, hold-to-fire), RMB (assignable, single-press), Space (movement skill, single-press), E (assignable, single-press). Players assign 2 of 4 assignable skills to RMB/E via the skill assignment panel (J key). Panel hotkeys: I (inventory), V (vendor), K (crafting), M (map device), J (skill assign), C (class select), Tab (stats). Only one panel can be open at a time — `isAnyPanelOpen()` in Game.ts guards all toggles. Each `SkillDef` has `slotType` ('primary'|'movement'|'assignable') and `targetType` for input routing and range indicators. Primary attacks have short base cooldowns (Ranger 0.4s, Mage 0.5s) scaled by attackSpeed; other skills have longer cooldowns scaled by CDR only.
 
 ### Audio (audio/)
 
