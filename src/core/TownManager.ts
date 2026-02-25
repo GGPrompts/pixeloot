@@ -19,6 +19,7 @@ import { inventory } from './Inventory';
 import { getComputedStats } from './ComputedStats';
 import { clearCorpses } from '../entities/Enemy';
 import { clearPortalAnimations } from '../entities/Portal';
+import { refreshVendorStock } from './Vendor';
 
 const TILE_SIZE = 32;
 
@@ -69,13 +70,16 @@ export function enterTown(): void {
   game.waveSystem.stop();
   game.waveSystem.currentWave = 0;
 
-  // Teleport player to town center
+  // Teleport player below the NPC row (NPCs are at Y+3, player at Y+6)
   const spawnPos = game.tileMap.tileToWorld(townData.spawn.x, townData.spawn.y);
-  const players = world.with('player', 'position');
+  const playerSpawnY = spawnPos.y + 6 * TILE_SIZE;
+  const players = world.with('player', 'position', 'sprite');
   if (players.entities.length > 0) {
     const p = players.entities[0];
     p.position.x = spawnPos.x;
-    p.position.y = spawnPos.y;
+    p.position.y = playerSpawnY;
+    // Scale up player sprite in town for visibility
+    (p.sprite as Graphics).scale.set(1.5);
   }
 
   // Revive player if dead
@@ -99,6 +103,11 @@ export function enterTown(): void {
   townVisualizer = new TownVisualizer(mapPixelW, mapPixelH);
   townVisualizer.setTents(buildTentDefs(spawnPos.x, spawnPos.y, NPC_DEFS));
 
+  // Refresh vendor stock on dungeon completion
+  const levelQuery = world.with('player', 'level');
+  const playerLevel = levelQuery.entities.length > 0 ? levelQuery.entities[0].level : 1;
+  refreshVendorStock(playerLevel);
+
   // Auto-save
   autoSave().catch((err) => console.warn('Auto-save on town entry failed:', err));
 }
@@ -109,6 +118,11 @@ export function enterTown(): void {
  */
 export function exitTown(): void {
   inTown = false;
+  // Reset player sprite scale back to normal for dungeon
+  const players = world.with('player', 'sprite');
+  if (players.entities.length > 0) {
+    (players.entities[0].sprite as Graphics).scale.set(1);
+  }
   removeAllNPCs();
   if (townVisualizer) {
     townVisualizer.destroy();

@@ -592,11 +592,14 @@ function placeRandomFloor(
   const spawnX = dungeon.spawn.x;
   const spawnY = dungeon.spawn.y;
   const targetCount = Math.floor(floors.length * coverage);
+  // Glitch tiles toggle to walls — only place in rooms to avoid blocking corridors
+  const roomsOnly = def.effectType === 'glitch_tile';
 
   let placed = 0;
   for (const tile of floors) {
     if (placed >= targetCount) break;
     if (minDistSq > 0 && distSq(tile.x, tile.y, spawnX, spawnY) < minDistSq) continue;
+    if (roomsOnly && !isInRoom(dungeon, tile.x, tile.y)) continue;
     tiles.add(tileKey(tile.x, tile.y));
     placed++;
   }
@@ -1483,7 +1486,29 @@ function updateGlitchTiles(dt: number, player: Entity): void {
       gt.interval = 8 + Math.random() * 4; // re-randomize
 
       // Toggle floor/wall
-      gt.isWall = !gt.isWall;
+      const wantWall = !gt.isWall;
+
+      // Safety: don't toggle to wall if it would create a chokepoint
+      // (check that at least 2 adjacent tiles remain walkable)
+      if (wantWall && _cachedDungeon.tiles[gt.tileY]) {
+        let adjFloor = 0;
+        const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+        for (const [dx, dy] of dirs) {
+          const nx = gt.tileX + dx;
+          const ny = gt.tileY + dy;
+          if (ny >= 0 && ny < _cachedDungeon.height && nx >= 0 && nx < _cachedDungeon.width
+            && _cachedDungeon.tiles[ny][nx] === 0) {
+            adjFloor++;
+          }
+        }
+        if (adjFloor < 3) {
+          // Skip toggle — would create a potential blockage
+          gt.timer = 0;
+          continue;
+        }
+      }
+
+      gt.isWall = wantWall;
       const newTile = gt.isWall ? 1 : 0;
 
       if (_cachedDungeon.tiles[gt.tileY] && _cachedDungeon.tiles[gt.tileY][gt.tileX] !== undefined) {

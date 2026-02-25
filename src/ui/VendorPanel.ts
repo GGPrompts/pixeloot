@@ -8,10 +8,12 @@ import type { MapItem } from '../loot/MapItem';
 import {
   type VendorItem,
   type VendorMapItem,
+  getVendorStock,
   refreshVendorStock,
   removeFromStock,
   removeMapFromStock,
   getSellPrice,
+  getRefreshCost,
 } from '../core/Vendor';
 import {
   Colors, Fonts, FontSize,
@@ -59,6 +61,7 @@ let prevEscPressed = false;
 let vendorItems: VendorItem[] = [];
 let vendorMaps: VendorMapItem[] = [];
 let goldText: Text | null = null;
+let refreshBtnLabel: Text | null = null;
 let confirmOverlay: Container | null = null;
 let pendingSellIdx: number | null = null;
 
@@ -279,6 +282,45 @@ function createPanel(): Container {
   feedbackText.visible = false;
   root.addChild(feedbackText);
 
+  // Refresh stock button
+  const refreshBtn = new Container();
+  const refreshBtnBg = new Graphics();
+  const btnW = 180;
+  const btnH = 28;
+  const btnX = PANEL_X + PANEL_W - btnW - 16;
+  const btnY = PANEL_Y + PANEL_H - 36;
+  drawPixelBorder(refreshBtnBg, btnX, btnY, btnW, btnH, { highlight: Colors.accentGold, shadow: Colors.borderShadow });
+  refreshBtnBg.rect(btnX + 2, btnY + 2, btnW - 4, btnH - 4).fill({ color: Colors.panelBg });
+  refreshBtn.addChild(refreshBtnBg);
+  refreshBtnLabel = new Text({
+    text: `Refresh (${getRefreshCost(getPlayerLevel())}g)`,
+    style: new TextStyle({
+      fill: Colors.accentGold,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
+      fontWeight: 'bold',
+    }),
+  });
+  refreshBtnLabel.position.set(btnX + btnW / 2 - refreshBtnLabel.width / 2, btnY + 5);
+  refreshBtn.addChild(refreshBtnLabel);
+  refreshBtn.eventMode = 'static';
+  refreshBtn.cursor = 'pointer';
+  refreshBtn.on('pointerdown', () => {
+    const cost = getRefreshCost(getPlayerLevel());
+    const gold = getPlayerGold();
+    if (gold < cost) {
+      showFeedback(`Need ${cost}g to refresh!`, Colors.accentRed);
+      return;
+    }
+    setPlayerGold(gold - cost);
+    const stock = refreshVendorStock(getPlayerLevel());
+    vendorItems = stock.items;
+    vendorMaps = stock.maps;
+    showFeedback('Stock refreshed!', Colors.accentGold);
+    refreshPanel();
+  });
+  root.addChild(refreshBtn);
+
   root.visible = false;
   return root;
 }
@@ -286,8 +328,8 @@ function createPanel(): Container {
 function refreshPanel(): void {
   if (!container) return;
 
-  // Remove dynamic children (keep first 7: bg, title, close, gold, vendorLabel, bpLabel, feedback)
-  while (container.children.length > 7) {
+  // Remove dynamic children (keep first 8: bg, title, close, gold, vendorLabel, bpLabel, feedback, refreshBtn)
+  while (container.children.length > 8) {
     const child = container.children[container.children.length - 1];
     container.removeChild(child);
     child.destroy({ children: true });
@@ -596,7 +638,7 @@ export function updateVendorPanel(): void {
 
       container.visible = visible;
       if (visible) {
-        const stock = refreshVendorStock(getPlayerLevel());
+        const stock = getVendorStock(getPlayerLevel());
         vendorItems = stock.items;
         vendorMaps = stock.maps;
         refreshPanel();
@@ -617,6 +659,9 @@ export function updateVendorPanel(): void {
 
   if (visible && goldText) {
     goldText.text = `Gold: ${getPlayerGold()}`;
+    if (refreshBtnLabel) {
+      refreshBtnLabel.text = `Refresh (${getRefreshCost(getPlayerLevel())}g)`;
+    }
   }
 }
 
@@ -631,7 +676,7 @@ export function openVendorPanel(): void {
   }
   visible = true;
   container.visible = true;
-  const stock = refreshVendorStock(getPlayerLevel());
+  const stock = getVendorStock(getPlayerLevel());
   vendorItems = stock.items;
   vendorMaps = stock.maps;
   refreshPanel();

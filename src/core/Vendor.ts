@@ -24,11 +24,14 @@ const GEAR_SLOTS: Slot[] = [
   Slot.Offhand,
 ];
 
-/** Current vendor stock (refreshed on open or after timeout). */
+/** Current vendor stock (refreshed after dungeon completion or gold refresh). */
 let currentStock: VendorItem[] = [];
 let currentMapStock: VendorMapItem[] = [];
-let lastRefreshTime = 0;
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+/** Gold cost to manually refresh vendor stock. Scales with player level. */
+export function getRefreshCost(playerLevel: number): number {
+  return 50 + playerLevel * 10;
+}
 
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -112,23 +115,21 @@ export function getSellPrice(item: BaseItem): number {
 }
 
 /**
- * Get or refresh vendor stock. Refreshes if first open or stale (>5 min).
+ * Get current vendor stock, generating initial stock if empty.
  */
 export function getVendorStock(playerLevel: number): {
   items: VendorItem[];
   maps: VendorMapItem[];
 } {
-  const now = Date.now();
-  if (currentStock.length === 0 || now - lastRefreshTime > REFRESH_INTERVAL_MS) {
+  if (currentStock.length === 0 && currentMapStock.length === 0) {
     const stock = generateVendorStock(playerLevel);
     currentStock = stock.items;
     currentMapStock = stock.maps;
-    lastRefreshTime = now;
   }
   return { items: currentStock, maps: currentMapStock };
 }
 
-/** Force refresh vendor stock (called when vendor is opened). */
+/** Force refresh vendor stock (called on dungeon completion or gold refresh). */
 export function refreshVendorStock(playerLevel: number): {
   items: VendorItem[];
   maps: VendorMapItem[];
@@ -136,7 +137,6 @@ export function refreshVendorStock(playerLevel: number): {
   const stock = generateVendorStock(playerLevel);
   currentStock = stock.items;
   currentMapStock = stock.maps;
-  lastRefreshTime = Date.now();
   return { items: currentStock, maps: currentMapStock };
 }
 
