@@ -7,6 +7,9 @@ import { getComputedStats } from '../../core/ComputedStats';
 import { GEM_COLORS } from '../../loot/Gems';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { RARITY_COLORS, Fonts, FontSize } from '../../ui/UITheme';
+import { enterTown } from '../../core/TownManager';
+import { musicPlayer } from '../../audio/MusicPlayer';
+import { clearPortalAnimations } from '../../entities/Portal';
 
 const PICKUP_RADIUS = 32;
 const PICKUP_RADIUS_SQ = PICKUP_RADIUS * PICKUP_RADIUS;
@@ -129,5 +132,38 @@ export function pickupSystem(_dt: number): void {
       entity.sprite.removeFromParent();
     }
     world.remove(entity);
+  }
+}
+
+const PORTAL_RADIUS = 28;
+const PORTAL_RADIUS_SQ = PORTAL_RADIUS * PORTAL_RADIUS;
+const portals = world.with('portal', 'position');
+
+/**
+ * Checks if the player overlaps a portal entity and triggers town transition.
+ * Called from fixedUpdate at 60 Hz.
+ */
+export function portalSystem(_dt: number): void {
+  if (players.entities.length === 0) return;
+  if (portals.entities.length === 0) return;
+
+  const player = players.entities[0];
+
+  for (const portal of portals) {
+    const dx = portal.position.x - player.position.x;
+    const dy = portal.position.y - player.position.y;
+    const distSq = dx * dx + dy * dy;
+
+    if (distSq < PORTAL_RADIUS_SQ) {
+      // Clean up portal entity
+      if (portal.sprite) portal.sprite.removeFromParent();
+      world.remove(portal);
+      clearPortalAnimations();
+
+      // Transition to town
+      musicPlayer.crossfade('town', 1000);
+      enterTown();
+      return;
+    }
   }
 }

@@ -18,6 +18,7 @@ import { autoSave } from '../save/SaveManager';
 import { inventory } from './Inventory';
 import { getComputedStats } from './ComputedStats';
 import { clearCorpses } from '../entities/Enemy';
+import { clearPortalAnimations } from '../entities/Portal';
 
 const TILE_SIZE = 32;
 
@@ -183,6 +184,13 @@ function clearAllEntities(): void {
     if (e.sprite) e.sprite.removeFromParent();
     world.remove(e);
   }
+
+  // Remove portal entities
+  for (const e of [...world.with('portal').entities]) {
+    if (e.sprite) e.sprite.removeFromParent();
+    world.remove(e);
+  }
+  clearPortalAnimations();
 
   // Remove loot drops (including loot-filtered entities that lost their pickup component)
   const dropComponents = ['pickup', 'goldDrop', 'lootDrop', 'mapDrop', 'gemDrop'] as const;

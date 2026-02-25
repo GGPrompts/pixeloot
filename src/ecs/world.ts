@@ -99,6 +99,7 @@ export type Entity = {
   wallPiercing?: true;             // projectile passes through walls (Whisperstring Steady Aim)
   isFireball?: true;               // projectile is a Mage Fireball (for Frostfire Scepter conversion)
   isRangerProjectile?: true;       // projectile fired by Ranger class (for Ember Quiver)
+  portal?: true;                    // town portal entity spawned after boss wave
 };
 
 export const world = new World<Entity>();
