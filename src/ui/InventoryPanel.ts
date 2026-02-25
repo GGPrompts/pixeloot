@@ -9,6 +9,7 @@ import {
   makeCloseButton,
 } from './UITheme';
 import { showItemTooltip, showItemTooltipWithCompare, hideTooltip } from './Tooltip';
+import { spawnFloatingText } from './DamageNumbers';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
@@ -181,10 +182,13 @@ function createPanel(): Container {
       slotBg.eventMode = 'static';
       slotBg.cursor = 'pointer';
       const slotIdx = idx;
-      slotBg.on('pointertap', () => {
+      slotBg.on('pointertap', (e: FederatedPointerEvent) => {
         const item = inventory.backpack[slotIdx];
         if (item) {
-          inventory.equipItem(slotIdx);
+          const err = inventory.equipItem(slotIdx);
+          if (err) {
+            spawnFloatingText(e.globalX, e.globalY - 20, err, 0xff4444);
+          }
           refreshSlots();
         }
       });

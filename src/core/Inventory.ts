@@ -79,24 +79,28 @@ export class Inventory {
     return true;
   }
 
-  /** Equip item from backpack index. Swaps with currently equipped item if any. */
-  equipItem(backpackIndex: number): void {
+  /** Equip item from backpack index. Swaps with currently equipped item if any.
+   *  Returns null on success, or an error message string on failure. */
+  equipItem(backpackIndex: number): string | null {
     const item = this.backpack[backpackIndex];
-    if (!item) return;
+    if (!item) return null;
 
     // Check level requirement
     const player = world.with('player', 'level').entities[0];
-    if (player && item.level > player.level) return;
+    if (player && item.level > player.level) {
+      return `Requires level ${item.level}`;
+    }
 
     // Find the appropriate equip slot
     const slotKey = this.getEquipSlotKey(item);
-    if (!slotKey) return;
+    if (!slotKey) return null;
 
     const currentlyEquipped = this.equipped[slotKey];
     this.equipped[slotKey] = item;
     this.backpack[backpackIndex] = currentlyEquipped; // swap (or null)
     markStatsDirty();
     this.onGearChange?.();
+    return null;
   }
 
   /** Unequip item from slot, moving it to the backpack. */
