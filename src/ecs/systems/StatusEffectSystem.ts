@@ -8,6 +8,7 @@ import {
 } from '../../core/StatusEffects';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { spawnBurnParticle, spawnChillParticle, spawnShockParticle } from '../../entities/StatusParticles';
+import { hasEffect, isFrenzyActive } from '../../core/UniqueEffects';
 
 const BURN_DAMAGE = 5;
 const BURN_TICK_INTERVAL = 0.5;
@@ -63,14 +64,18 @@ export function statusEffectSystem(dt: number): void {
 
         while (effect.tickTimer !== undefined && effect.tickTimer <= 0) {
           effect.tickTimer += BURN_TICK_INTERVAL;
-          entity.health.current -= BURN_DAMAGE;
+          // Prism of Elements: status effects deal 25% more damage
+          const burnDmg = hasEffect('prism_status_amplify')
+            ? Math.round(BURN_DAMAGE * 1.25)
+            : BURN_DAMAGE;
+          entity.health.current -= burnDmg;
 
           // Visual damage number
           if (entity.position) {
             spawnDamageNumber(
               entity.position.x,
               entity.position.y - 10,
-              BURN_DAMAGE,
+              burnDmg,
               0xff6600, // orange for burn
             );
           }
@@ -134,6 +139,11 @@ export function statusEffectSystem(dt: number): void {
         if (hasStatus(entity, StatusType.Chill)) {
           speedMultiplier *= 0.8; // -20% speed
         }
+      }
+
+      // Essence Conduit frenzy: +20% move speed for player
+      if (entity.player && isFrenzyActive()) {
+        speedMultiplier *= 1.2;
       }
 
       entity.speed = entity.baseSpeed * speedMultiplier;

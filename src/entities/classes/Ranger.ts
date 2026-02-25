@@ -6,6 +6,7 @@ import { game } from '../../Game';
 import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { spawnDeathParticles } from '../DeathParticles';
 import { applyStatus, hasStatus, StatusType } from '../../core/StatusEffects';
+import { hasEffect } from '../../core/UniqueEffects';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
@@ -21,14 +22,44 @@ const powerShot: SkillDef = {
   slotType: 'primary',
   targetType: 'projectile',
   execute(playerPos, mousePos) {
-    fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, {
+    const opts = {
       speed: 800,
       damage: 40,
       radius: 8,
       color: 0xffff00,
-      piercing: true,
+      piercing: true as const,
       lifetime: 3,
-    });
+    };
+
+    // Splinterbow: fire 3 arrows in a narrow spread instead of 1
+    if (hasEffect('splinterbow_spread')) {
+      const dx = mousePos.x - playerPos.x;
+      const dy = mousePos.y - playerPos.y;
+      const baseAngle = Math.atan2(dy, dx);
+      const spreadAngle = (15 * Math.PI) / 180; // 15 degrees total
+      const count = 3 + (hasEffect('grid_extra_projectile') ? 1 : 0);
+      const step = count > 1 ? spreadAngle / (count - 1) : 0;
+      const halfSpread = spreadAngle / 2;
+
+      for (let i = 0; i < count; i++) {
+        const angle = baseAngle - halfSpread + step * i;
+        const tx = playerPos.x + Math.cos(angle) * 500;
+        const ty = playerPos.y + Math.sin(angle) * 500;
+        fireProjectile(playerPos.x, playerPos.y, tx, ty, opts);
+      }
+    } else {
+      fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, opts);
+      // Heart of the Grid: +1 projectile (slight offset)
+      if (hasEffect('grid_extra_projectile')) {
+        const dx = mousePos.x - playerPos.x;
+        const dy = mousePos.y - playerPos.y;
+        const baseAngle = Math.atan2(dy, dx);
+        const offsetAngle = baseAngle + (8 * Math.PI) / 180;
+        const tx = playerPos.x + Math.cos(offsetAngle) * 500;
+        const ty = playerPos.y + Math.sin(offsetAngle) * 500;
+        fireProjectile(playerPos.x, playerPos.y, tx, ty, opts);
+      }
+    }
   },
 };
 
@@ -49,10 +80,12 @@ const multiShot: SkillDef = {
     const dx = mousePos.x - playerPos.x;
     const dy = mousePos.y - playerPos.y;
     const baseAngle = Math.atan2(dy, dx);
+    // Heart of the Grid: +1 projectile
+    const count = MULTI_SHOT_COUNT + (hasEffect('grid_extra_projectile') ? 1 : 0);
     const halfSpread = MULTI_SHOT_SPREAD / 2;
-    const step = MULTI_SHOT_COUNT > 1 ? MULTI_SHOT_SPREAD / (MULTI_SHOT_COUNT - 1) : 0;
+    const step = count > 1 ? MULTI_SHOT_SPREAD / (count - 1) : 0;
 
-    for (let i = 0; i < MULTI_SHOT_COUNT; i++) {
+    for (let i = 0; i < count; i++) {
       const angle = baseAngle - halfSpread + step * i;
       // Target far away along that angle
       const targetX = playerPos.x + Math.cos(angle) * 500;
@@ -203,6 +236,11 @@ const evasiveRoll: SkillDef = {
       if (game.tileMap.isSolid(tile.x, tile.y)) break;
       finalX = testX;
       finalY = testY;
+    }
+
+    // Phasewalker Cloak: drop a trap at the starting position
+    if (hasEffect('phasewalker_trap')) {
+      trap.execute(playerPos, playerPos);
     }
 
     player.position.x = finalX;

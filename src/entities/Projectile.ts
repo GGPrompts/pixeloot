@@ -202,6 +202,11 @@ export function despawnProjectile(entity: Entity): void {
     game.app.ticker.add(onTick);
   }
 
+  // Inferno Staff: burning ground AoE at impact position
+  if (entity.burningGround && entity.position) {
+    spawnBurningGround(entity.position.x, entity.position.y);
+  }
+
   if (entity.sprite) {
     entity.sprite.visible = false;
     entity.sprite.removeFromParent();
@@ -212,4 +217,61 @@ export function despawnProjectile(entity: Entity): void {
     }
   }
   world.remove(entity);
+}
+
+/** Spawns a burning ground AoE that deals fire damage over 3 seconds. */
+function spawnBurningGround(cx: number, cy: number): void {
+  const BURNING_RADIUS = 64;
+  const BURNING_DURATION = 3;
+  const BURNING_TICK_INTERVAL = 0.5;
+  const BURNING_TICK_DAMAGE = 8;
+
+  const gfx = new Graphics();
+  gfx.circle(0, 0, BURNING_RADIUS).fill({ color: 0xff4400, alpha: 0.25 });
+  gfx.circle(0, 0, BURNING_RADIUS).stroke({ width: 2, color: 0xff6600, alpha: 0.5 });
+  gfx.position.set(cx, cy);
+  game.effectLayer.addChild(gfx);
+
+  let elapsed = 0;
+  let tickAcc = 0;
+
+  const onTick = (t: { deltaTime: number }) => {
+    const dt = t.deltaTime / 60;
+    elapsed += dt;
+    tickAcc += dt;
+
+    // Pulse visual
+    gfx.alpha = 0.5 + 0.2 * Math.sin(elapsed * 6);
+
+    // Tick damage to enemies in radius
+    while (tickAcc >= BURNING_TICK_INTERVAL) {
+      tickAcc -= BURNING_TICK_INTERVAL;
+      for (const enemy of enemiesQuery) {
+        const dx = enemy.position.x - cx;
+        const dy = enemy.position.y - cy;
+        if (dx * dx + dy * dy < BURNING_RADIUS * BURNING_RADIUS) {
+          enemy.health.current -= BURNING_TICK_DAMAGE;
+          spawnDamageNumber(enemy.position.x, enemy.position.y - 10, BURNING_TICK_DAMAGE, 0xff6600);
+          if (enemy.health.current <= 0) {
+            spawnDeathParticles(enemy.position.x, enemy.position.y);
+            if (enemy.sprite) enemy.sprite.removeFromParent();
+            world.remove(enemy);
+          }
+        }
+      }
+    }
+
+    // Fade out in last 0.5s
+    if (elapsed > BURNING_DURATION - 0.5) {
+      const fade = (BURNING_DURATION - elapsed) / 0.5;
+      gfx.alpha = Math.max(0, fade * 0.5);
+    }
+
+    if (elapsed >= BURNING_DURATION) {
+      game.app.ticker.remove(onTick);
+      gfx.removeFromParent();
+      gfx.destroy();
+    }
+  };
+  game.app.ticker.add(onTick);
 }

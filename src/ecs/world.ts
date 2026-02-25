@@ -51,6 +51,7 @@ export type Entity = {
   firstHitTaken?: true;             // tracks if enemy has been hit once (resist_first_hit mod)
   shielded?: true;                  // enemy has a directional shield (blocks frontal projectiles)
   isMiniSplitter?: true;            // mini-splitter that does NOT split again on death
+  burningGround?: true;             // projectile spawns burning ground AoE on despawn (Inferno Staff)
 };
 
 export const world = new World<Entity>();

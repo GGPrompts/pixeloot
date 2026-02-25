@@ -6,6 +6,7 @@ import { spawnInitialEnemies } from '../../entities/EnemySpawner';
 import { getComputedStats } from '../../core/ComputedStats';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { SCREEN_W, SCREEN_H } from '../../core/constants';
+import { tickChronoCooldown, tryCheatDeath, tickFrenzy } from '../../core/UniqueEffects';
 
 const POTION_COOLDOWN = 8; // seconds
 const POTION_HEAL_PERCENT = 0.3; // 30% of max HP
@@ -83,9 +84,19 @@ export function healthSystem(dt: number): void {
     );
   }
 
-  // --- Death check ---
+  // --- Tick unique effect timers ---
+  tickChronoCooldown(dt);
+  tickFrenzy(dt);
+
+  // --- Death check (with Chrono Shield cheat-death) ---
   if (player.health.current <= 0 && !player.dead) {
-    triggerDeath(player);
+    if (tryCheatDeath()) {
+      // Chrono Shield: heal to 30% HP instead of dying
+      player.health.current = Math.round(player.health.max * 0.3);
+      sfxPlayer.play('potion_use');
+    } else {
+      triggerDeath(player);
+    }
   }
 
   // --- Death timer ---

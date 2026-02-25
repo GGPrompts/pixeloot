@@ -2,6 +2,7 @@ import { InputManager } from './InputManager';
 import { getComputedStats } from './ComputedStats';
 import { sfxPlayer } from '../audio/SFXManager';
 import { screenToWorld } from '../Game';
+import { hasEffect, isFrenzyActive } from './UniqueEffects';
 
 export type SlotType = 'primary' | 'movement' | 'assignable';
 export type TargetType = 'projectile' | 'self_aoe' | 'cursor_aoe' | 'cursor_target' | 'movement' | 'self_place';
@@ -144,7 +145,14 @@ class SkillSystem {
     let cd = skill.def.cooldown * (1 - stats.cooldownReduction);
     // Primary attack (LMB) also scales with attack speed
     if (slot === 'lmb') {
-      cd /= stats.attackSpeed;
+      let atkSpeed = stats.attackSpeed;
+      // Essence Conduit frenzy: +20% attack speed
+      if (isFrenzyActive()) atkSpeed *= 1.2;
+      cd /= atkSpeed;
+    }
+    // Band of Echoes: 15% chance to not trigger cooldown
+    if (hasEffect('echoes_cooldown_reset') && Math.random() < 0.15) {
+      cd = 0;
     }
     skill.cooldownRemaining = cd;
     return true;

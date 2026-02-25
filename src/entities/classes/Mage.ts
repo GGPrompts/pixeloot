@@ -8,6 +8,7 @@ import { spawnDeathParticles } from '../DeathParticles';
 import { applyStatus, StatusType } from '../../core/StatusEffects';
 import { shake } from '../../ecs/systems/CameraSystem';
 import { spawnHitSparks } from '../HitSparks';
+import { hasEffect } from '../../core/UniqueEffects';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
@@ -23,13 +24,36 @@ const fireball: SkillDef = {
   slotType: 'primary',
   targetType: 'projectile',
   execute(playerPos, mousePos) {
-    fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, {
+    const proj = fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, {
       speed: 400,
       damage: 30,
       radius: 8,
       color: 0xff4400,
       lifetime: 3,
     });
+    // Inferno Staff: mark projectile to spawn burning ground on impact
+    if (hasEffect('inferno_burning_ground')) {
+      (proj as import('../../ecs/world').Entity).burningGround = true;
+    }
+    // Heart of the Grid: +1 projectile
+    if (hasEffect('grid_extra_projectile')) {
+      const dx = mousePos.x - playerPos.x;
+      const dy = mousePos.y - playerPos.y;
+      const baseAngle = Math.atan2(dy, dx);
+      const offsetAngle = baseAngle + (8 * Math.PI) / 180;
+      const tx = playerPos.x + Math.cos(offsetAngle) * 500;
+      const ty = playerPos.y + Math.sin(offsetAngle) * 500;
+      const proj2 = fireProjectile(playerPos.x, playerPos.y, tx, ty, {
+        speed: 400,
+        damage: 30,
+        radius: 8,
+        color: 0xff4400,
+        lifetime: 3,
+      });
+      if (hasEffect('inferno_burning_ground')) {
+        (proj2 as import('../../ecs/world').Entity).burningGround = true;
+      }
+    }
   },
 };
 
@@ -120,6 +144,9 @@ const lightningChain: SkillDef = {
   execute(_playerPos, mousePos) {
     const hitTargets: { x: number; y: number }[] = [];
     const hitSet = new Set<object>();
+    // Stormcaller Wand: track hit counts per enemy to allow up to 2 hits each
+    const allowDoubleBounce = hasEffect('stormcaller_double_bounce');
+    const hitCountMap = new Map<object, number>();
 
     // Find the nearest enemy to cursor within range, then bounce
     let currentX = mousePos.x;
@@ -131,7 +158,12 @@ const lightningChain: SkillDef = {
       let bestDistSq = range * range;
 
       for (const enemy of enemies) {
-        if (hitSet.has(enemy)) continue;
+        const count = hitCountMap.get(enemy) ?? 0;
+        if (allowDoubleBounce) {
+          if (count >= 2) continue;
+        } else {
+          if (hitSet.has(enemy)) continue;
+        }
         const dx = enemy.position.x - currentX;
         const dy = enemy.position.y - currentY;
         const distSq = dx * dx + dy * dy;
@@ -144,6 +176,7 @@ const lightningChain: SkillDef = {
       if (!bestEnemy) break;
 
       hitSet.add(bestEnemy);
+      hitCountMap.set(bestEnemy, (hitCountMap.get(bestEnemy) ?? 0) + 1);
       hitTargets.push({ x: bestEnemy.position.x, y: bestEnemy.position.y });
 
       // Calculate damage with decay
@@ -276,6 +309,11 @@ const teleport: SkillDef = {
 
     // Grant brief invulnerability
     world.addComponent(player, 'invulnTimer', TELEPORT_INVULN);
+
+    // Voidcaster Orb: leave a Frost Nova at departure point
+    if (hasEffect('voidcaster_frost_nova')) {
+      frostNova.execute({ x: originX, y: originY }, { x: originX, y: originY });
+    }
 
     // Visual: particle burst at origin and destination
     spawnTeleportParticles(originX, originY);

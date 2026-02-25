@@ -16,6 +16,7 @@ import { spawnHitSparks } from '../../entities/HitSparks';
 import { shake } from './CameraSystem';
 import { game } from '../../Game';
 import { Graphics } from 'pixi.js';
+import { hasEffect, activateFrenzy, isFrenzyActive } from '../../core/UniqueEffects';
 
 /** Apply armor damage reduction to incoming damage, scaled by monster level. */
 function reduceDamage(rawDamage: number, monsterLevel = 1): number {
@@ -116,6 +117,13 @@ export function collisionSystem(dt: number): void {
         spawnHitSparks(enemy.position.x, enemy.position.y, 'physical');
         sfxPlayer.play('hit_physical');
 
+        // Vampiric Loop: recover 2% of damage dealt as health
+        if (hasEffect('vampiric_leech') && players.entities.length > 0) {
+          const pl = players.entities[0];
+          const heal = Math.max(1, Math.round(dmg * 0.02));
+          pl.health.current = Math.min(pl.health.max, pl.health.current + heal);
+        }
+
         // Apply knockback if projectile has knockbackOnHit
         if (proj.knockbackOnHit && proj.position) {
           applyStatus(enemy, StatusType.Knockback, proj.position);
@@ -211,6 +219,31 @@ export function collisionSystem(dt: number): void {
         enemy.position.y + (Math.random() - 0.5) * 20,
         drops.gem,
       );
+    }
+
+    // Deathweaver Vest: enemies explode for 10% of their max HP on death
+    if (hasEffect('deathweaver_explode')) {
+      const deathRadius = 64;
+      const deathDmg = Math.round(enemy.health.max * 0.1);
+      spawnExplosionParticles(enemy.position.x, enemy.position.y);
+      // Damage nearby enemies (not player)
+      for (const other of enemies) {
+        if (other === enemy) continue;
+        const odx = other.position.x - enemy.position.x;
+        const ody = other.position.y - enemy.position.y;
+        if (odx * odx + ody * ody < deathRadius * deathRadius) {
+          other.health.current -= deathDmg;
+          spawnDamageNumber(other.position.x, other.position.y - 10, deathDmg, 0xff4400);
+          if (other.health.current <= 0 && !enemiesToRemove.includes(other)) {
+            enemiesToRemove.push(other);
+          }
+        }
+      }
+    }
+
+    // Essence Conduit: kills grant 3s of +20% move/attack speed frenzy
+    if (hasEffect('essence_kill_frenzy')) {
+      activateFrenzy();
     }
 
     // Volatile modifier: AoE explosion on death (15% of enemy max HP, 64px radius)
