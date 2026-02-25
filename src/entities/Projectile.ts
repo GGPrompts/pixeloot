@@ -12,6 +12,8 @@ const PROJECTILE_RADIUS = 4;
 const PROJECTILE_DAMAGE = 10;
 const PROJECTILE_LIFETIME = 2;
 
+export type ProjectileShape = 'circle' | 'arrow' | 'missile';
+
 export interface ProjectileOptions {
   speed?: number;
   damage?: number;
@@ -29,6 +31,10 @@ export interface ProjectileOptions {
   homing?: true;
   /** Projectile applies knockback on hit (Crossbow weapon). */
   knockbackOnHit?: true;
+  /** Visual shape of the projectile. Default is 'circle'. */
+  shape?: ProjectileShape;
+  /** Secondary color for multi-toned projectile shapes (e.g. missile trail). */
+  color2?: number;
 }
 
 function createProjectileSprite(): Graphics {
@@ -65,8 +71,52 @@ export function fireProjectile(
   const lifetime = options?.lifetime ?? PROJECTILE_LIFETIME;
 
   let sprite: Graphics;
-  if (options?.radius || options?.color) {
-    // Create a custom sprite (not pooled)
+  const shape = options?.shape ?? 'circle';
+
+  if (shape === 'arrow') {
+    // Elongated arrow shape pointing right (rotation applied via velocity angle)
+    const c = options?.color ?? 0xddcc44;
+    sprite = new Graphics();
+    // Arrowhead
+    sprite.moveTo(10, 0)
+      .lineTo(4, -3)
+      .lineTo(5, -1)
+      .lineTo(-10, -1)
+      .lineTo(-10, 1)
+      .lineTo(5, 1)
+      .lineTo(4, 3)
+      .closePath()
+      .fill({ color: c, alpha: 0.95 });
+    // Fletching (tail feathers)
+    sprite.moveTo(-10, -1)
+      .lineTo(-13, -3)
+      .lineTo(-10, 0)
+      .lineTo(-13, 3)
+      .lineTo(-10, 1)
+      .fill({ color: 0x886633, alpha: 0.8 });
+    // Set rotation to match velocity direction
+    const angle = Math.atan2(ny, nx);
+    sprite.rotation = angle;
+    customSprites.add(sprite);
+  } else if (shape === 'missile') {
+    // Small glowing magic missile with trail-like shape
+    const c = options?.color ?? 0x44ccff;
+    const c2 = options?.color2 ?? 0xaa66ff;
+    sprite = new Graphics();
+    // Outer glow
+    sprite.circle(0, 0, 5).fill({ color: c2, alpha: 0.2 });
+    // Core orb
+    sprite.circle(0, 0, 3).fill({ color: c, alpha: 0.85 });
+    // Bright center
+    sprite.circle(0, 0, 1.5).fill({ color: 0xffffff, alpha: 0.7 });
+    // Trailing wisps (small dots behind)
+    sprite.circle(-4, -1, 1.5).fill({ color: c2, alpha: 0.4 });
+    sprite.circle(-7, 1, 1).fill({ color: c2, alpha: 0.25 });
+    const angle = Math.atan2(ny, nx);
+    sprite.rotation = angle;
+    customSprites.add(sprite);
+  } else if (options?.radius || options?.color) {
+    // Create a custom circle sprite (not pooled)
     const r = options.radius ?? PROJECTILE_RADIUS;
     const c = options.color ?? 0x00ffff;
     sprite = new Graphics();
@@ -89,6 +139,10 @@ export function fireProjectile(
     lifetime,
     spawnPosition: { x: fromX, y: fromY },
   };
+
+  if (shape === 'arrow' || shape === 'missile') {
+    entity.rotateWithVelocity = true as const;
+  }
 
   if (options?.piercing) {
     entity.piercing = true as const;

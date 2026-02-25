@@ -100,6 +100,7 @@ export type Entity = {
   isFireball?: true;               // projectile is a Mage Fireball (for Frostfire Scepter conversion)
   isRangerProjectile?: true;       // projectile fired by Ranger class (for Ember Quiver)
   portal?: true;                    // town portal entity spawned after boss wave
+  rotateWithVelocity?: true;       // sprite rotates to match velocity direction (arrows, missiles)
 };
 
 export const world = new World<Entity>();
