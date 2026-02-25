@@ -27,6 +27,7 @@ function reduceDamage(rawDamage: number, monsterLevel = 1): number {
 /** Threshold for "heavy damage" screen shake (20% of max HP). */
 const HEAVY_DMG_RATIO = 0.2;
 
+const CHARGER_CONTACT_COOLDOWN = 4; // seconds before next charge after hitting player
 const HIT_RADIUS = 16;
 const CONTACT_RADIUS = 20;
 const INVULN_DURATION = 1; // seconds
@@ -47,6 +48,54 @@ const players = world.with('player', 'position', 'health');
 export function collisionSystem(dt: number): void {
   const projectilesToDespawn: typeof projectiles.entities[number][] = [];
   const enemiesToRemove: typeof enemies.entities[number][] = [];
+
+  // --- Bomber fuse detonation check ---
+  for (const enemy of enemies) {
+    if (enemy.enemyType !== 'bomber') continue;
+    if (enemy.bomberFuse === undefined || enemy.bomberFuse > 0) continue;
+    // Fuse expired: explode!
+    const explodeRadius = 60;
+    const explodeDmg = enemy.damage ?? 25;
+
+    // Damage player if in range
+    if (players.entities.length > 0) {
+      const pl = players.entities[0];
+      const edx = pl.position.x - enemy.position.x;
+      const edy = pl.position.y - enemy.position.y;
+      if (edx * edx + edy * edy < explodeRadius * explodeRadius) {
+        const reduced = reduceDamage(explodeDmg, enemy.level ?? 1);
+        pl.health.current -= reduced;
+        spawnDamageNumber(pl.position.x, pl.position.y - 10, reduced, 0xff6688);
+        sfxPlayer.play('hit_magic');
+        applyStatus(pl, StatusType.Knockback, enemy.position);
+        if (pl.health.current <= 0) pl.health.current = 0;
+      }
+    }
+
+    // Friendly fire: damage nearby enemies too
+    for (const other of enemies) {
+      if (other === enemy) continue;
+      const odx = other.position.x - enemy.position.x;
+      const ody = other.position.y - enemy.position.y;
+      if (odx * odx + ody * ody < explodeRadius * explodeRadius) {
+        const ffDmg = explodeDmg;
+        other.health.current -= ffDmg;
+        spawnDamageNumber(other.position.x, other.position.y - 10, ffDmg, 0xff6688);
+        if (other.health.current <= 0 && !enemiesToRemove.includes(other)) {
+          enemiesToRemove.push(other);
+        }
+      }
+    }
+
+    // Bomber dies on detonation
+    if (!enemiesToRemove.includes(enemy)) {
+      enemiesToRemove.push(enemy);
+    }
+
+    // Visual explosion
+    spawnBomberExplosion(enemy.position.x, enemy.position.y, explodeRadius);
+    shake(0.3, 5);
+  }
 
   // --- Projectile vs Enemy ---
   for (const proj of projectiles) {
@@ -161,6 +210,40 @@ export function collisionSystem(dt: number): void {
   }
 
   for (const enemy of enemiesToRemove) {
+    // Bomber: if killed before fuse detonation, explode at half damage/radius
+    // (skip if bomber already detonated via fuse -- bomberFuse would be <= 0)
+    if (enemy.enemyType === 'bomber' && (enemy.bomberFuse === undefined || enemy.bomberFuse > 0)) {
+      const halfRadius = 30;
+      const halfDmg = Math.round((enemy.damage ?? 25) / 2);
+      // Damage player if in range
+      if (players.entities.length > 0) {
+        const pl = players.entities[0];
+        const bdx = pl.position.x - enemy.position.x;
+        const bdy = pl.position.y - enemy.position.y;
+        if (bdx * bdx + bdy * bdy < halfRadius * halfRadius) {
+          const reduced = reduceDamage(halfDmg, enemy.level ?? 1);
+          pl.health.current -= reduced;
+          spawnDamageNumber(pl.position.x, pl.position.y - 10, reduced, 0xff6688);
+          applyStatus(pl, StatusType.Knockback, enemy.position);
+          if (pl.health.current <= 0) pl.health.current = 0;
+        }
+      }
+      // Friendly fire on nearby enemies
+      for (const other of enemies) {
+        if (other === enemy) continue;
+        const odx = other.position.x - enemy.position.x;
+        const ody = other.position.y - enemy.position.y;
+        if (odx * odx + ody * ody < halfRadius * halfRadius) {
+          other.health.current -= halfDmg;
+          spawnDamageNumber(other.position.x, other.position.y - 10, halfDmg, 0xff6688);
+          if (other.health.current <= 0 && !enemiesToRemove.includes(other)) {
+            enemiesToRemove.push(other);
+          }
+        }
+      }
+      spawnBomberExplosion(enemy.position.x, enemy.position.y, halfRadius);
+    }
+
     // Splitter: spawn 2 mini-splitters on death (only if not already a mini-splitter)
     if (enemy.enemyType === 'splitter' && !enemy.isMiniSplitter) {
       for (let i = 0; i < 2; i++) {
@@ -313,6 +396,15 @@ export function collisionSystem(dt: number): void {
         shake(0.4, 8);
       }
 
+      // Charger: apply stun on contact during charge
+      if (enemy.enemyType === 'charger' && enemy.aiState === 'charging') {
+        applyStatus(player, StatusType.Stun, enemy.position);
+        // Stop the charge after hitting
+        enemy.aiState = 'walking';
+        enemy.aiTimer = CHARGER_CONTACT_COOLDOWN;
+        enemy.chargerDir = undefined;
+      }
+
       // Fire enchanted modifier: enemies apply Burn on contact
       if (hasModifier('fire_enchanted')) {
         applyStatus(player, StatusType.Burn, enemy.position);
@@ -362,6 +454,61 @@ export function collisionSystem(dt: number): void {
   for (const proj of enemyProjsToDespawn) {
     despawnProjectile(proj);
   }
+}
+
+// ── Bomber explosion visual ───────────────────────────────────────────
+function spawnBomberExplosion(x: number, y: number, radius: number): void {
+  // Pink expanding ring + particles
+  const ring = new Graphics();
+  ring.circle(0, 0, 10).fill({ color: 0xff6688, alpha: 0.4 });
+  ring.position.set(x, y);
+  game.effectLayer.addChild(ring);
+
+  const start = performance.now();
+  const expand = () => {
+    const elapsed = performance.now() - start;
+    const t = Math.min(elapsed / 300, 1);
+    const r = 10 + t * (radius - 10);
+    ring.clear();
+    ring.circle(0, 0, r).fill({ color: 0xff6688, alpha: 0.4 * (1 - t) });
+    if (t >= 1) {
+      ring.removeFromParent();
+      ring.destroy();
+    } else {
+      requestAnimationFrame(expand);
+    }
+  };
+  requestAnimationFrame(expand);
+
+  // Particles
+  for (let i = 0; i < 12; i++) {
+    const g = new Graphics();
+    g.circle(0, 0, 3).fill({ color: 0xff6688 });
+    g.position.set(x, y);
+    game.effectLayer.addChild(g);
+
+    const angle = (Math.PI * 2 * i) / 12 + (Math.random() - 0.5) * 0.5;
+    const speed = 100 * (0.6 + Math.random() * 0.4);
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+    const pStart = performance.now();
+    const tick = () => {
+      const elapsed = performance.now() - pStart;
+      const pt = Math.min(elapsed / 400, 1);
+      g.position.x += vx * (1 / 60);
+      g.position.y += vy * (1 / 60);
+      g.alpha = 1 - pt;
+      if (pt >= 1) {
+        g.removeFromParent();
+        g.destroy();
+      } else {
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
+  }
+
+  sfxPlayer.play('enemy_death');
 }
 
 // ── Volatile explosion particle burst ─────────────────────────────────

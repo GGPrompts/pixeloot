@@ -14,6 +14,9 @@ const ITEM_DROP_CHANCE: Record<string, number> = {
   splitter: 0.12,
   shielder: 0.20,
   tank: 0.25,
+  bomber: 0.08,
+  charger: 0.20,
+  pulsar: 0.18,
   boss: 1.0,
 };
 

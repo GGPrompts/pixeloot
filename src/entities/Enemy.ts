@@ -332,3 +332,128 @@ export function spawnShielder(worldX: number, worldY: number, monsterLevel = 1):
   applyMapModifiers(entity);
   return entity;
 }
+
+/**
+ * Spawns a Bomber enemy: a pink octagon. Chases player and explodes on proximity.
+ */
+export function spawnBomber(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Regular octagon ~10px radius
+  for (let i = 0; i < 8; i++) {
+    const angle = (Math.PI * 2 * i) / 8 - Math.PI / 2;
+    const px = Math.cos(angle) * 10;
+    const py = Math.sin(angle) * 10;
+    if (i === 0) {
+      g.moveTo(px, py);
+    } else {
+      g.lineTo(px, py);
+    }
+  }
+  g.closePath().fill({ color: 0xff6688 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(15, monsterLevel);
+  const dmg = scaleDamage(25, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 95,
+    baseSpeed: 95,
+    enemy: true as const,
+    enemyType: 'bomber',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Charger enemy: a deep crimson arrow. Telegraphed bull-rush with stun.
+ */
+export function spawnCharger(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Large thick arrowhead ~16px long, 12px wide
+  g.moveTo(16, 0)
+    .lineTo(-8, -12)
+    .lineTo(-4, 0)
+    .lineTo(-8, 12)
+    .closePath()
+    .fill({ color: 0xdd2222 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(80, monsterLevel);
+  const dmg = scaleDamage(22, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 50,
+    baseSpeed: 50,
+    enemy: true as const,
+    enemyType: 'charger',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 4, // first charge after 4s
+    aiState: 'walking',
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Pulsar enemy: a pale yellow starburst. Periodic AoE nova while chasing.
+ */
+export function spawnPulsar(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // 6-pointed starburst (alternating long/short radii)
+  const outerR = 16;
+  const innerR = 8;
+  for (let i = 0; i < 12; i++) {
+    const angle = (Math.PI * 2 * i) / 12 - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    const px = Math.cos(angle) * r;
+    const py = Math.sin(angle) * r;
+    if (i === 0) {
+      g.moveTo(px, py);
+    } else {
+      g.lineTo(px, py);
+    }
+  }
+  g.closePath().fill({ color: 0xffff88 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(70, monsterLevel);
+  const dmg = scaleDamage(12, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 55,
+    baseSpeed: 55,
+    enemy: true as const,
+    enemyType: 'pulsar',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 3, // first pulse after 3s
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}

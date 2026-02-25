@@ -52,6 +52,9 @@ export type Entity = {
   shielded?: true;                  // enemy has a directional shield (blocks frontal projectiles)
   isMiniSplitter?: true;            // mini-splitter that does NOT split again on death
   burningGround?: true;             // projectile spawns burning ground AoE on despawn (Inferno Staff)
+  bomberFuse?: number;              // bomber: fuse countdown (0.6s), undefined = not yet triggered
+  chargerDir?: { x: number; y: number }; // charger: locked dash direction during charge
+  selfStunTimer?: number;           // charger: self-stun after hitting a wall
 };
 
 export const world = new World<Entity>();

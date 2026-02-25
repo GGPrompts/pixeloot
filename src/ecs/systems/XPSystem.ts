@@ -22,6 +22,9 @@ const BASE_XP: Record<string, number> = {
   flanker: 20,
   splitter: 20,
   shielder: 30,
+  bomber: 10,
+  charger: 35,
+  pulsar: 30,
 };
 
 /**
