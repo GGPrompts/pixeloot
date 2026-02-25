@@ -150,6 +150,39 @@ export const GENERIC_BOSS: BossDesign = {
 };
 
 // ---------------------------------------------------------------------------
+// Zone-to-boss mapping: each zone key maps to the boss IDs that belong to it
+// ---------------------------------------------------------------------------
+
+const ZONE_BOSS_MAP: Record<string, string[]> = {
+  the_grid:       ['sentinel_prime'],
+  neon_wastes:    ['void_weaver'],
+  reactor_core:   ['meltdown'],
+  frozen_array:   ['cryo_matrix'],
+  overgrowth:     ['overmind'],
+  storm_network:  ['arc_tyrant'],
+  the_abyss:      ['dread_hollow', 'nullpoint'],
+  chromatic_rift:  ['prism_lord', 'recursion'],
+};
+
+/**
+ * Get the boss ID for a given zone theme key.
+ * Returns the mapped boss (random pick when a zone has multiple bosses).
+ * Falls back to a random registered boss for unmapped zones.
+ */
+export function getBossForZone(themeKey: string): string {
+  const zoneBosses = ZONE_BOSS_MAP[themeKey];
+  if (zoneBosses && zoneBosses.length > 0) {
+    return zoneBosses[Math.floor(Math.random() * zoneBosses.length)];
+  }
+  // Fallback: pick a random boss from the full registry (excluding generic)
+  const allIds = getAllBossIds().filter(id => id !== 'generic');
+  if (allIds.length > 0) {
+    return allIds[Math.floor(Math.random() * allIds.length)];
+  }
+  return 'generic';
+}
+
+// ---------------------------------------------------------------------------
 // Load all designs from the design file and populate the registry
 // ---------------------------------------------------------------------------
 

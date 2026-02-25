@@ -4,6 +4,7 @@ import { game } from '../Game';
 import { Fonts, FontSize } from '../ui/UITheme';
 import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder, spawnBomber, spawnCharger, spawnPulsar, spawnMirror, spawnPhaser, spawnBurrower, spawnWarper, spawnLeech, spawnVortex, spawnHealer, spawnSpawner, spawnLobber, spawnSwooper, spawnTrapper, spawnLinker, spawnMimic, spawnNecromancer, spawnOvercharger } from './Enemy';
 import { spawnBoss } from './Boss';
+import { getBossForZone } from './BossRegistry';
 import { getMonsterLevel } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
 import { hasModifier, getQuantityBonus, isMapActive, getActiveTierBonus } from '../core/MapDevice';
@@ -988,7 +989,8 @@ export class WaveSystem {
     // Spawn the actual boss entity at a safe distance from the player
     const bossPos = findSpawnPosition(pPos.x, pPos.y)
       ?? findNearestFloor(pPos.x + SURROUND_DIST, pPos.y);
-    spawnBoss(bossPos.x, bossPos.y, this.currentMonsterLevel);
+    const bossType = getBossForZone(getActiveThemeKey());
+    spawnBoss(bossPos.x, bossPos.y, this.currentMonsterLevel, bossType);
 
     musicPlayer.crossfade('boss', 800);
 
