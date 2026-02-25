@@ -12,6 +12,7 @@ import { getActiveThemeKey } from '../core/ZoneThemes';
 import { isInTown } from '../core/TownManager';
 import { musicPlayer, getZoneTrack } from '../audio/MusicPlayer';
 import { spawnPortal } from './Portal';
+import { isTileReachable } from '../map/Pathfinding';
 import { WAVE_DESIGNS } from '../../designs/waves';
 import type { SpawnAnchor, SpawnGroup, SpawnTiming, WaveDesign, DifficultyTier, EnemyType } from '../../designs/waves';
 import { ZONE_DESIGNS } from '../../designs/zones';
@@ -143,6 +144,8 @@ function getPlayerPos(): { x: number; y: number } | null {
 function findSpawnPosition(px: number, py: number, maxAttempts = 20): { x: number; y: number } | null {
   for (let i = 0; i < maxAttempts; i++) {
     const tile = game.tileMap.getRandomFloorTile();
+    // Skip tiles unreachable from the player (walled-off pockets)
+    if (!isTileReachable(tile.x, tile.y)) continue;
     const pos = game.tileMap.tileToWorld(tile.x, tile.y);
     const dx = pos.x - px;
     const dy = pos.y - py;
@@ -157,7 +160,8 @@ function findSpawnPosition(px: number, py: number, maxAttempts = 20): { x: numbe
  *  Optionally enforces a minimum distance from (avoidX, avoidY). */
 function findNearestFloor(targetX: number, targetY: number, avoidX?: number, avoidY?: number): { x: number; y: number } {
   const tilePosTarget = game.tileMap.worldToTile(targetX, targetY);
-  // Search in expanding rings
+  // Search in expanding rings — prefer reachable tiles, fall back to any floor
+  let bestUnreachable: { x: number; y: number } | null = null;
   for (let radius = 0; radius < 20; radius++) {
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
@@ -172,13 +176,18 @@ function findNearestFloor(targetX: number, targetY: number, avoidX?: number, avo
             const ady = pos.y - avoidY;
             if (Math.sqrt(adx * adx + ady * ady) < MIN_PLAYER_DIST) continue;
           }
-          return pos;
+          // Prefer tiles reachable from the player (not walled-off pockets)
+          if (isTileReachable(tx, ty)) {
+            return pos;
+          }
+          if (!bestUnreachable) bestUnreachable = pos;
         }
       }
     }
   }
   // Fallback: random floor away from player
   return findSpawnPosition(avoidX ?? targetX, avoidY ?? targetY)
+    ?? bestUnreachable
     ?? game.tileMap.tileToWorld(...Object.values(game.tileMap.getRandomFloorTile()) as [number, number]);
 }
 

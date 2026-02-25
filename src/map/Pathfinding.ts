@@ -127,3 +127,13 @@ export function getFlowDirection(
   if (tx < 0 || tx >= fieldWidth || ty < 0 || ty >= fieldHeight) return null;
   return flowField[ty]?.[tx] ?? null;
 }
+
+/**
+ * Check if a tile position is reachable from the player via the flow field.
+ * Returns true if BFS reached this tile (i.e., a walkable path exists).
+ * Returns false for walls, unreachable pockets, or if the flow field isn't built yet.
+ */
+export function isTileReachable(tileX: number, tileY: number): boolean {
+  if (tileX < 0 || tileX >= fieldWidth || tileY < 0 || tileY >= fieldHeight) return false;
+  return flowField[tileY]?.[tileX] !== null;
+}

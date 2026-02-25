@@ -244,9 +244,9 @@ const ZONE_HAZARD_DEFS: Record<string, HazardDefinition[]> = {
       alpha: 0.2,
       pulse: true,
       placement: 'random_floor',
-      coverage: 0.15,
+      coverage: 0.08,
       coverageScalesWithTier: true,
-      minSpawnDistance: 2,
+      minSpawnDistance: 3,
     },
     {
       id: 'heat_vents',
@@ -530,6 +530,36 @@ function isInRoom(dungeon: DungeonData, tx: number, ty: number): boolean {
 }
 
 /**
+ * Measure how wide a corridor is at a given floor tile.
+ * Returns the minimum of horizontal and vertical open spans through (tx, ty).
+ * A tile in a 3-wide corridor returns 3; a 1-wide chokepoint returns 1.
+ */
+function corridorWidthAt(dungeon: DungeonData, tx: number, ty: number): number {
+  const tiles = dungeon.tiles;
+  // Horizontal span
+  let hSpan = 1;
+  for (let dy = -1; ty + dy >= 0; dy--) {
+    if (tiles[ty + dy][tx] !== 0) break;
+    hSpan++;
+  }
+  for (let dy = 1; ty + dy < dungeon.height; dy++) {
+    if (tiles[ty + dy][tx] !== 0) break;
+    hSpan++;
+  }
+  // Vertical span
+  let vSpan = 1;
+  for (let dx = -1; tx + dx >= 0; dx--) {
+    if (tiles[ty][tx + dx] !== 0) break;
+    vSpan++;
+  }
+  for (let dx = 1; tx + dx < dungeon.width; dx++) {
+    if (tiles[ty][tx + dx] !== 0) break;
+    vSpan++;
+  }
+  return Math.min(hSpan, vSpan);
+}
+
+/**
  * Fisher-Yates shuffle (in-place).
  */
 function shuffle<T>(arr: T[]): T[] {
@@ -553,7 +583,9 @@ function placeRandomFloor(
   if (def.coverageScalesWithTier) {
     coverage += (tier - 1) * 0.02;
   }
-  coverage = Math.min(coverage, 0.4);
+  // Damaging hazards capped lower so the player can navigate around them
+  const maxCoverage = (def.effectType === 'burn' || def.effectType === 'damage') ? 0.2 : 0.4;
+  coverage = Math.min(coverage, maxCoverage);
 
   const floors = shuffle(getFloorTiles(dungeon));
   const minDistSq = (def.minSpawnDistance ?? 0) ** 2;
@@ -663,12 +695,15 @@ function placeCorridors(
   const minDistSq = (def.minSpawnDistance ?? 0) ** 2;
   const spawnX = dungeon.spawn.x;
   const spawnY = dungeon.spawn.y;
+  const blocksMovement = def.effectType === 'cryo_barrier';
 
   for (let y = 0; y < dungeon.height; y++) {
     for (let x = 0; x < dungeon.width; x++) {
       if (dungeon.tiles[y][x] !== 0) continue;
       if (isInRoom(dungeon, x, y)) continue;
       if (minDistSq > 0 && distSq(x, y, spawnX, spawnY) < minDistSq) continue;
+      // Movement-blocking hazards (cryo barriers) need corridors wide enough to walk around
+      if (blocksMovement && corridorWidthAt(dungeon, x, y) < 3) continue;
       corridorTiles.push({ x, y });
     }
   }
