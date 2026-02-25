@@ -41,7 +41,8 @@ export type Entity = {
   homing?: true;                      // projectile gently homes toward nearest enemy
   knockbackOnHit?: true;              // projectile applies knockback on hit
   boss?: true;                     // marks entity as a boss
-  bossPhase?: number;              // current boss fight phase (1, 2, 3)
+  bossPhase?: number;              // current boss fight phase (1, 2, 3...)
+  bossType?: string;               // boss design ID from BossRegistry (undefined = generic)
   lootDrop?: { item: BaseItem };    // item drop on the ground
   goldDrop?: number;                // gold amount for gold drops
   mapDrop?: { mapItem: MapItem };   // map item drop on the ground
@@ -94,6 +95,7 @@ export type Entity = {
   overchargerBuffTimer?: number;    // seconds remaining on overcharger death buff
   overchargerOrigSpeed?: number;    // original speed before overcharger buff
   overchargerOrigDamage?: number;   // original damage before overcharger buff
+  spawnPosition?: { x: number; y: number }; // projectile spawn position (for distance-based damage scaling)
 };
 
 export const world = new World<Entity>();
