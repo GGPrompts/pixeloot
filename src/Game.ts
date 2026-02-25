@@ -8,7 +8,8 @@ import { playerFacingSystem } from './ecs/systems/PlayerFacingSystem';
 import { cameraSystem } from './ecs/systems/CameraSystem';
 import { projectileSystem } from './ecs/systems/ProjectileSystem';
 import { collisionSystem } from './ecs/systems/CollisionSystem';
-import { pickupSystem } from './ecs/systems/PickupSystem';
+import { pickupSystem, portalSystem } from './ecs/systems/PickupSystem';
+import { updatePortalAnimations } from './entities/Portal';
 
 import { aiSystem } from './ecs/systems/AISystem';
 import { bossAISystem } from './ecs/systems/BossAISystem';
@@ -388,6 +389,7 @@ export class Game {
     projectileSystem(dt);
     collisionSystem(dt);
     pickupSystem(dt);
+    portalSystem(dt);
     updateHazards(dt);
     healthSystem(dt);
     this.waveSystem.update(dt);
@@ -443,6 +445,9 @@ export class Game {
     if (isInTown()) {
       updateTownVisualizer(dt, musicPlayer.getEnergy());
     }
+
+    // Portal swirl animation
+    updatePortalAnimations();
 
     // ECS visual systems
     spriteSyncSystem();

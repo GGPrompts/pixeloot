@@ -9,8 +9,9 @@ import { getMonsterLevel } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
 import { hasModifier, getQuantityBonus, isMapActive, getActiveTierBonus } from '../core/MapDevice';
 import { getActiveThemeKey } from '../core/ZoneThemes';
-import { enterTown, isInTown } from '../core/TownManager';
+import { isInTown } from '../core/TownManager';
 import { musicPlayer, getZoneTrack } from '../audio/MusicPlayer';
+import { spawnPortal } from './Portal';
 import { WAVE_DESIGNS } from '../../designs/waves';
 import type { SpawnAnchor, SpawnGroup, SpawnTiming, WaveDesign, DifficultyTier, EnemyType } from '../../designs/waves';
 import { ZONE_DESIGNS } from '../../designs/zones';
@@ -651,6 +652,9 @@ export class WaveSystem {
   private lastLivingCount = 0;
   private usingDesignedWave = false;
 
+  // Boss spawn position (for portal placement)
+  private lastBossPos: { x: number; y: number } | null = null;
+
   // HUD text
   private waveText: Text | null = null;
   private waveTextTimer = 0;
@@ -874,10 +878,14 @@ export class WaveSystem {
     }
 
     if (livingCount === 0) {
-      // After a boss wave (every 5th), return to town
+      // After a boss wave (every 5th), spawn a town portal instead of instant transition
       if (this.currentWave > 0 && this.currentWave % 5 === 0 && isMapActive()) {
-        musicPlayer.crossfade('town', 1000);
-        enterTown();
+        musicPlayer.play('victory');
+        // Spawn portal at boss death location, or fallback to player position
+        const portalPos = this.lastBossPos ?? getPlayerPos() ?? { x: 640, y: 360 };
+        spawnPortal(portalPos.x, portalPos.y);
+        this.state = 'idle'; // Stop waves while portal is active
+        autoSave().catch((err) => console.warn('Auto-save failed:', err));
         return;
       }
       if (this.currentWave % 5 === 0) {
@@ -991,6 +999,7 @@ export class WaveSystem {
       ?? findNearestFloor(pPos.x + SURROUND_DIST, pPos.y);
     const bossType = getBossForZone(getActiveThemeKey());
     spawnBoss(bossPos.x, bossPos.y, this.currentMonsterLevel, bossType);
+    this.lastBossPos = { x: bossPos.x, y: bossPos.y };
 
     musicPlayer.crossfade('boss', 800);
 
