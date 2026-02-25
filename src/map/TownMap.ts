@@ -5,8 +5,8 @@
 
 import type { DungeonData } from './DungeonGenerator';
 
-const TOWN_W = 20;
-const TOWN_H = 15;
+const TOWN_W = 30;
+const TOWN_H = 20;
 
 /**
  * Generate the town layout: walls around perimeter, open floor inside.

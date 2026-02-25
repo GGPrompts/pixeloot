@@ -216,6 +216,12 @@ class MusicPlayer {
     return this.currentTrack;
   }
 
+  /** Returns 0-1 audio energy from the current player's analyser. */
+  getEnergy(): number {
+    if (!this.currentPlayer) return 0;
+    return this.currentPlayer.getEnergy();
+  }
+
   private clearCrossfade(): void {
     if (this.crossfadeTimer) {
       clearInterval(this.crossfadeTimer);

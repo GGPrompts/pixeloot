@@ -10,9 +10,10 @@ import { game } from '../Game';
 import { world } from '../ecs/world';
 import { generateTownLayout } from '../map/TownMap';
 import { TileMap } from '../map/TileMap';
+import { TownVisualizer, buildTentDefs } from '../map/TownVisualizer';
 import { applyTheme, getActiveTheme } from './ZoneThemes';
 import { clearMapModifiers } from './MapDevice';
-import { spawnTownNPCs, removeAllNPCs } from '../entities/NPC';
+import { spawnTownNPCs, removeAllNPCs, NPC_DEFS } from '../entities/NPC';
 import { autoSave } from '../save/SaveManager';
 import { inventory } from './Inventory';
 import { getComputedStats } from './ComputedStats';
@@ -20,6 +21,7 @@ import { getComputedStats } from './ComputedStats';
 const TILE_SIZE = 32;
 
 let inTown = false;
+let townVisualizer: TownVisualizer | null = null;
 
 // ── Public API ──────────────────────────────────────────────────────
 
@@ -86,6 +88,12 @@ export function enterTown(): void {
   // Spawn NPCs
   spawnTownNPCs(spawnPos.x, spawnPos.y);
 
+  // Create bazaar visualizer
+  const mapPixelW = townData.width * TILE_SIZE;
+  const mapPixelH = townData.height * TILE_SIZE;
+  townVisualizer = new TownVisualizer(mapPixelW, mapPixelH);
+  townVisualizer.setTents(buildTentDefs(spawnPos.x, spawnPos.y, NPC_DEFS));
+
   // Auto-save
   autoSave().catch((err) => console.warn('Auto-save on town entry failed:', err));
 }
@@ -97,6 +105,19 @@ export function enterTown(): void {
 export function exitTown(): void {
   inTown = false;
   removeAllNPCs();
+  if (townVisualizer) {
+    townVisualizer.destroy();
+    townVisualizer = null;
+  }
+}
+
+/**
+ * Update the town bazaar visualizer (called each frame from Game.ts when in town).
+ */
+export function updateTownVisualizer(dt: number, energy: number): void {
+  if (townVisualizer) {
+    townVisualizer.update(dt, energy);
+  }
 }
 
 // ── Internal Helpers ────────────────────────────────────────────────

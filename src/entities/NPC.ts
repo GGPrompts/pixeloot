@@ -26,7 +26,7 @@ export interface NPCDef {
   action: () => void;
 }
 
-const NPC_DEFS: NPCDef[] = [
+export const NPC_DEFS: NPCDef[] = [
   {
     name: 'Vendor',
     tileOffsetX: -5,
@@ -182,7 +182,7 @@ export function spawnTownNPCs(spawnX: number, spawnY: number): void {
       }),
     });
     label.anchor.set(0.5, 1);
-    label.position.set(0, -16);
+    label.position.set(0, -42);
     npcContainer.addChild(label);
 
     game.entityLayer.addChild(npcContainer);

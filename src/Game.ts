@@ -38,7 +38,7 @@ import { getAutoSave, loadGame } from './save/SaveManager';
 import { applyTheme, getActiveTheme } from './core/ZoneThemes';
 import { musicPlayer } from './audio/MusicPlayer';
 import { sfxPlayer } from './audio/SFXManager';
-import { enterTown, isInTown } from './core/TownManager';
+import { enterTown, isInTown, updateTownVisualizer } from './core/TownManager';
 import { checkNPCClick, updateComingSoonText } from './entities/NPC';
 import { updateSkillAssignPanel, isSkillAssignOpen, toggleSkillAssignPanel } from './ui/SkillAssignPanel';
 import { updateRangeIndicators } from './ui/RangeIndicator';
@@ -363,6 +363,11 @@ export class Game {
 
   /** Called every render frame for visual-only work. */
   private frameUpdate(dt: number): void {
+    // Town bazaar visualizer (audio-reactive ambient effects)
+    if (isInTown()) {
+      updateTownVisualizer(dt, musicPlayer.getEnergy());
+    }
+
     // ECS visual systems
     spriteSyncSystem();
     playerFacingSystem();

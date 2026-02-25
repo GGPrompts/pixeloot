@@ -58,6 +58,8 @@ export interface SongData {
 export class ChipPlayer {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
+  private analyser: AnalyserNode | null = null;
+  private analyserData: Uint8Array | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private pulseWaves: Record<string, PeriodicWave> = {};
   private playing = false;
@@ -400,7 +402,14 @@ export class ChipPlayer {
     this.ctx = new AudioContext();
     this.ownsContext = true;
     this.masterGain = this.ctx.createGain();
-    this.masterGain.connect(this.ctx.destination);
+
+    // Insert analyser between masterGain and destination for energy detection
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 256;
+    this.analyserData = new Uint8Array(this.analyser.frequencyBinCount);
+    this.masterGain.connect(this.analyser);
+    this.analyser.connect(this.ctx.destination);
+
     this.noiseBuffer = this.createNoiseBuffer();
     this.pulseWaves = {};
   }
@@ -521,6 +530,22 @@ export class ChipPlayer {
 
   onEnd(cb: (() => void) | null): void {
     this.onEndCallback = cb;
+  }
+
+  /**
+   * Returns a 0-1 energy value based on average low-mid frequency data.
+   * Useful for driving audio-reactive visual effects.
+   */
+  getEnergy(): number {
+    if (!this.analyser || !this.analyserData) return 0;
+    this.analyser.getByteFrequencyData(this.analyserData as Uint8Array<ArrayBuffer>);
+    // Average the low-mid bins (first half of frequency data)
+    const bins = this.analyserData.length >> 1;
+    let sum = 0;
+    for (let i = 0; i < bins; i++) {
+      sum += this.analyserData[i];
+    }
+    return sum / (bins * 255);
   }
 
   getContext(): AudioContext | null {
