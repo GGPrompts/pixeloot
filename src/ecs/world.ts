@@ -63,6 +63,22 @@ export type Entity = {
   warperTeleportTimer?: number;     // warper: time until next teleport
   warperPostFireTimer?: number;     // warper: stationary window after firing (0.8s)
   invulnerable?: boolean;           // generic invulnerability flag (phaser phased, burrower underground)
+  leechAttached?: boolean;          // leech: currently attached to the player
+  leechAttachTimer?: number;        // leech: seconds remaining attached (detaches at 0)
+  leechOffset?: { x: number; y: number }; // leech: positional offset from player while attached
+  vortexPullTimer?: number;         // vortex: cycles between idle (3s) and pull (2s)
+  vortexPulling?: boolean;          // vortex: true during active gravitational pull phase
+  healerHealTimer?: number;         // healer: cooldown for heal pulse (every 2s)
+  spawnerSpawnTimer?: number;       // spawner: cooldown for spawning Swarm (every 4s)
+  spawnerChildCount?: number;       // spawner: number of active children (max 6)
+  spawnedBySpawner?: object;        // reference to parent spawner entity (for child tracking)
+  lobberFireTimer?: number;         // lobber: cooldown between lob attacks (every 3s)
+  swooperState?: string;            // swooper: 'hovering' | 'swooping' | 'returning'
+  swooperSwoopTimer?: number;       // swooper: timer for swoop cycle
+  swooperDir?: { x: number; y: number }; // swooper: locked swoop direction
+  swooperSide?: number;             // swooper: alternating swoop side (+1 or -1)
+  trapperPlaceTimer?: number;       // trapper: cooldown for trap placement (every 3s)
+  trapperTrapCount?: number;        // trapper: number of active traps (max 3)
 };
 
 export const world = new World<Entity>();

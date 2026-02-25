@@ -2,7 +2,7 @@ import { Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { Fonts, FontSize } from '../ui/UITheme';
-import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder, spawnBomber, spawnCharger, spawnPulsar, spawnMirror, spawnPhaser, spawnBurrower, spawnWarper } from './Enemy';
+import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder, spawnBomber, spawnCharger, spawnPulsar, spawnMirror, spawnPhaser, spawnBurrower, spawnWarper, spawnLeech, spawnVortex, spawnHealer, spawnSpawner, spawnLobber, spawnSwooper, spawnTrapper } from './Enemy';
 import { spawnBoss } from './Boss';
 import { getMonsterLevel } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
@@ -20,7 +20,7 @@ const WAVE_TEXT_DURATION = 2; // seconds the "Wave X" text is visible
 type EnemySpawnFn = (x: number, y: number, monsterLevel?: number) => void;
 
 type SpawnEntry = {
-  type: 'rusher' | 'swarm' | 'tank' | 'sniper' | 'flanker' | 'splitter' | 'shielder' | 'bomber' | 'charger' | 'pulsar' | 'mirror' | 'phaser' | 'burrower' | 'warper';
+  type: 'rusher' | 'swarm' | 'tank' | 'sniper' | 'flanker' | 'splitter' | 'shielder' | 'bomber' | 'charger' | 'pulsar' | 'mirror' | 'phaser' | 'burrower' | 'warper' | 'leech' | 'vortex' | 'healer' | 'spawner' | 'lobber' | 'swooper' | 'trapper';
   x: number;
   y: number;
 };
@@ -47,6 +47,13 @@ const SPAWN_FNS: Record<SpawnEntry['type'], EnemySpawnFn> = {
   phaser: spawnPhaser,
   burrower: spawnBurrower,
   warper: spawnWarper,
+  leech: spawnLeech,
+  vortex: spawnVortex,
+  healer: spawnHealer,
+  spawner: spawnSpawner,
+  lobber: spawnLobber,
+  swooper: spawnSwooper,
+  trapper: spawnTrapper,
 };
 
 // -- Predefined waves 1-5 ------------------------------------------------
@@ -227,7 +234,7 @@ function generateWave(waveNum: number): WaveDefinition {
   const baseCount = 7;
   const totalEnemies = Math.round(baseCount * scaleFactor);
 
-  const types: SpawnEntry['type'][] = ['rusher', 'swarm', 'tank', 'sniper', 'flanker', 'splitter', 'shielder', 'bomber', 'charger', 'pulsar', 'mirror', 'phaser', 'burrower', 'warper'];
+  const types: SpawnEntry['type'][] = ['rusher', 'swarm', 'tank', 'sniper', 'flanker', 'splitter', 'shielder', 'bomber', 'charger', 'pulsar', 'mirror', 'phaser', 'burrower', 'warper', 'leech', 'vortex', 'healer', 'spawner', 'lobber', 'swooper', 'trapper'];
   const enemies: { type: SpawnEntry['type']; count: number }[] = [];
 
   let remaining = totalEnemies;

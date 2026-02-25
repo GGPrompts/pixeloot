@@ -637,3 +637,298 @@ export function spawnWarper(worldX: number, worldY: number, monsterLevel = 1): E
   applyMapModifiers(entity);
   return entity;
 }
+
+/**
+ * Spawns a Leech enemy: a purple teardrop. Fast chaser that attaches to the player.
+ */
+export function spawnLeech(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Teardrop / rounded triangle ~8px
+  g.moveTo(0, -8)
+    .bezierCurveTo(-6, -4, -6, 4, 0, 8)
+    .bezierCurveTo(6, 4, 6, -4, 0, -8)
+    .closePath()
+    .fill({ color: 0x9944cc });
+  // Thin tail trailing behind
+  g.moveTo(0, 8)
+    .lineTo(-2, 14)
+    .lineTo(2, 14)
+    .closePath()
+    .fill({ color: 0x7733aa });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(12, monsterLevel);
+  const dmg = scaleDamage(3, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 110,
+    baseSpeed: 110,
+    enemy: true as const,
+    enemyType: 'leech',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    aiState: 'chasing',
+    leechAttached: false,
+    leechAttachTimer: 0,
+    leechOffset: { x: 0, y: 0 },
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Vortex enemy: an indigo spiral. Stationary gravitational pull.
+ */
+export function spawnVortex(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Archimedean spiral with 2 arms, ~18px radius
+  const arms = 2;
+  for (let arm = 0; arm < arms; arm++) {
+    const offset = (Math.PI * 2 * arm) / arms;
+    const steps = 40;
+    for (let i = 0; i < steps; i++) {
+      const t = i / steps;
+      const angle = offset + t * Math.PI * 3;
+      const r = t * 18;
+      const px = Math.cos(angle) * r;
+      const py = Math.sin(angle) * r;
+      if (i === 0) {
+        g.moveTo(px, py);
+      } else {
+        g.lineTo(px, py);
+      }
+    }
+    g.stroke({ color: 0x6644ff, width: 2 });
+  }
+  // Center glow dot
+  g.circle(0, 0, 3).fill({ color: 0x8866ff });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(50, monsterLevel);
+  const dmg = scaleDamage(8, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 0,
+    baseSpeed: 0,
+    enemy: true as const,
+    enemyType: 'vortex',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    vortexPullTimer: 3, // 3s idle, then 2s pull
+    vortexPulling: false,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Healer enemy: a lime green cross. Flees from player and heals allies.
+ */
+export function spawnHealer(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Plus/cross shape: two overlapping rectangles (6px wide, 14px long)
+  g.rect(-3, -14, 6, 28).fill({ color: 0x66ff66 });
+  g.rect(-14, -3, 28, 6).fill({ color: 0x66ff66 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(30, monsterLevel);
+  const dmg = scaleDamage(5, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 65,
+    baseSpeed: 65,
+    enemy: true as const,
+    enemyType: 'healer',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    healerHealTimer: 2, // heal pulse every 2s
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Spawner enemy: a warm orange hive. Stationary, produces Swarm enemies.
+ */
+export function spawnSpawner(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Irregular hexagonal cluster (3 overlapping hexagons, slightly offset), ~20px
+  const drawHex = (cx: number, cy: number, r: number) => {
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 2;
+      const px = cx + Math.cos(angle) * r;
+      const py = cy + Math.sin(angle) * r;
+      if (i === 0) g.moveTo(px, py);
+      else g.lineTo(px, py);
+    }
+    g.closePath().fill({ color: 0xff8844, alpha: 0.8 });
+  };
+  drawHex(-4, -3, 10);
+  drawHex(5, -2, 10);
+  drawHex(0, 5, 10);
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(100, monsterLevel);
+  const dmg = scaleDamage(5, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 0,
+    baseSpeed: 0,
+    enemy: true as const,
+    enemyType: 'spawner',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    spawnerSpawnTimer: 4, // spawn every 4s
+    spawnerChildCount: 0,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Lobber enemy: a dark teal dome. Kites and lobs arcing projectiles.
+ */
+export function spawnLobber(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Half-circle dome (flat on bottom), ~14px radius
+  g.arc(0, 0, 14, Math.PI, 0)
+    .lineTo(14, 0)
+    .lineTo(-14, 0)
+    .closePath()
+    .fill({ color: 0x44aaaa });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(30, monsterLevel);
+  const dmg = scaleDamage(15, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 40,
+    baseSpeed: 40,
+    enemy: true as const,
+    enemyType: 'lobber',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    lobberFireTimer: 3, // fire every 3s
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Swooper enemy: a dull gold wing shape. Fast diagonal strafe runs.
+ */
+export function spawnSwooper(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Swept-back wing/delta shape, ~14px wide, 8px tall
+  g.moveTo(14, 0)
+    .lineTo(-10, -8)
+    .lineTo(-4, 0)
+    .lineTo(-10, 8)
+    .closePath()
+    .fill({ color: 0xdddd44 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(18, monsterLevel);
+  const dmg = scaleDamage(14, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 60,
+    baseSpeed: 60,
+    enemy: true as const,
+    enemyType: 'swooper',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    aiState: 'hovering',
+    swooperSwoopTimer: 2.5,
+    swooperSide: 1,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}
+
+/**
+ * Spawns a Trapper enemy: a burnt orange trapezoid. Kites and places hazard zones.
+ */
+export function spawnTrapper(worldX: number, worldY: number, monsterLevel = 1): Entity {
+  const g = new Graphics();
+
+  // Isosceles trapezoid, wider at bottom (~16px base, ~10px top, 12px tall)
+  g.moveTo(-5, -12)
+    .lineTo(5, -12)
+    .lineTo(8, 0)
+    .lineTo(-8, 0)
+    .closePath()
+    .fill({ color: 0xcc4400 });
+
+  g.position.set(worldX, worldY);
+  game.entityLayer.addChild(g);
+
+  const hp = scaleHealth(35, monsterLevel);
+  const dmg = scaleDamage(10, monsterLevel);
+
+  const entity = world.add({
+    position: { x: worldX, y: worldY },
+    velocity: { x: 0, y: 0 },
+    speed: 55,
+    baseSpeed: 55,
+    enemy: true as const,
+    enemyType: 'trapper',
+    health: { current: hp, max: hp },
+    damage: dmg,
+    sprite: g,
+    aiTimer: 0,
+    trapperPlaceTimer: 3, // place trap every 3s
+    trapperTrapCount: 0,
+    level: monsterLevel,
+  });
+  applyMapModifiers(entity);
+  return entity;
+}

@@ -8,6 +8,7 @@ import { applyStatus, StatusType } from '../../core/StatusEffects';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { getDamageReduction } from '../../core/ComputedStats';
 import { Container } from 'pixi.js';
+import { spawnSwarm } from '../../entities/Enemy';
 
 const enemies = world.with('enemy', 'position', 'velocity', 'speed');
 const players = world.with('player', 'position');
@@ -56,6 +57,53 @@ const WARPER_TELEPORT_INTERVAL = 2.5; // seconds between teleports
 const WARPER_POST_FIRE_DURATION = 0.8; // seconds stationary after firing
 const WARPER_TELEPORT_MIN_DIST = 80;  // px: minimum distance from player after teleport
 const WARPER_TELEPORT_MAX_DIST = 200; // px: maximum distance from player after teleport
+
+/** Leech behavior constants */
+const LEECH_ATTACH_RANGE = 16;        // px: attaches on contact
+const LEECH_ATTACH_DURATION = 4;      // seconds attached before auto-detach
+const LEECH_DPS_INTERVAL = 1;         // damage tick every 1 second
+
+/** Vortex behavior constants */
+const VORTEX_IDLE_DURATION = 3;       // seconds between pulls
+const VORTEX_PULL_DURATION = 2;       // seconds of active pull
+const VORTEX_PULL_RADIUS = 120;       // px: gravitational range
+const VORTEX_PULL_SPEED = 60;         // px/sec: pull strength
+
+/** Healer behavior constants */
+const HEALER_HEAL_INTERVAL = 2;       // seconds between heal pulses
+const HEALER_HEAL_RADIUS = 100;       // px: heal range
+const HEALER_HEAL_PERCENT = 0.1;      // 10% max HP restored
+const HEALER_FLEE_DIST = 150;         // px: tries to stay this far from player
+const HEALER_LONELY_RANGE = 200;      // px: switches to chase if no allies nearby
+
+/** Lobber behavior constants */
+const LOBBER_MIN_RANGE = 200;         // px: minimum distance from player
+const LOBBER_MAX_RANGE = 300;         // px: maximum distance from player
+const LOBBER_FIRE_INTERVAL = 3;       // seconds between lobs
+const LOBBER_ARC_DURATION = 1;        // seconds for projectile to land
+const LOBBER_IMPACT_RADIUS = 50;      // px: AoE damage radius on impact
+
+/** Swooper behavior constants */
+const SWOOPER_HOVER_RANGE = 225;      // px: preferred hover distance from player
+const SWOOPER_SWOOP_INTERVAL = 2.5;   // seconds between swoops
+const SWOOPER_SWOOP_SPEED = 300;      // px/sec during swoop
+const SWOOPER_SWOOP_OVERSHOOT = 100;  // px past player before decelerating
+const SWOOPER_RETURN_TIME = 1.5;      // seconds to drift back to hover range
+
+/** Trapper behavior constants */
+const TRAPPER_MIN_RANGE = 120;        // px: minimum kite distance
+const TRAPPER_MAX_RANGE = 200;        // px: maximum kite distance
+const TRAPPER_PLACE_INTERVAL = 3;     // seconds between trap placements
+const TRAPPER_MAX_TRAPS = 3;          // max active traps per trapper
+const TRAPPER_TRAP_RADIUS = 40;       // px: trap AoE radius
+const TRAPPER_TRAP_LIFETIME = 8;      // seconds before unactivated trap despawns
+const TRAPPER_TRAP_ARM_DELAY = 0.5;   // seconds before trap becomes active
+
+/** Spawner behavior constants */
+const SPAWNER_SPAWN_INTERVAL = 4;     // seconds between spawns
+const SPAWNER_MAX_CHILDREN = 6;       // max active spawned Swarm
+const SPAWNER_SPAWN_RADIUS = 64;      // px: spawn within this radius
+const SPAWNER_CONTACT_RANGE = 50;     // px: melee damage range
 
 /**
  * Get the direction toward the player for an enemy, using the flow field
@@ -680,6 +728,639 @@ export function aiSystem(dt: number): void {
         );
         enemy.velocity.x = warperDir.x * enemy.speed;
         enemy.velocity.y = warperDir.y * enemy.speed;
+        break;
+      }
+
+      case 'leech': {
+        if (enemy.leechAttached) {
+          // Attached to player: follow player position with offset, deal DPS, apply Slow
+          enemy.velocity.x = 0;
+          enemy.velocity.y = 0;
+          if (enemy.leechOffset) {
+            enemy.position.x = player.position.x + enemy.leechOffset.x;
+            enemy.position.y = player.position.y + enemy.leechOffset.y;
+          }
+
+          // Tick attach timer
+          if (enemy.leechAttachTimer !== undefined) {
+            enemy.leechAttachTimer -= dt;
+
+            // Damage tick every second
+            if (enemy.aiTimer !== undefined) {
+              enemy.aiTimer -= dt;
+              if (enemy.aiTimer <= 0) {
+                enemy.aiTimer = LEECH_DPS_INTERVAL;
+                if (player.health) {
+                  const rawDmg = enemy.damage ?? 3;
+                  const dr = getDamageReduction(enemy.level ?? 1);
+                  const leechDmg = Math.max(1, Math.round(rawDmg * (1 - dr)));
+                  player.health.current -= leechDmg;
+                  spawnDamageNumber(player.position.x, player.position.y - 10, leechDmg, 0x9944cc);
+                  if (player.health.current <= 0) player.health.current = 0;
+                }
+                applyStatus(player, StatusType.Slow, enemy.position);
+              }
+            }
+
+            // Detach after duration expires
+            if (enemy.leechAttachTimer <= 0) {
+              enemy.leechAttached = false;
+              enemy.aiState = 'chasing';
+              enemy.leechAttachTimer = 0;
+            }
+          }
+        } else {
+          // Chase via flow field at high speed
+          const leechDir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = leechDir.x * enemy.speed;
+          enemy.velocity.y = leechDir.y * enemy.speed;
+
+          // Attach on contact
+          if (len <= LEECH_ATTACH_RANGE) {
+            enemy.leechAttached = true;
+            enemy.aiState = 'attached';
+            enemy.leechAttachTimer = LEECH_ATTACH_DURATION;
+            enemy.aiTimer = LEECH_DPS_INTERVAL;
+            // Random small offset so multiple leeches don't stack exactly
+            enemy.leechOffset = {
+              x: (Math.random() - 0.5) * 20,
+              y: (Math.random() - 0.5) * 20,
+            };
+            // Immediately apply Slow on attach
+            applyStatus(player, StatusType.Slow, enemy.position);
+          }
+        }
+        break;
+      }
+
+      case 'vortex': {
+        // Stationary - no movement
+        enemy.velocity.x = 0;
+        enemy.velocity.y = 0;
+
+        // Tick pull timer
+        if (enemy.vortexPullTimer !== undefined) {
+          enemy.vortexPullTimer -= dt;
+
+          if (enemy.vortexPulling) {
+            // Active pull phase: drag player toward center
+            if (len <= VORTEX_PULL_RADIUS && len > 5) {
+              // Pull player toward vortex center
+              if (player.velocity) {
+                const pullNx = (enemy.position.x - player.position.x) / len;
+                const pullNy = (enemy.position.y - player.position.y) / len;
+                player.position.x += pullNx * VORTEX_PULL_SPEED * dt;
+                player.position.y += pullNy * VORTEX_PULL_SPEED * dt;
+              }
+
+              // Contact damage
+              if (len <= 20 && player.health) {
+                const rawDmg = enemy.damage ?? 8;
+                const dr = getDamageReduction(enemy.level ?? 1);
+                const vortexDmg = Math.max(1, Math.round(rawDmg * (1 - dr)));
+                // Only damage once per second (use aiTimer)
+                if (enemy.aiTimer !== undefined) {
+                  enemy.aiTimer -= dt;
+                  if (enemy.aiTimer <= 0) {
+                    enemy.aiTimer = 1;
+                    player.health.current -= vortexDmg;
+                    spawnDamageNumber(player.position.x, player.position.y - 10, vortexDmg, 0x6644ff);
+                    if (player.health.current <= 0) player.health.current = 0;
+                  }
+                }
+              }
+            }
+
+            // Visual: speed up rotation during pull
+            if (enemy.sprite) {
+              enemy.sprite.rotation += dt * 6;
+            }
+
+            // End pull phase
+            if (enemy.vortexPullTimer <= 0) {
+              enemy.vortexPulling = false;
+              enemy.vortexPullTimer = VORTEX_IDLE_DURATION;
+            }
+          } else {
+            // Idle phase: slow rotation
+            if (enemy.sprite) {
+              enemy.sprite.rotation += dt * 1;
+            }
+
+            // Start pull phase
+            if (enemy.vortexPullTimer <= 0) {
+              enemy.vortexPulling = true;
+              enemy.vortexPullTimer = VORTEX_PULL_DURATION;
+              enemy.aiTimer = 0; // reset contact damage timer
+
+              // Visual: pulse effect to signal pull start
+              if (enemy.sprite) {
+                enemy.sprite.scale.set(1.3, 1.3);
+                setTimeout(() => {
+                  if (enemy.sprite) enemy.sprite.scale.set(1, 1);
+                }, 200);
+              }
+            }
+          }
+        }
+        // Skip rotation at end of loop for vortex (handled above)
+        continue;
+      }
+
+      case 'healer': {
+        // Check if any allies are nearby
+        const allEnemies = world.with('enemy', 'position', 'health');
+        let nearbyAllyCount = 0;
+        for (const ally of allEnemies) {
+          if (ally === enemy || ally.dead) continue;
+          const adx = ally.position.x - enemy.position.x;
+          const ady = ally.position.y - enemy.position.y;
+          if (Math.sqrt(adx * adx + ady * ady) <= HEALER_LONELY_RANGE) {
+            nearbyAllyCount++;
+          }
+        }
+
+        if (nearbyAllyCount === 0) {
+          // Lonely: slow chase toward player
+          const lonelyDir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = lonelyDir.x * enemy.speed * 0.5;
+          enemy.velocity.y = lonelyDir.y * enemy.speed * 0.5;
+        } else {
+          // Flee from player: use inverse flow field direction
+          const fleeDir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          if (len < HEALER_FLEE_DIST) {
+            // Run away
+            enemy.velocity.x = -fleeDir.x * enemy.speed;
+            enemy.velocity.y = -fleeDir.y * enemy.speed;
+          } else {
+            // Far enough - strafe slowly
+            enemy.velocity.x = -ny * enemy.speed * 0.3;
+            enemy.velocity.y = nx * enemy.speed * 0.3;
+          }
+        }
+
+        // Heal pulse timer
+        if (enemy.healerHealTimer !== undefined) {
+          enemy.healerHealTimer -= dt;
+          if (enemy.healerHealTimer <= 0) {
+            enemy.healerHealTimer = HEALER_HEAL_INTERVAL;
+
+            // Heal all nearby enemies (not self)
+            let healed = false;
+            for (const ally of allEnemies) {
+              if (ally === enemy || ally.dead) continue;
+              const adx = ally.position.x - enemy.position.x;
+              const ady = ally.position.y - enemy.position.y;
+              if (Math.sqrt(adx * adx + ady * ady) <= HEALER_HEAL_RADIUS) {
+                const healAmount = Math.round(ally.health.max * HEALER_HEAL_PERCENT);
+                ally.health.current = Math.min(ally.health.max, ally.health.current + healAmount);
+                healed = true;
+              }
+            }
+
+            // Visual: expanding green heal ring
+            if (healed) {
+              const ring = new Graphics();
+              ring.circle(0, 0, 10).stroke({ color: 0x66ff66, width: 2, alpha: 0.8 });
+              ring.position.set(enemy.position.x, enemy.position.y);
+              game.effectLayer.addChild(ring);
+              const ringStart = performance.now();
+              const expandRing = () => {
+                const elapsed = performance.now() - ringStart;
+                const t = Math.min(elapsed / 400, 1);
+                const r = 10 + t * (HEALER_HEAL_RADIUS - 10);
+                ring.clear();
+                ring.circle(0, 0, r).stroke({ color: 0x66ff66, width: 2, alpha: 0.8 * (1 - t) });
+                if (t >= 1) {
+                  ring.removeFromParent();
+                  ring.destroy();
+                } else {
+                  requestAnimationFrame(expandRing);
+                }
+              };
+              requestAnimationFrame(expandRing);
+
+              // Pulsing glow on healer sprite
+              if (enemy.sprite) {
+                enemy.sprite.scale.set(1.2, 1.2);
+                setTimeout(() => {
+                  if (enemy.sprite) enemy.sprite.scale.set(1, 1);
+                }, 200);
+              }
+            }
+          }
+        }
+        break;
+      }
+
+      case 'spawner': {
+        // Stationary - no movement
+        enemy.velocity.x = 0;
+        enemy.velocity.y = 0;
+
+        // Contact damage if player is very close
+        if (len <= SPAWNER_CONTACT_RANGE && player.health) {
+          if (enemy.aiTimer !== undefined) {
+            enemy.aiTimer -= dt;
+            if (enemy.aiTimer <= 0) {
+              enemy.aiTimer = 1; // damage tick every 1s
+              const rawDmg = enemy.damage ?? 5;
+              const dr = getDamageReduction(enemy.level ?? 1);
+              const contactDmg = Math.max(1, Math.round(rawDmg * (1 - dr)));
+              player.health.current -= contactDmg;
+              spawnDamageNumber(player.position.x, player.position.y - 10, contactDmg, 0xff8844);
+              if (player.health.current <= 0) player.health.current = 0;
+            }
+          }
+        }
+
+        // Count current active children
+        const allEnts = world.with('enemy', 'spawnedBySpawner');
+        let childCount = 0;
+        for (const child of allEnts) {
+          if (child.spawnedBySpawner === enemy && !child.dead) {
+            childCount++;
+          }
+        }
+        enemy.spawnerChildCount = childCount;
+
+        // Spawn timer
+        if (enemy.spawnerSpawnTimer !== undefined) {
+          enemy.spawnerSpawnTimer -= dt;
+          if (enemy.spawnerSpawnTimer <= 0 && childCount < SPAWNER_MAX_CHILDREN) {
+            enemy.spawnerSpawnTimer = SPAWNER_SPAWN_INTERVAL;
+
+            // Spawn a Swarm enemy near the spawner
+            const spawnAngle = Math.random() * Math.PI * 2;
+            const spawnDist = Math.random() * SPAWNER_SPAWN_RADIUS;
+            const spawnX = enemy.position.x + Math.cos(spawnAngle) * spawnDist;
+            const spawnY = enemy.position.y + Math.sin(spawnAngle) * spawnDist;
+
+            // Check the spawn position is walkable
+            let finalX = spawnX;
+            let finalY = spawnY;
+            if (game.tileMap) {
+              const tile = game.tileMap.worldToTile(spawnX, spawnY);
+              if (game.tileMap.blocksMovement(tile.x, tile.y)) {
+                finalX = enemy.position.x;
+                finalY = enemy.position.y;
+              }
+            }
+
+            const child = spawnSwarm(finalX, finalY, enemy.level ?? 1);
+            child.spawnedBySpawner = enemy;
+
+            // Visual: body contracts/expands on spawn
+            if (enemy.sprite) {
+              enemy.sprite.scale.set(0.8, 0.8);
+              setTimeout(() => {
+                if (enemy.sprite) enemy.sprite.scale.set(1.1, 1.1);
+                setTimeout(() => {
+                  if (enemy.sprite) enemy.sprite.scale.set(1, 1);
+                }, 100);
+              }, 100);
+            }
+          } else if (enemy.spawnerSpawnTimer <= 0) {
+            // At max children, reset timer to check again next interval
+            enemy.spawnerSpawnTimer = SPAWNER_SPAWN_INTERVAL;
+          }
+        }
+        // Skip rotation for stationary spawner
+        continue;
+      }
+
+      case 'lobber': {
+        // Kite: maintain LOBBER_MIN_RANGE to LOBBER_MAX_RANGE from player
+        if (len < LOBBER_MIN_RANGE) {
+          // Back away
+          enemy.velocity.x = -nx * enemy.speed;
+          enemy.velocity.y = -ny * enemy.speed;
+        } else if (len > LOBBER_MAX_RANGE) {
+          // Approach via flow field
+          const dir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = dir.x * enemy.speed;
+          enemy.velocity.y = dir.y * enemy.speed;
+        } else {
+          // In range: strafe slowly
+          enemy.velocity.x = -ny * enemy.speed * 0.3;
+          enemy.velocity.y = nx * enemy.speed * 0.3;
+        }
+
+        // Fire arcing projectile on cooldown
+        if (enemy.lobberFireTimer !== undefined) {
+          enemy.lobberFireTimer -= dt;
+          if (enemy.lobberFireTimer <= 0) {
+            enemy.lobberFireTimer = LOBBER_FIRE_INTERVAL;
+
+            // Target player's current position
+            const targetX = player.position.x;
+            const targetY = player.position.y;
+            const startX = enemy.position.x;
+            const startY = enemy.position.y;
+            const lobDmg = enemy.damage ?? 15;
+            const monsterLvl = enemy.level ?? 1;
+
+            // Spawn growing shadow circle at target location (telegraph)
+            const shadow = new Graphics();
+            shadow.circle(0, 0, 5).fill({ color: 0x000000, alpha: 0.2 });
+            shadow.position.set(targetX, targetY);
+            game.effectLayer.addChild(shadow);
+
+            // Spawn arcing projectile (visual only, damage on impact)
+            const lobProj = new Graphics();
+            lobProj.circle(0, 0, 5).fill({ color: 0x44aaaa, alpha: 0.9 });
+            lobProj.position.set(startX, startY);
+            game.effectLayer.addChild(lobProj);
+
+            const lobStart = performance.now();
+            const lobDuration = LOBBER_ARC_DURATION * 1000; // ms
+
+            const animateLob = () => {
+              const elapsed = performance.now() - lobStart;
+              const t = Math.min(elapsed / lobDuration, 1);
+
+              // Linear interpolation on X/Y, parabolic arc on "height" (rendered as Y offset + scale)
+              const currentX = startX + (targetX - startX) * t;
+              const currentY = startY + (targetY - startY) * t;
+              // Parabolic arc height: peaks at t=0.5
+              const arcHeight = 80 * (4 * t * (1 - t)); // max 80px at midpoint
+              lobProj.position.set(currentX, currentY - arcHeight);
+              // Scale projectile based on "height" (bigger when higher = visual depth cue)
+              const scaleFactor = 1 + arcHeight / 120;
+              lobProj.scale.set(scaleFactor, scaleFactor);
+
+              // Grow shadow at target as projectile approaches
+              shadow.clear();
+              const shadowR = 5 + t * (LOBBER_IMPACT_RADIUS - 5);
+              shadow.circle(0, 0, shadowR).fill({ color: 0x000000, alpha: 0.15 + t * 0.15 });
+
+              if (t >= 1) {
+                // Impact! Remove projectile and shadow
+                lobProj.removeFromParent();
+                lobProj.destroy();
+                shadow.removeFromParent();
+                shadow.destroy();
+
+                // Impact visual: expanding teal ring
+                const impactRing = new Graphics();
+                impactRing.circle(0, 0, 10).fill({ color: 0x44aaaa, alpha: 0.5 });
+                impactRing.position.set(targetX, targetY);
+                game.effectLayer.addChild(impactRing);
+                const impactStart = performance.now();
+                const expandImpact = () => {
+                  const ie = performance.now() - impactStart;
+                  const it = Math.min(ie / 300, 1);
+                  const ir = 10 + it * (LOBBER_IMPACT_RADIUS - 10);
+                  impactRing.clear();
+                  impactRing.circle(0, 0, ir).fill({ color: 0x44aaaa, alpha: 0.5 * (1 - it) });
+                  if (it >= 1) {
+                    impactRing.removeFromParent();
+                    impactRing.destroy();
+                  } else {
+                    requestAnimationFrame(expandImpact);
+                  }
+                };
+                requestAnimationFrame(expandImpact);
+
+                // Damage player if within impact radius
+                const pq = world.with('player', 'position', 'health');
+                if (pq.entities.length > 0) {
+                  const pl = pq.entities[0];
+                  const pdx = pl.position.x - targetX;
+                  const pdy = pl.position.y - targetY;
+                  if (pdx * pdx + pdy * pdy < LOBBER_IMPACT_RADIUS * LOBBER_IMPACT_RADIUS) {
+                    const dr = getDamageReduction(monsterLvl);
+                    const finalDmg = Math.max(1, Math.round(lobDmg * (1 - dr)));
+                    pl.health.current -= finalDmg;
+                    spawnDamageNumber(pl.position.x, pl.position.y - 10, finalDmg, 0x44aaaa);
+                    sfxPlayer.play('hit_magic');
+                    applyStatus(pl, StatusType.Burn, { x: targetX, y: targetY });
+                    if (pl.health.current <= 0) pl.health.current = 0;
+                  }
+                }
+              } else {
+                requestAnimationFrame(animateLob);
+              }
+            };
+            requestAnimationFrame(animateLob);
+          }
+        }
+        break;
+      }
+
+      case 'swooper': {
+        // Tick swoop timer
+        if (enemy.swooperSwoopTimer !== undefined) {
+          enemy.swooperSwoopTimer -= dt;
+        }
+
+        if (enemy.aiState === 'swooping') {
+          // Fast diagonal pass through player position
+          if (enemy.swooperDir) {
+            enemy.velocity.x = enemy.swooperDir.x * SWOOPER_SWOOP_SPEED;
+            enemy.velocity.y = enemy.swooperDir.y * SWOOPER_SWOOP_SPEED;
+          }
+
+          // Check if passed the target + overshoot distance
+          if (enemy.swooperSwoopTimer !== undefined && enemy.swooperSwoopTimer <= 0) {
+            enemy.aiState = 'returning';
+            enemy.swooperSwoopTimer = SWOOPER_RETURN_TIME;
+            enemy.swooperDir = undefined;
+            // Flip side for next swoop
+            if (enemy.swooperSide !== undefined) {
+              enemy.swooperSide = -enemy.swooperSide;
+            }
+          }
+          break;
+        }
+
+        if (enemy.aiState === 'returning') {
+          // Drift back to hover range
+          if (len < SWOOPER_HOVER_RANGE - 30) {
+            // Move away from player
+            enemy.velocity.x = -nx * enemy.speed;
+            enemy.velocity.y = -ny * enemy.speed;
+          } else if (len > SWOOPER_HOVER_RANGE + 30) {
+            // Move toward player
+            const dir = getChaseDirection(
+              enemy.position.x, enemy.position.y,
+              player.position.x, player.position.y,
+            );
+            enemy.velocity.x = dir.x * enemy.speed;
+            enemy.velocity.y = dir.y * enemy.speed;
+          } else {
+            // Drift laterally
+            const side = enemy.swooperSide ?? 1;
+            enemy.velocity.x = (-ny * side) * enemy.speed * 0.5;
+            enemy.velocity.y = (nx * side) * enemy.speed * 0.5;
+          }
+
+          if (enemy.swooperSwoopTimer !== undefined && enemy.swooperSwoopTimer <= 0) {
+            enemy.aiState = 'hovering';
+            enemy.swooperSwoopTimer = SWOOPER_SWOOP_INTERVAL;
+          }
+          break;
+        }
+
+        // Hovering state: drift laterally at hover range
+        if (len < SWOOPER_HOVER_RANGE - 30) {
+          enemy.velocity.x = -nx * enemy.speed;
+          enemy.velocity.y = -ny * enemy.speed;
+        } else if (len > SWOOPER_HOVER_RANGE + 30) {
+          const dir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = dir.x * enemy.speed;
+          enemy.velocity.y = dir.y * enemy.speed;
+        } else {
+          const side = enemy.swooperSide ?? 1;
+          enemy.velocity.x = (-ny * side) * enemy.speed * 0.5;
+          enemy.velocity.y = (nx * side) * enemy.speed * 0.5;
+        }
+
+        // Start swoop when timer expires
+        if (enemy.swooperSwoopTimer !== undefined && enemy.swooperSwoopTimer <= 0) {
+          enemy.aiState = 'swooping';
+          // Calculate swoop duration based on distance to pass through player + overshoot
+          const swoopDist = len + SWOOPER_SWOOP_OVERSHOOT;
+          enemy.swooperSwoopTimer = swoopDist / SWOOPER_SWOOP_SPEED;
+
+          // Direction: diagonal toward player, offset by perpendicular component
+          const side = enemy.swooperSide ?? 1;
+          const diagX = nx + (-ny * side) * 0.3;
+          const diagY = ny + (nx * side) * 0.3;
+          const diagLen = Math.sqrt(diagX * diagX + diagY * diagY);
+          enemy.swooperDir = { x: diagX / diagLen, y: diagY / diagLen };
+        }
+        break;
+      }
+
+      case 'trapper': {
+        // Kite: maintain TRAPPER_MIN_RANGE to TRAPPER_MAX_RANGE from player
+        if (len < TRAPPER_MIN_RANGE) {
+          // Back away
+          enemy.velocity.x = -nx * enemy.speed;
+          enemy.velocity.y = -ny * enemy.speed;
+        } else if (len > TRAPPER_MAX_RANGE) {
+          // Approach via flow field
+          const dir = getChaseDirection(
+            enemy.position.x, enemy.position.y,
+            player.position.x, player.position.y,
+          );
+          enemy.velocity.x = dir.x * enemy.speed;
+          enemy.velocity.y = dir.y * enemy.speed;
+        } else {
+          // In range: strafe slowly
+          enemy.velocity.x = -ny * enemy.speed * 0.3;
+          enemy.velocity.y = nx * enemy.speed * 0.3;
+        }
+
+        // Place trap on cooldown
+        if (enemy.trapperPlaceTimer !== undefined) {
+          enemy.trapperPlaceTimer -= dt;
+          if (enemy.trapperPlaceTimer <= 0 && (enemy.trapperTrapCount ?? 0) < TRAPPER_MAX_TRAPS) {
+            enemy.trapperPlaceTimer = TRAPPER_PLACE_INTERVAL;
+
+            // Place trap at player's current position
+            const trapX = player.position.x;
+            const trapY = player.position.y;
+            const trapDmg = enemy.damage ?? 10;
+            const trapMonsterLvl = enemy.level ?? 1;
+
+            // Increment trap count
+            if (enemy.trapperTrapCount !== undefined) {
+              enemy.trapperTrapCount++;
+            }
+
+            // Spawn trap visual (faint circle that becomes bright after arm delay)
+            const trap = new Graphics();
+            trap.circle(0, 0, TRAPPER_TRAP_RADIUS).fill({ color: 0xcc4400, alpha: 0.1 });
+            trap.circle(0, 0, TRAPPER_TRAP_RADIUS).stroke({ color: 0xcc4400, width: 1, alpha: 0.2 });
+            trap.position.set(trapX, trapY);
+            game.effectLayer.addChild(trap);
+
+            let trapElapsed = 0;
+            let armed = false;
+            let triggered = false;
+
+            const trapTick = (t: { deltaTime: number }) => {
+              const tdt = t.deltaTime / 60;
+              trapElapsed += tdt;
+
+              // Arm after delay
+              if (!armed && trapElapsed >= TRAPPER_TRAP_ARM_DELAY) {
+                armed = true;
+                trap.clear();
+                trap.circle(0, 0, TRAPPER_TRAP_RADIUS).fill({ color: 0xcc4400, alpha: 0.2 });
+                trap.circle(0, 0, TRAPPER_TRAP_RADIUS).stroke({ color: 0xff4400, width: 2, alpha: 0.5 });
+              }
+
+              // Pulse when armed
+              if (armed && !triggered) {
+                trap.alpha = 0.6 + 0.2 * Math.sin(trapElapsed * 4);
+
+                // Check player overlap
+                const pq = world.with('player', 'position', 'health');
+                if (pq.entities.length > 0) {
+                  const pl = pq.entities[0];
+                  const tdx = pl.position.x - trapX;
+                  const tdy = pl.position.y - trapY;
+                  if (tdx * tdx + tdy * tdy < TRAPPER_TRAP_RADIUS * TRAPPER_TRAP_RADIUS) {
+                    triggered = true;
+                    // Deal damage + slow
+                    const dr = getDamageReduction(trapMonsterLvl);
+                    const finalDmg = Math.max(1, Math.round(trapDmg * (1 - dr)));
+                    pl.health.current -= finalDmg;
+                    spawnDamageNumber(pl.position.x, pl.position.y - 10, finalDmg, 0xcc4400);
+                    sfxPlayer.play('hit_physical');
+                    applyStatus(pl, StatusType.Slow, { x: trapX, y: trapY });
+                    if (pl.health.current <= 0) pl.health.current = 0;
+                  }
+                }
+              }
+
+              // Despawn on trigger or lifetime expiry
+              if (triggered || trapElapsed >= TRAPPER_TRAP_LIFETIME) {
+                game.app.ticker.remove(trapTick);
+                // Decrement trap count on the trapper (if it still exists)
+                if (enemy.trapperTrapCount !== undefined && enemy.trapperTrapCount > 0) {
+                  enemy.trapperTrapCount--;
+                }
+                // Fade out visual
+                const fadeStart = performance.now();
+                const fadeTrap = () => {
+                  const fe = performance.now() - fadeStart;
+                  const ft = Math.min(fe / 200, 1);
+                  trap.alpha = (1 - ft) * 0.6;
+                  if (ft >= 1) {
+                    trap.removeFromParent();
+                    trap.destroy();
+                  } else {
+                    requestAnimationFrame(fadeTrap);
+                  }
+                };
+                requestAnimationFrame(fadeTrap);
+              }
+            };
+            game.app.ticker.add(trapTick);
+          } else if (enemy.trapperPlaceTimer <= 0) {
+            // At max traps, reset timer
+            enemy.trapperPlaceTimer = TRAPPER_PLACE_INTERVAL;
+          }
+        }
         break;
       }
 

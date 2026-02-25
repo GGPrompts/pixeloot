@@ -21,6 +21,13 @@ const ITEM_DROP_CHANCE: Record<string, number> = {
   phaser: 0.12,
   burrower: 0.18,
   warper: 0.10,
+  leech: 0.06,
+  vortex: 0.18,
+  healer: 0.15,
+  spawner: 0.22,
+  lobber: 0.15,
+  swooper: 0.10,
+  trapper: 0.18,
   boss: 1.0,
 };
 
