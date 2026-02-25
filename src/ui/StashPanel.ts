@@ -17,7 +17,7 @@ import {
   Colors, Fonts, FontSize,
   getRarityColor, abbreviate, drawPanelBg, drawSlotBg, drawPixelBorder, makeCloseButton,
 } from './UITheme';
-import { showTooltip, hideTooltip, buildItemTooltipText } from './Tooltip';
+import { showItemTooltipWithCompare, hideTooltip } from './Tooltip';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
@@ -433,15 +433,13 @@ function refreshPanel(): void {
           slotBg.on('pointerover', (e: FederatedPointerEvent) => {
             const stashItem = stash.getTab(tabIdx)?.items[stashIdx];
             if (stashItem) {
-              const content = buildItemTooltipText(stashItem, 'Click to move to backpack');
-              showTooltip(content, getRarityColor(stashItem.rarity), e.globalX, e.globalY);
+              showItemTooltipWithCompare(stashItem, e.globalX, e.globalY, 'Click to move to backpack');
             }
           });
           slotBg.on('pointermove', (e: FederatedPointerEvent) => {
             const stashItem = stash.getTab(tabIdx)?.items[stashIdx];
             if (stashItem) {
-              const content = buildItemTooltipText(stashItem, 'Click to move to backpack');
-              showTooltip(content, getRarityColor(stashItem.rarity), e.globalX, e.globalY);
+              showItemTooltipWithCompare(stashItem, e.globalX, e.globalY, 'Click to move to backpack');
             }
           });
           slotBg.on('pointerout', () => hideTooltip());
@@ -509,15 +507,13 @@ function refreshPanel(): void {
         slotBg.on('pointerover', (e: FederatedPointerEvent) => {
           const bpItem = inventory.backpack[bpIdx];
           if (bpItem) {
-            const content = buildItemTooltipText(bpItem, 'Click to move to stash');
-            showTooltip(content, getRarityColor(bpItem.rarity), e.globalX, e.globalY);
+            showItemTooltipWithCompare(bpItem, e.globalX, e.globalY, 'Click to move to stash');
           }
         });
         slotBg.on('pointermove', (e: FederatedPointerEvent) => {
           const bpItem = inventory.backpack[bpIdx];
           if (bpItem) {
-            const content = buildItemTooltipText(bpItem, 'Click to move to stash');
-            showTooltip(content, getRarityColor(bpItem.rarity), e.globalX, e.globalY);
+            showItemTooltipWithCompare(bpItem, e.globalX, e.globalY, 'Click to move to stash');
           }
         });
         slotBg.on('pointerout', () => hideTooltip());

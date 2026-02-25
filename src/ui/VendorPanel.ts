@@ -17,7 +17,7 @@ import {
   Colors, Fonts, FontSize,
   getRarityColor, abbreviate, drawPanelBg, drawSlotBg, makeCloseButton,
 } from './UITheme';
-import { showItemTooltip, showTooltip, hideTooltip, buildItemTooltipText, buildMapTooltipText } from './Tooltip';
+import { showItemTooltip, showItemTooltipWithCompare, showTooltip, hideTooltip, buildItemTooltipText, buildMapTooltipText } from './Tooltip';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
@@ -233,15 +233,13 @@ function refreshPanel(): void {
     slotBg.on('pointerover', (e: FederatedPointerEvent) => {
       const vendorItem = vendorItems[idx];
       if (vendorItem) {
-        const content = buildItemTooltipText(vendorItem.item, `Buy: ${vendorItem.price}g`);
-        showTooltip(content, getRarityColor(vendorItem.item.rarity), e.globalX, e.globalY);
+        showItemTooltipWithCompare(vendorItem.item, e.globalX, e.globalY, `Buy: ${vendorItem.price}g`);
       }
     });
     slotBg.on('pointermove', (e: FederatedPointerEvent) => {
       const vendorItem = vendorItems[idx];
       if (vendorItem) {
-        const content = buildItemTooltipText(vendorItem.item, `Buy: ${vendorItem.price}g`);
-        showTooltip(content, getRarityColor(vendorItem.item.rarity), e.globalX, e.globalY);
+        showItemTooltipWithCompare(vendorItem.item, e.globalX, e.globalY, `Buy: ${vendorItem.price}g`);
       }
     });
     slotBg.on('pointerout', () => hideTooltip());
@@ -364,17 +362,13 @@ function refreshPanel(): void {
         slotBg.on('pointerover', (e: FederatedPointerEvent) => {
           const bpItem = inventory.backpack[bpIdx];
           if (bpItem) {
-            const sp = getSellPrice(bpItem);
-            const content = buildItemTooltipText(bpItem, `Sell: ${sp}g`);
-            showTooltip(content, getRarityColor(bpItem.rarity), e.globalX, e.globalY);
+            showItemTooltipWithCompare(bpItem, e.globalX, e.globalY, `Sell: ${getSellPrice(bpItem)}g`);
           }
         });
         slotBg.on('pointermove', (e: FederatedPointerEvent) => {
           const bpItem = inventory.backpack[bpIdx];
           if (bpItem) {
-            const sp = getSellPrice(bpItem);
-            const content = buildItemTooltipText(bpItem, `Sell: ${sp}g`);
-            showTooltip(content, getRarityColor(bpItem.rarity), e.globalX, e.globalY);
+            showItemTooltipWithCompare(bpItem, e.globalX, e.globalY, `Sell: ${getSellPrice(bpItem)}g`);
           }
         });
         slotBg.on('pointerout', () => hideTooltip());

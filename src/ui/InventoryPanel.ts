@@ -8,7 +8,7 @@ import {
   getRarityColor, abbreviate, drawPanelBg, drawSlotBg, drawDivider,
   makeCloseButton,
 } from './UITheme';
-import { showItemTooltip, hideTooltip } from './Tooltip';
+import { showItemTooltip, showItemTooltipWithCompare, hideTooltip } from './Tooltip';
 
 import { SCREEN_W, SCREEN_H } from '../core/constants';
 
@@ -191,11 +191,11 @@ function createPanel(): Container {
 
       slotBg.on('pointerover', (e: FederatedPointerEvent) => {
         const item = inventory.backpack[slotIdx];
-        if (item) showItemTooltip(item, e.globalX, e.globalY);
+        if (item) showItemTooltipWithCompare(item, e.globalX, e.globalY);
       });
       slotBg.on('pointermove', (e: FederatedPointerEvent) => {
         const item = inventory.backpack[slotIdx];
-        if (item) showItemTooltip(item, e.globalX, e.globalY);
+        if (item) showItemTooltipWithCompare(item, e.globalX, e.globalY);
       });
       slotBg.on('pointerout', () => hideTooltip());
 

@@ -2,8 +2,9 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { game } from '../Game';
 import { BaseItem, Rarity, Slot } from '../loot/ItemTypes';
 import type { MapItem } from '../loot/MapItem';
+import { inventory } from '../core/Inventory';
 import { Colors, Fonts, FontSize, getRarityColor, RARITY_NAMES, drawPixelBorder } from './UITheme';
-import { SCREEN_H } from '../core/constants';
+import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 const SLOT_NAME_MAP: Record<Slot, string> = {
   [Slot.Weapon]: 'Weapon',
@@ -16,6 +17,7 @@ const SLOT_NAME_MAP: Record<Slot, string> = {
 };
 
 let tooltip: Container | null = null;
+let compareTooltip: Container | null = null;
 
 /**
  * Build multi-line tooltip text for an item.
@@ -80,18 +82,13 @@ export function buildMapTooltipText(mapItem: MapItem, price: number): string {
   return lines.join('\n');
 }
 
-/**
- * Show a themed tooltip at the given screen position.
- */
-export function showTooltip(
-  content: string,
-  color: number,
-  globalX: number,
-  globalY: number,
-): void {
-  hideTooltip();
+// ── Tooltip rendering helpers ────────────────────────────────────────
 
-  tooltip = new Container();
+const TOOLTIP_PADDING = 14;
+const TOOLTIP_GAP = 4;
+
+function createTooltipContainer(content: string, color: number): Container {
+  const container = new Container();
 
   const text = new Text({
     text: content,
@@ -105,23 +102,40 @@ export function showTooltip(
     }),
   });
 
-  const padding = 14;
-  const tooltipW = text.width + padding * 2;
-  const tooltipH = text.height + padding * 2;
+  const w = text.width + TOOLTIP_PADDING * 2;
+  const h = text.height + TOOLTIP_PADDING * 2;
+
+  const bg = new Graphics();
+  bg.rect(0, 0, w, h).fill({ color: Colors.slotBg, alpha: 0.95 });
+  drawPixelBorder(bg, 0, 0, w, h, { borderWidth: 2, highlight: color, shadow: color });
+  container.addChild(bg);
+
+  text.position.set(TOOLTIP_PADDING, TOOLTIP_PADDING);
+  container.addChild(text);
+
+  return container;
+}
+
+/**
+ * Show a themed tooltip at the given screen position.
+ */
+export function showTooltip(
+  content: string,
+  color: number,
+  globalX: number,
+  globalY: number,
+): void {
+  hideTooltip();
+
+  tooltip = createTooltipContainer(content, color);
+  const tooltipW = tooltip.width;
+  const tooltipH = tooltip.height;
 
   let tx = globalX - tooltipW - 12;
   let ty = globalY - 10;
   if (tx < 4) tx = globalX + 12;
   if (ty + tooltipH > SCREEN_H - 4) ty = SCREEN_H - tooltipH - 4;
   if (ty < 4) ty = 4;
-
-  const bg = new Graphics();
-  bg.rect(0, 0, tooltipW, tooltipH).fill({ color: Colors.slotBg, alpha: 0.95 });
-  drawPixelBorder(bg, 0, 0, tooltipW, tooltipH, { borderWidth: 2, highlight: color, shadow: color });
-  tooltip.addChild(bg);
-
-  text.position.set(padding, padding);
-  tooltip.addChild(text);
 
   tooltip.position.set(tx, ty);
   game.hudLayer.addChild(tooltip);
@@ -140,13 +154,90 @@ export function showItemTooltip(
   showTooltip(content, getRarityColor(item.rarity), globalX, globalY);
 }
 
+// ── Comparison tooltip ───────────────────────────────────────────────
+
 /**
- * Hide the active tooltip.
+ * Get the currently equipped item for a given slot.
+ * For rings, returns the first occupied ring slot.
+ */
+function getEquippedForSlot(slot: Slot): BaseItem | null {
+  switch (slot) {
+    case Slot.Weapon:  return inventory.equipped.weapon;
+    case Slot.Helmet:  return inventory.equipped.helmet;
+    case Slot.Chest:   return inventory.equipped.chest;
+    case Slot.Boots:   return inventory.equipped.boots;
+    case Slot.Ring:    return inventory.equipped.ring1 ?? inventory.equipped.ring2;
+    case Slot.Amulet:  return inventory.equipped.amulet;
+    case Slot.Offhand: return inventory.equipped.offhand;
+    default: return null;
+  }
+}
+
+/**
+ * Show an item tooltip with a comparison tooltip for the currently equipped item
+ * in the same slot. If nothing is equipped in that slot, only the main tooltip shows.
+ */
+export function showItemTooltipWithCompare(
+  item: BaseItem,
+  globalX: number,
+  globalY: number,
+  extra?: string,
+): void {
+  hideTooltip();
+
+  const equipped = getEquippedForSlot(item.slot);
+
+  // Build main tooltip
+  const mainContent = buildItemTooltipText(item, extra);
+  const mainColor = getRarityColor(item.rarity);
+  tooltip = createTooltipContainer(mainContent, mainColor);
+  const mainW = tooltip.width;
+  const mainH = tooltip.height;
+
+  // Build compare tooltip if there's an equipped item to compare against
+  let compareW = 0;
+  let compareH = 0;
+  if (equipped && equipped !== item) {
+    const compareContent = buildItemTooltipText(equipped, 'Equipped');
+    const compareColor = getRarityColor(equipped.rarity);
+    compareTooltip = createTooltipContainer(compareContent, compareColor);
+    compareW = compareTooltip.width;
+    compareH = compareTooltip.height;
+  }
+
+  const totalW = compareTooltip ? mainW + TOOLTIP_GAP + compareW : mainW;
+  const tallestH = Math.max(mainH, compareH);
+
+  // Position: try left of cursor, fall back to right
+  let tx = globalX - totalW - 12;
+  let ty = globalY - 10;
+  if (tx < 4) tx = globalX + 12;
+  if (ty + tallestH > SCREEN_H - 4) ty = SCREEN_H - tallestH - 4;
+  if (tx + totalW > SCREEN_W - 4) tx = SCREEN_W - totalW - 4;
+  if (ty < 4) ty = 4;
+
+  // Main tooltip on the left, compare on the right
+  tooltip.position.set(tx, ty);
+  game.hudLayer.addChild(tooltip);
+
+  if (compareTooltip) {
+    compareTooltip.position.set(tx + mainW + TOOLTIP_GAP, ty);
+    game.hudLayer.addChild(compareTooltip);
+  }
+}
+
+/**
+ * Hide the active tooltip (and comparison tooltip if shown).
  */
 export function hideTooltip(): void {
   if (tooltip) {
     tooltip.removeFromParent();
     tooltip.destroy({ children: true });
     tooltip = null;
+  }
+  if (compareTooltip) {
+    compareTooltip.removeFromParent();
+    compareTooltip.destroy({ children: true });
+    compareTooltip = null;
   }
 }
