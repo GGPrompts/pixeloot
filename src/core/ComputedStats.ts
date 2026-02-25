@@ -7,6 +7,7 @@ import {
   getAttackSpeedMultiplier,
   getCooldownMultiplier,
 } from '../ecs/systems/StatEffects';
+import { getConditionalBonuses } from './ConditionalAffixSystem';
 // UniqueEffects passive modifiers are checked at their point of use
 // (StatusEffectSystem, SkillSystem, CollisionSystem, skill execute functions)
 
@@ -162,6 +163,17 @@ export function markStatsDirty(): void {
 export function recalculateStats(): FinalStats {
   const items = getEquippedItems();
   const affixes = aggregateAffixes(items);
+
+  // Fold in conditional affix bonuses (evaluated per-frame by ConditionalAffixSystem)
+  const condBonuses = getConditionalBonuses();
+  affixes.flatDamage += condBonuses.flatDamage;
+  affixes.percentDamage += condBonuses.percentDamage;
+  affixes.percentAttackSpeed += condBonuses.percentAttackSpeed;
+  affixes.percentProjectileSpeed += condBonuses.percentProjectileSpeed;
+  affixes.flatArmor += condBonuses.flatArmor;
+  affixes.hpRegen += condBonuses.hpRegen;
+  affixes.percentMoveSpeed += condBonuses.percentMoveSpeed;
+  affixes.percentCDR += condBonuses.percentCDR;
 
   const dex = playerStats?.dexterity ?? 0;
   const int = playerStats?.intelligence ?? 0;

@@ -59,6 +59,25 @@ export interface Affix {
 
 export type AffixCategory = 'offensive' | 'defensive' | 'utility' | 'conditional';
 
+/** Condition type for conditional affixes. */
+export type ConditionType =
+  | 'while-moving'
+  | 'while-stationary'
+  | 'on-kill'
+  | 'on-hit'
+  | 'low-hp'
+  | 'full-hp'
+  | 'after-skill'
+  | 'after-movement-skill'
+  | 'distance-close'
+  | 'distance-far'
+  | 'stat-breakpoint'
+  | 'kill-streak'
+  | 'status-on-target'
+  | 'multi-hit'
+  | 'recently-hit'
+  | 'no-damage-taken';
+
 export interface AffixDefinition {
   id: string;
   name: string;
@@ -67,6 +86,12 @@ export interface AffixDefinition {
   minValue: number;
   maxValue: number;
   weight: number;
+  /** Condition type for conditional affixes. */
+  conditionType?: ConditionType;
+  /** Additional condition parameters (thresholds, time windows, etc.). */
+  conditionParams?: Record<string, number | string>;
+  /** Duration of the buff in seconds after trigger. 0 = passive/while-condition-met. */
+  buffDuration?: number;
 }
 
 export interface BaseItemTemplate {

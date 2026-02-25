@@ -17,6 +17,8 @@ import { shake } from './CameraSystem';
 import { game } from '../../Game';
 import { Graphics } from 'pixi.js';
 import { hasEffect, activateFrenzy, isFrenzyActive } from '../../core/UniqueEffects';
+import { fireProjectile } from '../../entities/Projectile';
+import { trackDamageTaken, trackKill } from '../../core/ConditionalAffixSystem';
 
 /** Overcharger death buff constants */
 const OVERCHARGER_BUFF_RADIUS = 160;
@@ -216,6 +218,23 @@ export function collisionSystem(dt: number): void {
           dmg = Math.round(dmg * 1.15);
         }
 
+        // Allseeing Visor: +25% damage to enemies below 20% HP
+        if (hasEffect('visor_execute') && enemy.health.current / enemy.health.max < 0.2) {
+          dmg = Math.round(dmg * 1.25);
+        }
+
+        // Shatterglass Lens: damage scaling based on projectile travel distance
+        if (hasEffect('shatterglass_range_scaling') && proj.spawnPosition) {
+          const tdx = proj.position.x - proj.spawnPosition.x;
+          const tdy = proj.position.y - proj.spawnPosition.y;
+          const travelDist = Math.sqrt(tdx * tdx + tdy * tdy);
+          if (travelDist > 300) {
+            dmg = Math.round(dmg * 1.2);
+          } else if (travelDist < 100) {
+            dmg = Math.round(dmg * 0.85);
+          }
+        }
+
         // Mirror cracked: takes double damage
         if (enemy.enemyType === 'mirror' && enemy.aiState === 'cracked') {
           dmg = Math.round(dmg * 2);
@@ -374,6 +393,9 @@ export function collisionSystem(dt: number): void {
     // Grant XP to player based on enemy type and level
     grantXP(getEnemyXP(enemy.enemyType ?? 'rusher', enemy.level ?? 1));
 
+    // Track kill for conditional affix system
+    trackKill();
+
     // Roll and spawn loot/gold drops
     const enemyType = enemy.enemyType ?? 'rusher';
     const monsterLevel = enemy.level ?? 1;
@@ -439,6 +461,31 @@ export function collisionSystem(dt: number): void {
       activateFrenzy();
     }
 
+    // Ricochet Longbow: on kill, bounce a projectile to nearest enemy within 128px
+    if (hasEffect('ricochet_on_kill')) {
+      let nearestBounce: (typeof enemies.entities)[number] | null = null;
+      let nearestBounceDist = 128 * 128;
+      for (const other of enemies) {
+        if (other === enemy || enemiesToRemove.includes(other)) continue;
+        const bdx = other.position.x - enemy.position.x;
+        const bdy = other.position.y - enemy.position.y;
+        const bDistSq = bdx * bdx + bdy * bdy;
+        if (bDistSq < nearestBounceDist) {
+          nearestBounceDist = bDistSq;
+          nearestBounce = other;
+        }
+      }
+      if (nearestBounce) {
+        fireProjectile(
+          enemy.position.x,
+          enemy.position.y,
+          nearestBounce.position.x,
+          nearestBounce.position.y,
+          { speed: 600, damage: 24, radius: 6, color: 0xccff00, lifetime: 1 },
+        );
+      }
+    }
+
     // Volatile modifier: AoE explosion on death (15% of enemy max HP, 64px radius)
     if (hasModifier('explode_on_death')) {
       const explosionRadius = 64;
@@ -496,6 +543,7 @@ export function collisionSystem(dt: number): void {
     if (distSq < CONTACT_RADIUS * CONTACT_RADIUS) {
       const reducedContactDmg = reduceDamage(enemy.damage, enemy.level ?? 1);
       player.health.current -= reducedContactDmg;
+      trackDamageTaken();
       spawnDamageNumber(player.position.x, player.position.y - 10, reducedContactDmg, 0xff3333);
       spawnHitSparks(player.position.x, player.position.y, 'physical');
       sfxPlayer.play('hit_physical');
@@ -549,6 +597,7 @@ export function collisionSystem(dt: number): void {
     if (distSq < HIT_RADIUS * HIT_RADIUS) {
       const reducedProjDmg = reduceDamage(proj.damage, proj.level ?? 1);
       player.health.current -= reducedProjDmg;
+      trackDamageTaken();
       spawnDamageNumber(player.position.x, player.position.y - 10, reducedProjDmg, 0xff44ff);
       spawnHitSparks(player.position.x, player.position.y, 'fire');
       sfxPlayer.play('hit_magic');

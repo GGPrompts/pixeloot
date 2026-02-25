@@ -3,6 +3,7 @@ import { getComputedStats } from './ComputedStats';
 import { sfxPlayer } from '../audio/SFXManager';
 import { screenToWorld } from '../Game';
 import { hasEffect, isFrenzyActive } from './UniqueEffects';
+import { trackSkillUsed, trackMovementSkillUsed } from './ConditionalAffixSystem';
 
 export type SlotType = 'primary' | 'movement' | 'assignable';
 export type TargetType = 'projectile' | 'self_aoe' | 'cursor_aoe' | 'cursor_target' | 'movement' | 'self_place';
@@ -139,6 +140,11 @@ class SkillSystem {
     if (skill.cooldownRemaining > 0) return false;
 
     skill.def.execute(playerPos, mousePos);
+    // Track skill usage for conditional affixes
+    trackSkillUsed();
+    if (slot === 'space') {
+      trackMovementSkillUsed();
+    }
     const castSfx = this._activeClass === 'mage' ? 'cast_mage' : 'cast_ranger';
     sfxPlayer.play(castSfx);
     const stats = getComputedStats();

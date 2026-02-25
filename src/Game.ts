@@ -43,6 +43,8 @@ import { checkNPCClick, updateComingSoonText } from './entities/NPC';
 import { updateSkillAssignPanel, isSkillAssignOpen, toggleSkillAssignPanel } from './ui/SkillAssignPanel';
 import { updateRangeIndicators } from './ui/RangeIndicator';
 import { SCREEN_W, SCREEN_H, TILE_SIZE, LOGIC_FPS, LOGIC_STEP } from './core/constants';
+import { conditionalAffixSystem } from './core/ConditionalAffixSystem';
+import { markStatsDirty } from './core/ComputedStats';
 
 /** Returns true if any UI panel is currently open (used to prevent multiple panels). */
 export function isAnyPanelOpen(): boolean {
@@ -359,6 +361,10 @@ export class Game {
     pickupSystem(dt);
     healthSystem(dt);
     this.waveSystem.update(dt);
+
+    // Evaluate conditional affixes and mark stats dirty so bonuses are re-computed
+    conditionalAffixSystem(dt);
+    markStatsDirty();
   }
 
   /** Called every render frame for visual-only work. */

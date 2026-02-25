@@ -1,6 +1,7 @@
 import { world } from '../world';
 import { InputManager } from '../../core/InputManager';
 import { game } from '../../Game';
+import { trackMovement } from '../../core/ConditionalAffixSystem';
 
 const TILE_SIZE = 32;
 
@@ -26,6 +27,9 @@ export function movementSystem(dt: number): void {
       entity.velocity.x = move.x * entity.speed;
       entity.velocity.y = move.y * entity.speed;
     }
+    // Track movement state for conditional affixes
+    const velMag = Math.sqrt(entity.velocity.x * entity.velocity.x + entity.velocity.y * entity.velocity.y);
+    trackMovement(velMag);
   }
 
   const tileMap = game.tileMap;
