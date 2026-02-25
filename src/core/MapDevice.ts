@@ -87,15 +87,18 @@ export function activateMap(mapItem: MapItem): void {
   // 3. Clear all enemies, enemy projectiles, and loot from the world
   clearEntities();
 
-  // 4. Generate new dungeon with a different size for variety
-  const baseW = 80;
-  const baseH = 50;
-  // Vary size slightly based on tier
-  const dungeonW = baseW + Math.floor(Math.random() * 10) - 5;
-  const dungeonH = baseH + Math.floor(Math.random() * 6) - 3;
+  // 4. Generate new dungeon — size scales with map tier
+  // Tier 1: ~80x50 (small arena), Tier 5: ~180x110 (sprawling dungeon)
+  const tier = mapItem.tier ?? 1;
+  const baseW = 60 + tier * 25;   // 85, 110, 135, 160, 185
+  const baseH = 35 + tier * 15;   // 50, 65, 80, 95, 110
+  // Add some random variance (±10%)
+  const variance = 0.1;
+  const dungeonW = Math.round(baseW * (1 + (Math.random() * 2 - 1) * variance));
+  const dungeonH = Math.round(baseH * (1 + (Math.random() * 2 - 1) * variance));
   const dungeonData = generateDungeon(
-    Math.max(40, dungeonW),
-    Math.max(30, dungeonH),
+    Math.max(60, dungeonW),
+    Math.max(40, dungeonH),
   );
 
   // 5. Replace the tile map

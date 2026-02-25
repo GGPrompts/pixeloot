@@ -80,8 +80,9 @@ function findSpawnPosition(px: number, py: number, maxAttempts = 20): { x: numbe
   return null;
 }
 
-/** Find a floor tile near (targetX, targetY), snapping to nearest floor. */
-function findNearestFloor(targetX: number, targetY: number): { x: number; y: number } {
+/** Find a floor tile near (targetX, targetY), snapping to nearest floor.
+ *  Optionally enforces a minimum distance from (avoidX, avoidY). */
+function findNearestFloor(targetX: number, targetY: number, avoidX?: number, avoidY?: number): { x: number; y: number } {
   const tilePosTarget = game.tileMap.worldToTile(targetX, targetY);
   // Search in expanding rings
   for (let radius = 0; radius < 20; radius++) {
@@ -91,14 +92,21 @@ function findNearestFloor(targetX: number, targetY: number): { x: number; y: num
         const tx = tilePosTarget.x + dx;
         const ty = tilePosTarget.y + dy;
         if (!game.tileMap.blocksMovement(tx, ty)) {
-          return game.tileMap.tileToWorld(tx, ty);
+          const pos = game.tileMap.tileToWorld(tx, ty);
+          // Enforce minimum distance from player if specified
+          if (avoidX !== undefined && avoidY !== undefined) {
+            const adx = pos.x - avoidX;
+            const ady = pos.y - avoidY;
+            if (Math.sqrt(adx * adx + ady * ady) < MIN_PLAYER_DIST) continue;
+          }
+          return pos;
         }
       }
     }
   }
-  // Fallback: random floor
-  const tile = game.tileMap.getRandomFloorTile();
-  return game.tileMap.tileToWorld(tile.x, tile.y);
+  // Fallback: random floor away from player
+  return findSpawnPosition(avoidX ?? targetX, avoidY ?? targetY)
+    ?? game.tileMap.tileToWorld(...Object.values(game.tileMap.getRandomFloorTile()) as [number, number]);
 }
 
 // -- Formation placement generators --------------------------------------
@@ -112,7 +120,7 @@ function buildColumnSpawns(entries: SpawnEntry['type'][], px: number, py: number
   const perpY = Math.cos(angle) * 32;
 
   return entries.map((type, i) => {
-    const pos = findNearestFloor(startX + perpX * (i - entries.length / 2), startY + perpY * (i - entries.length / 2));
+    const pos = findNearestFloor(startX + perpX * (i - entries.length / 2), startY + perpY * (i - entries.length / 2), px, py);
     return { type, x: pos.x, y: pos.y };
   });
 }
@@ -130,6 +138,7 @@ function buildPincerSpawns(entries: SpawnEntry['type'][], px: number, py: number
     const pos = findNearestFloor(
       px + Math.cos(angle) * SURROUND_DIST + Math.cos(angle + Math.PI / 2) * spread,
       py + Math.sin(angle) * SURROUND_DIST + Math.sin(angle + Math.PI / 2) * spread,
+      px, py,
     );
     result.push({ type, x: pos.x, y: pos.y });
   });
@@ -139,6 +148,7 @@ function buildPincerSpawns(entries: SpawnEntry['type'][], px: number, py: number
     const pos = findNearestFloor(
       px + Math.cos(angle + Math.PI) * SURROUND_DIST + Math.cos(angle + Math.PI / 2) * spread,
       py + Math.sin(angle + Math.PI) * SURROUND_DIST + Math.sin(angle + Math.PI / 2) * spread,
+      px, py,
     );
     result.push({ type, x: pos.x, y: pos.y });
   });
@@ -150,7 +160,7 @@ function buildSurroundSpawns(entries: SpawnEntry['type'][], px: number, py: numb
   const offset = Math.random() * Math.PI * 2;
   return entries.map((type, i) => {
     const a = offset + step * i;
-    const pos = findNearestFloor(px + Math.cos(a) * SURROUND_DIST, py + Math.sin(a) * SURROUND_DIST);
+    const pos = findNearestFloor(px + Math.cos(a) * SURROUND_DIST, py + Math.sin(a) * SURROUND_DIST, px, py);
     return { type, x: pos.x, y: pos.y };
   });
 }
@@ -169,6 +179,7 @@ function buildShieldWallSpawns(entries: SpawnEntry['type'][], px: number, py: nu
     const pos = findNearestFloor(
       px + Math.cos(angle) * (SURROUND_DIST - 40) + Math.cos(angle + Math.PI / 2) * spread,
       py + Math.sin(angle) * (SURROUND_DIST - 40) + Math.sin(angle + Math.PI / 2) * spread,
+      px, py,
     );
     result.push({ type, x: pos.x, y: pos.y });
   });
@@ -178,6 +189,7 @@ function buildShieldWallSpawns(entries: SpawnEntry['type'][], px: number, py: nu
     const pos = findNearestFloor(
       px + Math.cos(angle) * (SURROUND_DIST + 40) + Math.cos(angle + Math.PI / 2) * spread,
       py + Math.sin(angle) * (SURROUND_DIST + 40) + Math.sin(angle + Math.PI / 2) * spread,
+      px, py,
     );
     result.push({ type, x: pos.x, y: pos.y });
   });
