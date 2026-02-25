@@ -49,6 +49,9 @@ export function enemyHealthBarSystem(): void {
     bar.visible = true;
     bar.clear();
 
+    // Counter-rotate so the bar stays horizontal regardless of sprite rotation
+    bar.rotation = -enemy.sprite.rotation;
+
     // Background
     bar.rect(-BAR_W / 2, BAR_OFFSET_Y, BAR_W, BAR_H).fill({ color: 0x333333 });
 
@@ -69,5 +72,7 @@ export function enemyHealthBarSystem(): void {
     lvText.text = `Lv.${monsterLevel}`;
     lvText.position.set(BAR_W / 2 + 2, BAR_OFFSET_Y + BAR_H / 2);
     lvText.visible = true;
+    // Counter-rotate so level text stays horizontal
+    lvText.rotation = -enemy.sprite.rotation;
   }
 }
