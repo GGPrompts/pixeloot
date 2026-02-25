@@ -497,11 +497,17 @@ interface ActiveGroup {
 // Wave selection and generation
 // =========================================================================
 
-/** Map wave number to expected difficulty tier for WaveDesign selection. */
+/** Map wave number to expected difficulty tier for WaveDesign selection.
+ *  Waves 1-5 use legacy predefined waves, so this is primarily for wave 6+.
+ *  Waves 6-8: early-tier designed formations
+ *  Waves 9, 11-14: mid-tier (wave 10 is boss, intercepted separately)
+ *  Waves 16-19, 21-24...: late-tier
+ *  Every 5th wave: boss (intercepted by spawnBossWave before reaching here)
+ */
 function getDifficultyTier(waveNum: number): DifficultyTier {
-  if (waveNum <= 4) return 'early';
-  if (waveNum <= 9) return 'mid';
   if (waveNum % 5 === 0) return 'boss';
+  if (waveNum <= 8) return 'early';
+  if (waveNum <= 14) return 'mid';
   return 'late';
 }
 
@@ -977,16 +983,61 @@ export class WaveSystem {
     this.showWaveText();
   }
 
-  /** Spawn a boss-only wave. */
+  /** Spawn a boss wave using boss-tier WaveDesign for add groups. */
   private spawnBossWave(pPos: { x: number; y: number }): void {
-    this.usingDesignedWave = false;
-    const spawnPos = findSpawnPosition(pPos.x, pPos.y)
+    // Spawn the actual boss entity at a safe distance from the player
+    const bossPos = findSpawnPosition(pPos.x, pPos.y)
       ?? findNearestFloor(pPos.x + SURROUND_DIST, pPos.y);
-
-    spawnBoss(spawnPos.x, spawnPos.y, this.currentMonsterLevel);
+    spawnBoss(bossPos.x, bossPos.y, this.currentMonsterLevel);
 
     musicPlayer.crossfade('boss', 800);
 
+    // Try to select a boss-tier WaveDesign for add groups and reinforcements.
+    // The first group in each boss design represents the boss itself (already
+    // spawned above via spawnBoss), so we skip it and use the remaining groups
+    // for adds, reinforcements, and triggered phases.
+    const bossCandidates = WAVE_DESIGNS.filter(d => d.difficulty === 'boss');
+    if (bossCandidates.length > 0) {
+      const design = bossCandidates[this.currentWave % bossCandidates.length];
+      const addGroups = design.groups.slice(1); // skip the "boss" group
+
+      if (addGroups.length > 0) {
+        this.usingDesignedWave = true;
+        this.waveElapsedTime = 0;
+        this.waveKillCount = 0;
+        this.lastLivingCount = this.livingEnemyCount();
+
+        const baseAngle = Math.random() * Math.PI * 2;
+        this.activeGroups = addGroups.map(groupDef => {
+          const ag: ActiveGroup = {
+            groupDef,
+            pendingSpawns: [],
+            spawnTimer: 0,
+            activated: false,
+            elapsedSinceActivation: 0,
+            spawnedEntityIds: [],
+          };
+
+          if (groupDef.timing.kind === 'immediate') {
+            const modifiedEnemies = applyModifiers(groupDef.enemies);
+            const typeList = flattenEnemies(modifiedEnemies);
+            const anchorPos = resolveAnchor(groupDef.anchor, pPos.x, pPos.y, baseAngle);
+            ag.pendingSpawns = arrangeGroup(typeList, anchorPos, groupDef.spread, pPos.x, pPos.y);
+            ag.activated = true;
+            ag.spawnTimer = 0;
+          }
+
+          return ag;
+        });
+
+        this.state = 'spawning';
+        this.showWaveText();
+        return;
+      }
+    }
+
+    // Fallback: boss-only wave (no add groups available)
+    this.usingDesignedWave = false;
     this.pendingSpawns = [];
     this.state = 'active';
 
