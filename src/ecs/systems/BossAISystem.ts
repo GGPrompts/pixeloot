@@ -4,6 +4,7 @@ import { game } from '../../Game';
 import { spawnRusher, spawnSwarm } from '../../entities/Enemy';
 import { spawnBossTelegraph } from '../../entities/BossTelegraph';
 import { shake } from './CameraSystem';
+import { hasModifier } from '../../core/MapDevice';
 
 const bosses = world.with('boss', 'enemy', 'position', 'velocity', 'speed', 'health', 'sprite');
 const players = world.with('player', 'position');
@@ -149,30 +150,41 @@ export function bossAISystem(dt: number): void {
     const bossLevel = boss.level ?? 1;
 
     // ── Phase transitions ─────────────────────────────────────────
+    // Empowered Boss modifier: 5 phases (0.8, 0.6, 0.4, 0.2) instead of 3 (0.6, 0.3)
+    const empowered = hasModifier('boss_phases');
+    const phaseThresholds = empowered
+      ? [0.8, 0.6, 0.4, 0.2]  // 5 phases total (1 + 4 transitions)
+      : [PHASE2_THRESHOLD, PHASE3_THRESHOLD]; // 3 phases total (1 + 2 transitions)
+    const maxPhase = phaseThresholds.length + 1;
+
     let currentPhase = boss.bossPhase ?? 1;
 
-    if (hpRatio <= PHASE3_THRESHOLD && currentPhase < 3) {
-      currentPhase = 3;
-      boss.bossPhase = 3;
-      // Enrage: increase speed
-      boss.speed = 100;
-      if (boss.baseSpeed !== undefined) boss.baseSpeed = 100;
-      // Screen shake on phase transition
-      shake(0.5, 8);
-    } else if (hpRatio <= PHASE2_THRESHOLD && currentPhase < 2) {
-      currentPhase = 2;
-      boss.bossPhase = 2;
-      // Spawn initial adds on entering phase 2
-      if (!state.phase2Entered) {
-        state.phase2Entered = true;
-        spawnAddsAroundBoss(boss.position.x, boss.position.y, bossLevel, 'swarm', 4);
-        // Screen shake on phase transition
-        shake(0.4, 6);
+    // Walk thresholds from highest phase to lowest to find correct current phase
+    for (let i = phaseThresholds.length - 1; i >= 0; i--) {
+      const targetPhase = i + 2; // threshold[0] -> phase 2, threshold[1] -> phase 3, etc.
+      if (hpRatio <= phaseThresholds[i] && currentPhase < targetPhase) {
+        currentPhase = targetPhase;
+        boss.bossPhase = targetPhase;
+
+        // Escalating speed boost each phase
+        const speedBoost = empowered ? 60 + (targetPhase - 2) * 15 : (targetPhase >= 3 ? 100 : 60);
+        boss.speed = speedBoost;
+        if (boss.baseSpeed !== undefined) boss.baseSpeed = speedBoost;
+
+        // Spawn adds on phase 2 entry (or equivalent early phases in empowered)
+        if (!state.phase2Entered && targetPhase >= 2) {
+          state.phase2Entered = true;
+          spawnAddsAroundBoss(boss.position.x, boss.position.y, bossLevel, 'swarm', 4);
+        }
+
+        // Screen shake scales with phase
+        shake(0.3 + targetPhase * 0.1, 4 + targetPhase * 2);
+        break; // Only transition once per tick
       }
     }
 
-    // ── Phase 3 visual: red tint + pulse ──────────────────────────
-    if (currentPhase === 3) {
+    // ── Enrage visual: red tint + pulse in final phase ─────────────
+    if (currentPhase >= maxPhase) {
       state.pulseTime += dt;
       const pulse = 0.7 + 0.3 * Math.sin(state.pulseTime * 8);
       boss.sprite.alpha = pulse;
@@ -180,18 +192,22 @@ export function bossAISystem(dt: number): void {
     }
 
     // ── Get intervals for current phase ───────────────────────────
+    // Smoothly scale attack speed with phase: higher phase = faster attacks
     let burstInterval: number;
     let chargeInterval: number;
     let burstCount: number;
 
-    if (currentPhase === 3) {
+    if (currentPhase >= maxPhase) {
+      // Final phase (enrage): fastest attacks
       burstInterval = P3_BURST_INTERVAL;
       chargeInterval = P3_CHARGE_INTERVAL;
       burstCount = 5;
-    } else if (currentPhase === 2) {
-      burstInterval = P2_BURST_INTERVAL;
-      chargeInterval = P2_CHARGE_INTERVAL;
-      burstCount = 3;
+    } else if (currentPhase >= 2) {
+      // Intermediate phases: lerp between P1 and P3 timers
+      const progress = (currentPhase - 1) / (maxPhase - 1); // 0..1
+      burstInterval = P1_BURST_INTERVAL + (P2_BURST_INTERVAL - P1_BURST_INTERVAL) * progress;
+      chargeInterval = P1_CHARGE_INTERVAL + (P2_CHARGE_INTERVAL - P1_CHARGE_INTERVAL) * progress;
+      burstCount = 3 + Math.floor(progress * 2); // 3..5
     } else {
       burstInterval = P1_BURST_INTERVAL;
       chargeInterval = P1_CHARGE_INTERVAL;

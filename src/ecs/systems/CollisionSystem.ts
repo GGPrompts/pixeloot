@@ -14,6 +14,8 @@ import { spawnMiniSplitter } from '../../entities/Enemy';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { spawnHitSparks } from '../../entities/HitSparks';
 import { shake } from './CameraSystem';
+import { game } from '../../Game';
+import { Graphics } from 'pixi.js';
 
 /** Apply armor damage reduction to incoming damage, scaled by monster level. */
 function reduceDamage(rawDamage: number, monsterLevel = 1): number {
@@ -211,10 +213,12 @@ export function collisionSystem(dt: number): void {
       );
     }
 
-    // Explode on death modifier: deal AoE damage to the player
+    // Volatile modifier: AoE explosion on death (15% of enemy max HP, 64px radius)
     if (hasModifier('explode_on_death')) {
-      const explosionRadius = 60;
-      const explosionDamage = Math.round((enemy.damage ?? 5) * 0.5);
+      const explosionRadius = 64;
+      const explosionDamage = Math.round(enemy.health.max * 0.15);
+      // Spawn orange particle burst at death position
+      spawnExplosionParticles(enemy.position.x, enemy.position.y);
       if (players.entities.length > 0) {
         const pl = players.entities[0];
         const edx = pl.position.x - enemy.position.x;
@@ -309,6 +313,11 @@ export function collisionSystem(dt: number): void {
         shake(0.3, 6);
       }
 
+      // Fire enchanted modifier: enemy projectiles apply Burn
+      if (hasModifier('fire_enchanted')) {
+        applyStatus(player, StatusType.Burn, proj.position);
+      }
+
       if (player.health.current <= 0) {
         player.health.current = 0;
       }
@@ -319,5 +328,41 @@ export function collisionSystem(dt: number): void {
 
   for (const proj of enemyProjsToDespawn) {
     despawnProjectile(proj);
+  }
+}
+
+// ── Volatile explosion particle burst ─────────────────────────────────
+const EXPLOSION_PARTICLE_COUNT = 10;
+const EXPLOSION_PARTICLE_SPEED = 120;
+const EXPLOSION_PARTICLE_DURATION = 400; // ms
+const EXPLOSION_PARTICLE_COLOR = 0xff6600;
+
+function spawnExplosionParticles(x: number, y: number): void {
+  for (let i = 0; i < EXPLOSION_PARTICLE_COUNT; i++) {
+    const g = new Graphics();
+    g.circle(0, 0, 4).fill({ color: EXPLOSION_PARTICLE_COLOR });
+    g.position.set(x, y);
+    game.effectLayer.addChild(g);
+
+    const angle = (Math.PI * 2 * i) / EXPLOSION_PARTICLE_COUNT + (Math.random() - 0.5) * 0.5;
+    const speed = EXPLOSION_PARTICLE_SPEED * (0.6 + Math.random() * 0.4);
+    const vx = Math.cos(angle) * speed;
+    const vy = Math.sin(angle) * speed;
+
+    const start = performance.now();
+    const tick = () => {
+      const elapsed = performance.now() - start;
+      const t = Math.min(elapsed / EXPLOSION_PARTICLE_DURATION, 1);
+      g.position.x += vx * (1 / 60);
+      g.position.y += vy * (1 / 60);
+      g.alpha = 1 - t;
+      if (t >= 1) {
+        g.removeFromParent();
+        g.destroy();
+      } else {
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
   }
 }

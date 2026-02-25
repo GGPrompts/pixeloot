@@ -8,6 +8,8 @@ import { hasModifier } from '../core/MapDevice';
  * Apply active map modifiers to a freshly spawned enemy entity.
  * - hp_boost: +20% HP
  * - speed_boost: +15% speed
+ * - fire_enchanted: flag entity so contact/projectile hits apply Burn
+ * - resist_first_hit: initialise firstHitTaken so first damage is absorbed
  */
 function applyMapModifiers(entity: Entity): void {
   if (hasModifier('hp_boost') && entity.health) {
@@ -19,6 +21,13 @@ function applyMapModifiers(entity: Entity): void {
     const speedBonus = Math.round(entity.baseSpeed * 0.15);
     entity.speed += speedBonus;
     entity.baseSpeed += speedBonus;
+  }
+  if (hasModifier('fire_enchanted')) {
+    entity.fireEnchanted = true;
+  }
+  if (hasModifier('resist_first_hit')) {
+    // Initialise to false so CollisionSystem knows this enemy has not yet been hit
+    entity.firstHitTaken = undefined;
   }
 }
 

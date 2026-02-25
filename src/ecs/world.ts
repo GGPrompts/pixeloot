@@ -47,6 +47,7 @@ export type Entity = {
   mapDrop?: { mapItem: MapItem };   // map item drop on the ground
   gemDrop?: { gem: Gem };           // gem drop on the ground
   pickup?: true;                    // entity can be picked up by walking over it
+  fireEnchanted?: true;              // fire_enchanted modifier: applies Burn on contact/projectile
   firstHitTaken?: true;             // tracks if enemy has been hit once (resist_first_hit mod)
   shielded?: true;                  // enemy has a directional shield (blocks frontal projectiles)
   isMiniSplitter?: true;            // mini-splitter that does NOT split again on death
