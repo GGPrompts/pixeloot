@@ -834,31 +834,37 @@ function updateDarkness(
   const overlay = state.overlayContainer;
   overlay.clear();
 
-  // Dark overlay with a circular cutout for the light radius
-  // We draw a large dark rectangle and a brighter circle at the player position
-  // Since we're in hudLayer (screen space), convert player world pos to screen
+  // Dark overlay with a circular cutout for the player's light radius.
+  // Uses .cut() to punch a real hole in the darkness rect.
   const cam = game.worldLayer;
   const screenPx = playerX + cam.x;
   const screenPy = playerY + cam.y;
 
-  // Full-screen darkness overlay
-  overlay.rect(-200, -200, 1680, 1120).fill({ color: 0x000011, alpha: 0.85 });
+  // Soft gradient: full darkness outside, donut rings for falloff, clear center
+  const outerEdge = effectiveLight * 1.3;
+  const innerClear = effectiveLight * 0.6;
+  const steps = 6;
 
-  // Cut out a circle for visibility using a bright fill with 'erase' blend
-  // Since PixiJS Graphics doesn't support erase, we overlay a gradient-like ring
-  // Approach: draw concentric dark rings from outside in, leaving center clear
-  // Actually, redraw: fill full dark, then draw "clear" circle with a lighter fill
-  overlay.clear();
+  // Full darkness beyond the outermost falloff ring
+  overlay
+    .rect(-200, -200, 1680, 1120)
+    .circle(screenPx, screenPy, outerEdge)
+    .cut()
+    .fill({ color: 0x000011, alpha: 0.85 });
 
-  // Draw darkness as a series of concentric rings getting darker away from player
-  const maxDist = 900;
-  const steps = 8;
-  for (let i = steps; i >= 0; i--) {
-    const r = effectiveLight + (maxDist - effectiveLight) * (i / steps);
-    const alpha = 0.85 * (i / steps);
-    if (r > 0) {
-      overlay.circle(screenPx, screenPy, r).fill({ color: 0x000011, alpha });
-    }
+  // Gradient donut rings from outerEdge down to innerClear
+  for (let i = 0; i < steps; i++) {
+    const t = i / steps;
+    const nextT = (i + 1) / steps;
+    const ringOuter = outerEdge - t * (outerEdge - innerClear);
+    const ringInner = outerEdge - nextT * (outerEdge - innerClear);
+    const alpha = 0.85 * (1 - nextT);
+
+    overlay
+      .circle(screenPx, screenPy, ringOuter)
+      .circle(screenPx, screenPy, ringInner)
+      .cut()
+      .fill({ color: 0x000011, alpha });
   }
 
   // Darkness zones as dark circles

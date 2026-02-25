@@ -1774,29 +1774,35 @@ function updateDarknessOverlay(player: Entity): void {
   const screenPX = player.position.x + camX;
   const screenPY = player.position.y + camY;
 
-  // Draw full screen dark overlay with a radial cutout
-  // We draw a large dark rect and then punch a hole with a lighter center
-  // Since PixiJS Graphics doesn't do gradient masks easily, we approximate
-  // with concentric rings from dark to transparent
   const radius = darknessRadius;
-  const steps = 12;
+  const outerRadius = radius * 1.2;
+  const innerRadius = radius * 0.6;
+  const steps = 8;
 
-  // Full dark background
-  darknessOverlay.rect(-200, -200, SCREEN_W + 400, SCREEN_H + 400)
+  // Full darkness outside the outermost falloff ring
+  darknessOverlay
+    .rect(-200, -200, SCREEN_W + 400, SCREEN_H + 400)
+    .circle(screenPX, screenPY, outerRadius)
+    .cut()
     .fill({ color: 0x000000, alpha: 0.92 });
 
-  // Cut out visibility circle with concentric rings (lighter toward center)
-  for (let i = steps; i >= 0; i--) {
+  // Gradient donut rings from outerRadius down to innerRadius.
+  // Each ring is a circle with a smaller circle cut out (donut shape).
+  // Alpha decreases toward center, creating a soft falloff.
+  for (let i = 0; i < steps; i++) {
     const t = i / steps;
-    const r = radius * (0.7 + 0.5 * t); // outer falloff ring
-    const alpha = 0.92 * t;
-    darknessOverlay.circle(screenPX, screenPY, r)
-      .fill({ color: 0x000000, alpha: Math.max(0, 0.92 - alpha) });
-  }
+    const nextT = (i + 1) / steps;
+    const ringOuter = outerRadius - t * (outerRadius - innerRadius);
+    const ringInner = outerRadius - nextT * (outerRadius - innerRadius);
+    // Alpha fades from ~0.92 at outerRadius to ~0 at innerRadius
+    const alpha = 0.92 * (1 - nextT);
 
-  // Clear center (bright area)
-  darknessOverlay.circle(screenPX, screenPY, radius * 0.6)
-    .fill({ color: 0x000000, alpha: 0 });
+    darknessOverlay
+      .circle(screenPX, screenPY, ringOuter)
+      .circle(screenPX, screenPY, ringInner)
+      .cut()
+      .fill({ color: 0x000000, alpha });
+  }
 }
 
 // ── Chromatic Shift ─────────────────────────────────────────────────
