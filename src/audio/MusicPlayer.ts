@@ -19,7 +19,41 @@ const TRACKS: Record<string, SongData> = {
   combat: combatSong as unknown as SongData,
   boss: bossSong as unknown as SongData,
   victory: victorySong as unknown as SongData,
+  // Zone-specific combat tracks (placeholder: fall back to combat until JSON authored)
+  grid: null as unknown as SongData,
+  neon_wastes: null as unknown as SongData,
+  reactor_core: null as unknown as SongData,
+  frozen_array: null as unknown as SongData,
+  overgrowth: null as unknown as SongData,
+  storm_network: null as unknown as SongData,
+  the_abyss: null as unknown as SongData,
+  chromatic_rift: null as unknown as SongData,
+  // Contextual stingers / overlays
+  enrage: null as unknown as SongData,
+  death: null as unknown as SongData,
 };
+
+/**
+ * Map zone theme keys to their music track names.
+ * Zones without a dedicated track fall back to 'combat'.
+ */
+const ZONE_TRACK_MAP: Record<string, string> = {
+  the_grid: 'grid',
+  neon_wastes: 'neon_wastes',
+  reactor_core: 'reactor_core',
+  frozen_array: 'frozen_array',
+  overgrowth: 'overgrowth',
+  storm_network: 'storm_network',
+  the_abyss: 'the_abyss',
+  chromatic_rift: 'chromatic_rift',
+};
+
+/** Resolve a zone theme key to a playable track name, falling back to 'combat'. */
+export function getZoneTrack(zoneKey: string): string {
+  const trackName = ZONE_TRACK_MAP[zoneKey];
+  if (trackName && TRACKS[trackName]) return trackName;
+  return 'combat';
+}
 
 class MusicPlayer {
   private currentPlayer: ChipPlayer | null = null;
@@ -58,20 +92,18 @@ class MusicPlayer {
 
   /** Play a track by name. If the same track is already playing, do nothing. */
   play(trackName: string): void {
-    if (this.currentTrack === trackName && this.currentPlayer?.isPlaying()) {
-      return;
-    }
+    const resolved = this.resolveTrack(trackName);
+    if (!resolved) return;
+    const { songData, resolvedName } = resolved;
 
-    const songData = TRACKS[trackName];
-    if (!songData) {
-      console.warn(`MusicPlayer: unknown track "${trackName}"`);
+    if (this.currentTrack === resolvedName && this.currentPlayer?.isPlaying()) {
       return;
     }
 
     // Defer playback until user has interacted (browser autoplay policy)
     if (!this.contextResumed) {
-      this.pendingTrack = trackName;
-      this.currentTrack = trackName;
+      this.pendingTrack = resolvedName;
+      this.currentTrack = resolvedName;
       return;
     }
 
@@ -88,7 +120,7 @@ class MusicPlayer {
     player.setVolume(this.muted ? 0 : this.masterVolume);
 
     // For victory track, use short mode and stop after it ends
-    if (trackName === 'victory') {
+    if (resolvedName === 'victory') {
       player.setShortMode(true);
       player.onEnd(() => {
         // After victory fanfare, go back to combat music
@@ -100,7 +132,7 @@ class MusicPlayer {
     player.play();
 
     this.currentPlayer = player;
-    this.currentTrack = trackName;
+    this.currentTrack = resolvedName;
   }
 
   /** Stop all music. */
@@ -122,20 +154,18 @@ class MusicPlayer {
    * The old track fades out while the new one fades in.
    */
   crossfade(trackName: string, durationMs: number = 1000): void {
-    if (this.currentTrack === trackName && this.currentPlayer?.isPlaying()) {
-      return;
-    }
+    const resolved = this.resolveTrack(trackName);
+    if (!resolved) return;
+    const { songData, resolvedName } = resolved;
 
-    const songData = TRACKS[trackName];
-    if (!songData) {
-      console.warn(`MusicPlayer: unknown track "${trackName}"`);
+    if (this.currentTrack === resolvedName && this.currentPlayer?.isPlaying()) {
       return;
     }
 
     // Defer until user has interacted
     if (!this.contextResumed) {
-      this.pendingTrack = trackName;
-      this.currentTrack = trackName;
+      this.pendingTrack = resolvedName;
+      this.currentTrack = resolvedName;
       return;
     }
 
@@ -152,7 +182,7 @@ class MusicPlayer {
     newPlayer.play();
 
     this.currentPlayer = newPlayer;
-    this.currentTrack = trackName;
+    this.currentTrack = resolvedName;
 
     // Crossfade
     const steps = 20;
@@ -220,6 +250,36 @@ class MusicPlayer {
   getEnergy(): number {
     if (!this.currentPlayer) return 0;
     return this.currentPlayer.getEnergy();
+  }
+
+  /**
+   * Resolve a track name to valid song data.
+   * If the requested track has no song data (null placeholder), fall back:
+   *   - 'enrage' falls back to 'boss'
+   *   - 'death' falls back to nothing (returns null to skip)
+   *   - zone tracks fall back to 'combat'
+   */
+  private resolveTrack(trackName: string): { songData: SongData; resolvedName: string } | null {
+    // Direct lookup
+    if (trackName in TRACKS && TRACKS[trackName]) {
+      return { songData: TRACKS[trackName], resolvedName: trackName };
+    }
+
+    // Fallback for known placeholder tracks
+    const FALLBACKS: Record<string, string | null> = {
+      enrage: 'boss',
+      death: null, // no fallback -- skip silently
+    };
+    const fallback = trackName in FALLBACKS ? FALLBACKS[trackName] : 'combat';
+    if (fallback && TRACKS[fallback]) {
+      return { songData: TRACKS[fallback], resolvedName: fallback };
+    }
+
+    // Truly unknown track
+    if (!(trackName in TRACKS)) {
+      console.warn(`MusicPlayer: unknown track "${trackName}"`);
+    }
+    return null;
   }
 
   private clearCrossfade(): void {

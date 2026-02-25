@@ -2,14 +2,14 @@ import { Text, TextStyle } from 'pixi.js';
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { Fonts, FontSize } from '../ui/UITheme';
-import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder } from './Enemy';
+import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder, spawnBomber, spawnCharger, spawnPulsar } from './Enemy';
 import { spawnBoss } from './Boss';
 import { getMonsterLevel } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
 import { hasModifier, getQuantityBonus, isMapActive, getActiveTierBonus } from '../core/MapDevice';
 import { getActiveThemeKey } from '../core/ZoneThemes';
 import { enterTown, isInTown } from '../core/TownManager';
-import { musicPlayer } from '../audio/MusicPlayer';
+import { musicPlayer, getZoneTrack } from '../audio/MusicPlayer';
 
 const MIN_PLAYER_DIST = 200;
 const SURROUND_DIST = 400;
@@ -20,7 +20,7 @@ const WAVE_TEXT_DURATION = 2; // seconds the "Wave X" text is visible
 type EnemySpawnFn = (x: number, y: number, monsterLevel?: number) => void;
 
 type SpawnEntry = {
-  type: 'rusher' | 'swarm' | 'tank' | 'sniper' | 'flanker' | 'splitter' | 'shielder';
+  type: 'rusher' | 'swarm' | 'tank' | 'sniper' | 'flanker' | 'splitter' | 'shielder' | 'bomber' | 'charger' | 'pulsar';
   x: number;
   y: number;
 };
@@ -40,6 +40,9 @@ const SPAWN_FNS: Record<SpawnEntry['type'], EnemySpawnFn> = {
   flanker: spawnFlanker,
   splitter: spawnSplitter,
   shielder: spawnShielder,
+  bomber: spawnBomber,
+  charger: spawnCharger,
+  pulsar: spawnPulsar,
 };
 
 // -- Predefined waves 1-5 ------------------------------------------------
@@ -51,10 +54,10 @@ const PREDEFINED_WAVES: WaveDefinition[] = [
   { enemies: [{ type: 'swarm', count: 8 }], formation: 'chaoticSwarm' },
   // Wave 3: introduce Splitters
   { enemies: [{ type: 'rusher', count: 3 }, { type: 'tank', count: 1 }, { type: 'splitter', count: 2 }], formation: 'shieldWall' },
-  // Wave 4: introduce Shielders
-  { enemies: [{ type: 'rusher', count: 4 }, { type: 'flanker', count: 2 }, { type: 'shielder', count: 1 }], formation: 'pincer' },
-  // Wave 5
-  { enemies: [{ type: 'swarm', count: 4 }, { type: 'sniper', count: 2 }, { type: 'tank', count: 1 }, { type: 'splitter', count: 1 }, { type: 'shielder', count: 1 }], formation: 'surround' },
+  // Wave 4: introduce Shielders + Bombers
+  { enemies: [{ type: 'rusher', count: 3 }, { type: 'flanker', count: 2 }, { type: 'shielder', count: 1 }, { type: 'bomber', count: 2 }], formation: 'pincer' },
+  // Wave 5: introduce Chargers
+  { enemies: [{ type: 'swarm', count: 4 }, { type: 'sniper', count: 2 }, { type: 'tank', count: 1 }, { type: 'splitter', count: 1 }, { type: 'charger', count: 1 }], formation: 'surround' },
 ];
 
 const ALL_FORMATIONS: FormationType[] = ['column', 'pincer', 'surround', 'shieldWall', 'chaoticSwarm'];
@@ -220,7 +223,7 @@ function generateWave(waveNum: number): WaveDefinition {
   const baseCount = 7;
   const totalEnemies = Math.round(baseCount * scaleFactor);
 
-  const types: SpawnEntry['type'][] = ['rusher', 'swarm', 'tank', 'sniper', 'flanker', 'splitter', 'shielder'];
+  const types: SpawnEntry['type'][] = ['rusher', 'swarm', 'tank', 'sniper', 'flanker', 'splitter', 'shielder', 'bomber', 'charger', 'pulsar'];
   const enemies: { type: SpawnEntry['type']; count: number }[] = [];
 
   let remaining = totalEnemies;
@@ -323,8 +326,8 @@ export class WaveSystem {
             // Boss defeated - play victory fanfare
             musicPlayer.play('victory');
           } else {
-            // Normal wave clear - ensure combat music is playing
-            musicPlayer.play('combat');
+            // Normal wave clear - ensure zone combat music is playing
+            musicPlayer.play(getZoneTrack(getActiveThemeKey()));
           }
           this.state = 'cooldown';
           this.cooldownTimer = WAVE_DELAY;

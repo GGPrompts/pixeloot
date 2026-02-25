@@ -14,7 +14,7 @@ import { game } from '../Game';
 import { applyTheme, getActiveTheme, ZONE_THEMES } from './ZoneThemes';
 import { exitTown, isInTown } from './TownManager';
 import { refreshMinimapLayout } from '../ui/Minimap';
-import { musicPlayer } from '../audio/MusicPlayer';
+import { musicPlayer, getZoneTrack } from '../audio/MusicPlayer';
 
 // ── Active Map State ────────────────────────────────────────────────
 
@@ -68,9 +68,6 @@ export function activateMap(mapItem: MapItem): void {
     exitTown();
   }
 
-  // Switch to combat music
-  musicPlayer.crossfade('combat', 800);
-
   // 1. Store modifiers
   activeModifiers = [...mapItem.modifiers];
   activeQuantityBonus = mapItem.quantityBonus;
@@ -80,6 +77,10 @@ export function activateMap(mapItem: MapItem): void {
 
   // 2. Apply zone theme
   const themeKey = mapItem.theme ?? 'the_grid';
+
+  // Switch to zone-specific combat music (falls back to generic 'combat')
+  const zoneTrack = getZoneTrack(themeKey);
+  musicPlayer.crossfade(zoneTrack, 800);
   applyTheme(themeKey);
   const theme = getActiveTheme();
   game.app.renderer.background.color = theme.backgroundColor;

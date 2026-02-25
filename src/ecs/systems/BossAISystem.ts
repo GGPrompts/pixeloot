@@ -5,6 +5,7 @@ import { spawnRusher, spawnSwarm } from '../../entities/Enemy';
 import { spawnBossTelegraph } from '../../entities/BossTelegraph';
 import { shake } from './CameraSystem';
 import { hasModifier } from '../../core/MapDevice';
+import { musicPlayer } from '../../audio/MusicPlayer';
 
 const bosses = world.with('boss', 'enemy', 'position', 'velocity', 'speed', 'health', 'sprite');
 const players = world.with('player', 'position');
@@ -52,6 +53,7 @@ interface BossState {
   phase2Entered: boolean;
   pulseTime: number;
   telegraphing: boolean; // true while showing charge telegraph
+  enrageMusicTriggered: boolean; // true once enrage music has been crossfaded
 }
 
 const bossStates = new WeakMap<object, BossState>();
@@ -69,6 +71,7 @@ function getState(boss: (typeof bosses.entities)[number]): BossState {
       phase2Entered: false,
       pulseTime: 0,
       telegraphing: false,
+      enrageMusicTriggered: false,
     };
     bossStates.set(boss, s);
   }
@@ -189,6 +192,12 @@ export function bossAISystem(dt: number): void {
       const pulse = 0.7 + 0.3 * Math.sin(state.pulseTime * 8);
       boss.sprite.alpha = pulse;
       boss.sprite.tint = 0xff3333;
+
+      // Crossfade to enrage track once on entering final phase
+      if (!state.enrageMusicTriggered) {
+        state.enrageMusicTriggered = true;
+        musicPlayer.crossfade('enrage', 600);
+      }
     }
 
     // ── Get intervals for current phase ───────────────────────────

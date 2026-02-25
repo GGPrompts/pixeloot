@@ -7,6 +7,7 @@ import { getComputedStats } from '../../core/ComputedStats';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { SCREEN_W, SCREEN_H } from '../../core/constants';
 import { tickChronoCooldown, tryCheatDeath, tickFrenzy } from '../../core/UniqueEffects';
+import { musicPlayer } from '../../audio/MusicPlayer';
 
 const POTION_COOLDOWN = 8; // seconds
 const POTION_HEAL_PERCENT = 0.3; // 30% of max HP
@@ -119,6 +120,7 @@ type PlayerEntity = (typeof players.entities)[number];
 
 function triggerDeath(player: PlayerEntity): void {
   sfxPlayer.play('player_death');
+  musicPlayer.crossfade('death', 500);
   world.addComponent(player, 'dead', true as const);
   world.addComponent(player, 'inputDisabled', true as const);
 
