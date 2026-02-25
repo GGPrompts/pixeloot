@@ -9,6 +9,7 @@ import { applyStatus, StatusType } from '../../core/StatusEffects';
 import { shake } from '../../ecs/systems/CameraSystem';
 import { spawnHitSparks } from '../HitSparks';
 import { hasEffect } from '../../core/UniqueEffects';
+import { hasExtraProjectileConditional } from '../../core/ConditionalAffixSystem';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
@@ -35,8 +36,8 @@ const fireball: SkillDef = {
     if (hasEffect('inferno_burning_ground')) {
       (proj as import('../../ecs/world').Entity).burningGround = true;
     }
-    // Heart of the Grid: +1 projectile
-    if (hasEffect('grid_extra_projectile')) {
+    // Heart of the Grid or 25+ Dex conditional: +1 projectile
+    if (hasEffect('grid_extra_projectile') || hasExtraProjectileConditional()) {
       const dx = mousePos.x - playerPos.x;
       const dy = mousePos.y - playerPos.y;
       const baseAngle = Math.atan2(dy, dx);
@@ -148,12 +149,16 @@ const lightningChain: SkillDef = {
     const allowDoubleBounce = hasEffect('stormcaller_double_bounce');
     const hitCountMap = new Map<object, number>();
 
+    // Cascade Orb: +3 max bounces but steeper decay (0.7 instead of 0.8)
+    const maxBounces = hasEffect('cascade_extra_bounces') ? CHAIN_MAX_BOUNCES + 3 : CHAIN_MAX_BOUNCES;
+    const decay = hasEffect('cascade_extra_bounces') ? 0.7 : CHAIN_DECAY;
+
     // Find the nearest enemy to cursor within range, then bounce
     let currentX = mousePos.x;
     let currentY = mousePos.y;
     let range = CHAIN_INITIAL_RANGE;
 
-    for (let bounce = 0; bounce < CHAIN_MAX_BOUNCES; bounce++) {
+    for (let bounce = 0; bounce < maxBounces; bounce++) {
       let bestEnemy: (typeof enemies.entities)[number] | null = null;
       let bestDistSq = range * range;
 
@@ -179,8 +184,8 @@ const lightningChain: SkillDef = {
       hitCountMap.set(bestEnemy, (hitCountMap.get(bestEnemy) ?? 0) + 1);
       hitTargets.push({ x: bestEnemy.position.x, y: bestEnemy.position.y });
 
-      // Calculate damage with decay
-      const dmg = Math.round(CHAIN_BASE_DAMAGE * Math.pow(CHAIN_DECAY, bounce));
+      // Calculate damage with decay (Cascade Orb uses steeper 0.7 decay)
+      const dmg = Math.round(CHAIN_BASE_DAMAGE * Math.pow(decay, bounce));
       bestEnemy.health.current -= dmg;
       spawnDamageNumber(bestEnemy.position.x, bestEnemy.position.y - 10, dmg, 0xffff00);
       applyStatus(bestEnemy, StatusType.Shock);

@@ -458,6 +458,100 @@ function applyAffixBonus(bonuses: ConditionalBonuses, affix: Affix, def: AffixDe
   }
 }
 
+// ── Public: query equipped conditional affix values (for proc effects) ──
+
+/**
+ * Returns the total rolled value of a given conditional affix stat
+ * across all equipped gear. Returns 0 if the affix is not equipped.
+ * Used by CollisionSystem and skill code for proc-based effects
+ * (on-kill heal, on-kill CDR, on-hit slow, extra projectile, etc.).
+ */
+export function getEquippedConditionalValue(statKey: string): number {
+  let total = 0;
+  const equippedItems = [
+    inventory.equipped.weapon,
+    inventory.equipped.helmet,
+    inventory.equipped.chest,
+    inventory.equipped.boots,
+    inventory.equipped.ring1,
+    inventory.equipped.ring2,
+    inventory.equipped.amulet,
+    inventory.equipped.offhand,
+  ];
+
+  for (const item of equippedItems) {
+    if (!item) continue;
+    for (const affix of item.affixes) {
+      if (affix.stat === statKey) {
+        total += affix.value;
+      }
+    }
+  }
+  return total;
+}
+
+/**
+ * Returns the bonus damage multiplier for status-on-target conditional affixes.
+ * Checks the target enemy's status effects and returns the additive bonus percent.
+ * Called per-hit in CollisionSystem before damage is dealt.
+ */
+export function getStatusOnTargetDamageBonus(enemy: {
+  statusEffects?: { type: number }[];
+}): number {
+  // Import StatusType values locally to avoid circular dependency issues
+  // StatusType.Burn = 2, StatusType.Slow = 0, StatusType.Chill = 1
+  const BURN = 2;
+  const SLOW = 0;
+  const CHILL = 1;
+
+  let bonusPct = 0;
+
+  const burningVal = getEquippedConditionalValue('condHitBurningDamage');
+  if (burningVal > 0 && enemy.statusEffects?.some(e => e.type === BURN)) {
+    bonusPct += burningVal;
+  }
+
+  return bonusPct;
+}
+
+/**
+ * Returns bonus attack speed percent from hitting slowed/chilled enemies.
+ * This is a per-hit check -- the bonus is reflected in ConditionalBonuses
+ * via the status-on-target passive evaluation path, but for real-time
+ * accuracy we also check here.
+ */
+export function getStatusOnTargetAtkSpdBonus(enemy: {
+  statusEffects?: { type: number }[];
+}): number {
+  const SLOW = 0;
+  const CHILL = 1;
+
+  let bonusPct = 0;
+
+  const slowVal = getEquippedConditionalValue('condHitSlowedAtkSpd');
+  if (slowVal > 0 && enemy.statusEffects?.some(e => e.type === SLOW || e.type === CHILL)) {
+    bonusPct += slowVal;
+  }
+
+  return bonusPct;
+}
+
+/**
+ * Check if the high-Dex +1 projectile conditional is active.
+ * Requires both the affix to be equipped AND dexterity >= 25.
+ */
+export function hasExtraProjectileConditional(): boolean {
+  const val = getEquippedConditionalValue('condHighDexProjCount');
+  if (val <= 0) return false;
+
+  const playerEntities = world.with('player', 'position', 'health').entities;
+  if (playerEntities.length === 0) return false;
+  const playerStats = playerEntities[0].stats;
+  if (!playerStats) return false;
+
+  return playerStats.dexterity >= 25;
+}
+
 // ── Reset (called on zone transition, class switch, etc.) ─────────────
 
 export function resetConditionalState(): void {

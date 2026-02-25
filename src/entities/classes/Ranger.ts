@@ -7,6 +7,7 @@ import { spawnDamageNumber } from '../../ui/DamageNumbers';
 import { spawnDeathParticles } from '../DeathParticles';
 import { applyStatus, hasStatus, StatusType } from '../../core/StatusEffects';
 import { hasEffect } from '../../core/UniqueEffects';
+import { hasExtraProjectileConditional } from '../../core/ConditionalAffixSystem';
 
 const players = world.with('position', 'velocity', 'speed', 'player');
 const enemies = world.with('enemy', 'position', 'health');
@@ -37,7 +38,7 @@ const powerShot: SkillDef = {
       const dy = mousePos.y - playerPos.y;
       const baseAngle = Math.atan2(dy, dx);
       const spreadAngle = (15 * Math.PI) / 180; // 15 degrees total
-      const count = 3 + (hasEffect('grid_extra_projectile') ? 1 : 0);
+      const count = 3 + (hasEffect('grid_extra_projectile') ? 1 : 0) + (hasExtraProjectileConditional() ? 1 : 0);
       const step = count > 1 ? spreadAngle / (count - 1) : 0;
       const halfSpread = spreadAngle / 2;
 
@@ -49,8 +50,8 @@ const powerShot: SkillDef = {
       }
     } else {
       fireProjectile(playerPos.x, playerPos.y, mousePos.x, mousePos.y, opts);
-      // Heart of the Grid: +1 projectile (slight offset)
-      if (hasEffect('grid_extra_projectile')) {
+      // Heart of the Grid or 25+ Dex conditional: +1 projectile (slight offset)
+      if (hasEffect('grid_extra_projectile') || hasExtraProjectileConditional()) {
         const dx = mousePos.x - playerPos.x;
         const dy = mousePos.y - playerPos.y;
         const baseAngle = Math.atan2(dy, dx);
@@ -81,9 +82,11 @@ const multiShot: SkillDef = {
     const dy = mousePos.y - playerPos.y;
     const baseAngle = Math.atan2(dy, dx);
     // Heart of the Grid: +1 projectile
-    const count = MULTI_SHOT_COUNT + (hasEffect('grid_extra_projectile') ? 1 : 0);
-    const halfSpread = MULTI_SHOT_SPREAD / 2;
-    const step = count > 1 ? MULTI_SHOT_SPREAD / (count - 1) : 0;
+    const count = MULTI_SHOT_COUNT + (hasEffect('grid_extra_projectile') ? 1 : 0) + (hasExtraProjectileConditional() ? 1 : 0);
+    // Threadcutter: fire in full 360-degree ring instead of forward arc
+    const spread = hasEffect('threadcutter_ring') ? Math.PI * 2 : MULTI_SHOT_SPREAD;
+    const halfSpread = spread / 2;
+    const step = count > 1 ? spread / (hasEffect('threadcutter_ring') ? count : count - 1) : 0;
 
     for (let i = 0; i < count; i++) {
       const angle = baseAngle - halfSpread + step * i;
@@ -462,6 +465,18 @@ const markTarget: SkillDef = {
 
     // Apply Mark status effect to the enemy
     applyStatus(nearest, StatusType.Mark);
+
+    // Tracker's Hood: also mark all enemies within 64px of the primary target
+    if (hasEffect('tracker_aoe_mark')) {
+      for (const other of enemies) {
+        if (other === nearest) continue;
+        const mdx = other.position.x - nearest.position.x;
+        const mdy = other.position.y - nearest.position.y;
+        if (mdx * mdx + mdy * mdy < 64 * 64) {
+          applyStatus(other, StatusType.Mark);
+        }
+      }
+    }
 
     // Create spinning diamond marker above enemy
     const marker = new Graphics();

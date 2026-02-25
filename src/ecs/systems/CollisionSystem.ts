@@ -18,7 +18,14 @@ import { game } from '../../Game';
 import { Graphics } from 'pixi.js';
 import { hasEffect, activateFrenzy, isFrenzyActive } from '../../core/UniqueEffects';
 import { fireProjectile } from '../../entities/Projectile';
-import { trackDamageTaken, trackKill } from '../../core/ConditionalAffixSystem';
+import {
+  trackDamageTaken,
+  trackKill,
+  trackMultiHit,
+  getEquippedConditionalValue,
+  getStatusOnTargetDamageBonus,
+} from '../../core/ConditionalAffixSystem';
+import { skillSystem } from '../../core/SkillSystem';
 
 /** Overcharger death buff constants */
 const OVERCHARGER_BUFF_RADIUS = 160;
@@ -110,6 +117,9 @@ export function collisionSystem(dt: number): void {
   }
 
   // --- Projectile vs Enemy ---
+  /** Track per-frame hit count across all projectiles for multi-hit conditional */
+  let frameHitCount = 0;
+
   for (const proj of projectiles) {
     let consumed = false;
 
@@ -240,6 +250,18 @@ export function collisionSystem(dt: number): void {
           dmg = Math.round(dmg * 2);
         }
 
+        // Conditional affix: status-on-target damage bonus (e.g., +damage vs burning)
+        const statusDmgBonus = getStatusOnTargetDamageBonus(enemy);
+        if (statusDmgBonus > 0) {
+          dmg = Math.round(dmg * (1 + statusDmgBonus / 100));
+        }
+
+        // Conditional affix: chance to slow on hit
+        const slowChance = getEquippedConditionalValue('condOnHitSlow');
+        if (slowChance > 0 && Math.random() * 100 < slowChance) {
+          applyStatus(enemy, StatusType.Slow);
+        }
+
         // Deal damage
         enemy.health.current -= dmg;
         spawnDamageNumber(enemy.position.x, enemy.position.y - 10, dmg, 0xffffff);
@@ -252,6 +274,9 @@ export function collisionSystem(dt: number): void {
           const heal = Math.max(1, Math.round(dmg * 0.02));
           pl.health.current = Math.min(pl.health.max, pl.health.current + heal);
         }
+
+        // Track multi-hit for conditional affix system
+        frameHitCount++;
 
         // Apply knockback if projectile has knockbackOnHit
         if (proj.knockbackOnHit && proj.position) {
@@ -287,6 +312,11 @@ export function collisionSystem(dt: number): void {
 
   for (const proj of projectilesToDespawn) {
     despawnProjectile(proj);
+  }
+
+  // Report multi-hit count for conditional affix system (e.g., hit 3+ enemies: +damage)
+  if (frameHitCount > 0) {
+    trackMultiHit(frameHitCount);
   }
 
   for (const enemy of enemiesToRemove) {
@@ -395,6 +425,25 @@ export function collisionSystem(dt: number): void {
 
     // Track kill for conditional affix system
     trackKill();
+
+    // Conditional affix: on-kill heal (% of max HP)
+    const onKillHealPct = getEquippedConditionalValue('condOnKillHeal');
+    if (onKillHealPct > 0 && players.entities.length > 0) {
+      const pl = players.entities[0];
+      const heal = Math.max(1, Math.round(pl.health.max * onKillHealPct / 100));
+      pl.health.current = Math.min(pl.health.max, pl.health.current + heal);
+    }
+
+    // Conditional affix: on-kill CDR (refund % of remaining cooldown on all skills)
+    const onKillCDRPct = getEquippedConditionalValue('condOnKillCDR');
+    if (onKillCDRPct > 0) {
+      const skills = skillSystem.getSkills();
+      for (const skill of skills) {
+        if (skill && skill.cooldownRemaining > 0) {
+          skill.cooldownRemaining *= (1 - onKillCDRPct / 100);
+        }
+      }
+    }
 
     // Roll and spawn loot/gold drops
     const enemyType = enemy.enemyType ?? 'rusher';
