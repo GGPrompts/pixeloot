@@ -18,20 +18,20 @@ import { SCREEN_W, SCREEN_H } from '../core/constants';
 
 // Layout constants
 const PANEL_W = 1100;
-const PANEL_H = 660;
+const PANEL_H = 690;
 const PANEL_X = (SCREEN_W - PANEL_W) / 2;
 const PANEL_Y = (SCREEN_H - PANEL_H) / 2;
 
 // Section positions (relative to PANEL_X, PANEL_Y)
 const SECTION_LEFT_X = 18;
-const SECTION_RIGHT_X = 560;
+const SECTION_RIGHT_X = 520;
 const MATERIALS_Y = 50;
-const SALVAGE_Y = 90;
-const CRAFT_Y = 90;
-const GEM_Y = 440;
+const SALVAGE_Y = 86;
+const CRAFT_Y = 86;
+const GEM_Y = 500;
 const RIGHT_COL_W = PANEL_W - SECTION_RIGHT_X - 18;
 
-const SLOT_SIZE = 56;
+const SLOT_SIZE = 88;
 const SLOT_GAP = 6;
 const SLOTS_PER_ROW = 5;
 
@@ -180,26 +180,28 @@ function buildSalvageSection(): void {
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 8),
+        text: abbreviate(item.name, 10),
         style: new TextStyle({
           fill: color,
-          fontSize: FontSize.xs,
+          fontSize: FontSize.sm,
           fontFamily: Fonts.body,
           fontWeight: 'bold',
+          wordWrap: true,
+          wordWrapWidth: SLOT_SIZE - 6,
         }),
       });
-      nameText.position.set(2, 2);
+      nameText.position.set(3, 3);
       slotBg.addChild(nameText);
 
       const levelText = new Text({
-        text: `L${item.level}`,
+        text: `Lv.${item.level}`,
         style: new TextStyle({
           fill: Colors.textMuted,
-          fontSize: FontSize.xs,
+          fontSize: FontSize.sm,
           fontFamily: Fonts.body,
         }),
       });
-      levelText.position.set(2, SLOT_SIZE - 16);
+      levelText.position.set(3, SLOT_SIZE - 20);
       slotBg.addChild(levelText);
 
       if (item.socket) {
@@ -207,11 +209,11 @@ function buildSalvageSection(): void {
           text: item.socket.gem ? 'G' : 'O',
           style: new TextStyle({
             fill: item.socket.gem ? GEM_COLORS[item.socket.gem.type] : Colors.textMuted,
-            fontSize: FontSize.xs,
+            fontSize: FontSize.sm,
             fontFamily: Fonts.body,
           }),
         });
-        socketText.position.set(SLOT_SIZE - 14, 2);
+        socketText.position.set(SLOT_SIZE - 16, 3);
         slotBg.addChild(socketText);
       }
 
@@ -417,26 +419,28 @@ function buildCraftingSection(): void {
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isTarget ? Colors.accentCyan : color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 8),
+        text: abbreviate(item.name, 10),
         style: new TextStyle({
           fill: color,
-          fontSize: FontSize.xs,
+          fontSize: FontSize.sm,
           fontFamily: Fonts.body,
           fontWeight: 'bold',
+          wordWrap: true,
+          wordWrapWidth: SLOT_SIZE - 6,
         }),
       });
-      nameText.position.set(2, 2);
+      nameText.position.set(3, 3);
       slotBg.addChild(nameText);
 
       const lvText = new Text({
-        text: `L${item.level}`,
+        text: `Lv.${item.level}`,
         style: new TextStyle({
           fill: Colors.textMuted,
-          fontSize: FontSize.xs,
+          fontSize: FontSize.sm,
           fontFamily: Fonts.body,
         }),
       });
-      lvText.position.set(2, SLOT_SIZE - 16);
+      lvText.position.set(3, SLOT_SIZE - 20);
       slotBg.addChild(lvText);
 
       slotBg.eventMode = 'static';
@@ -523,7 +527,7 @@ function buildGemSection(): void {
       }
 
       const nameText = new Text({
-        text: gem.name.slice(0, 8),
+        text: gem.name,
         style: new TextStyle({
           fill: color,
           fontSize: FontSize.sm,
@@ -531,18 +535,20 @@ function buildGemSection(): void {
           fontWeight: 'bold',
         }),
       });
-      nameText.position.set(2, 4);
+      nameText.position.set(3, 4);
       slotBg.addChild(nameText);
 
       const bonusText = new Text({
-        text: bonus.label.slice(0, 10),
+        text: bonus.label,
         style: new TextStyle({
           fill: Colors.textMuted,
-          fontSize: FontSize.xs,
+          fontSize: FontSize.sm,
           fontFamily: Fonts.body,
+          wordWrap: true,
+          wordWrapWidth: SLOT_SIZE - 6,
         }),
       });
-      bonusText.position.set(2, 32);
+      bonusText.position.set(3, SLOT_SIZE - 36);
       slotBg.addChild(bonusText);
 
       slotBg.eventMode = 'static';
@@ -635,26 +641,28 @@ function buildGemSection(): void {
       drawSlotBg(slotBg, 0, 0, SLOT_SIZE, isTarget ? Colors.accentCyan : color);
 
       const nameText = new Text({
-        text: abbreviate(item.name, 8),
+        text: abbreviate(item.name, 10),
         style: new TextStyle({
           fill: color,
-          fontSize: FontSize.xs,
+          fontSize: FontSize.sm,
           fontFamily: Fonts.body,
           fontWeight: 'bold',
+          wordWrap: true,
+          wordWrapWidth: SLOT_SIZE - 6,
         }),
       });
-      nameText.position.set(2, 2);
+      nameText.position.set(3, 3);
       slotBg.addChild(nameText);
 
       const socketText = new Text({
         text: 'O',
         style: new TextStyle({
           fill: Colors.textMuted,
-          fontSize: FontSize.xs,
+          fontSize: FontSize.sm,
           fontFamily: Fonts.body,
         }),
       });
-      socketText.position.set(SLOT_SIZE - 14, SLOT_SIZE - 16);
+      socketText.position.set(SLOT_SIZE - 16, SLOT_SIZE - 20);
       slotBg.addChild(socketText);
 
       slotBg.eventMode = 'static';

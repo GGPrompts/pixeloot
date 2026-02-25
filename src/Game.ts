@@ -37,6 +37,7 @@ import { lootFilterSystem } from './ecs/systems/LootFilterSystem';
 import { getAutoSave, loadGame } from './save/SaveManager';
 import { applyTheme, getActiveTheme } from './core/ZoneThemes';
 import { musicPlayer } from './audio/MusicPlayer';
+import { sfxPlayer } from './audio/SFXManager';
 import { enterTown, isInTown } from './core/TownManager';
 import { checkNPCClick, updateComingSoonText } from './entities/NPC';
 import { updateSkillAssignPanel, isSkillAssignOpen, toggleSkillAssignPanel } from './ui/SkillAssignPanel';
@@ -131,7 +132,7 @@ export class Game {
 
     // Mute indicator (top-right)
     this.muteText = new Text({
-      text: '[P] VOL 50%',
+      text: '[P] VOL 50%  [+/-]',
       style: new TextStyle({
         fill: Colors.accentLime,
         fontSize: FontSize.base,
@@ -290,20 +291,23 @@ export class Game {
     }
     this.prevKPressed = kDown;
 
-    // Music controls: P to toggle mute, +/- for volume
+    // Audio controls: P to toggle mute, +/- for volume (music + SFX)
     const pDown = InputManager.instance.isPressed('KeyP');
     if (pDown && !this.prevPPressed) {
       musicPlayer.toggleMute();
+      sfxPlayer.toggleMute();
     }
     this.prevPPressed = pDown;
 
     if (InputManager.instance.isPressed('Equal')) {
-      // + key (=/+)
-      musicPlayer.setVolume(musicPlayer.getMasterVolume() + 0.01);
+      const newVol = Math.min(1, musicPlayer.getMasterVolume() + 0.01);
+      musicPlayer.setVolume(newVol);
+      sfxPlayer.setVolume(newVol);
     }
     if (InputManager.instance.isPressed('Minus')) {
-      // - key
-      musicPlayer.setVolume(musicPlayer.getMasterVolume() - 0.01);
+      const newVol = Math.max(0, musicPlayer.getMasterVolume() - 0.01);
+      musicPlayer.setVolume(newVol);
+      sfxPlayer.setVolume(newVol);
     }
 
     // Skill system: tick cooldowns every frame (even during panels/town)
@@ -391,13 +395,13 @@ export class Game {
     updateComingSoonText(dt);
     updateMinimap();
 
-    // Music HUD indicator
+    // Audio HUD indicator
     if (musicPlayer.isMuted()) {
-      this.muteText.text = '[P] MUTED';
+      this.muteText.text = '[P] MUTED  [+/-]';
       this.muteText.style.fill = Colors.accentRed;
     } else {
       const pct = Math.round(musicPlayer.getMasterVolume() * 100);
-      this.muteText.text = `[P] VOL ${pct}%`;
+      this.muteText.text = `[P] VOL ${pct}%  [+/-]`;
       this.muteText.style.fill = Colors.accentLime;
     }
 
