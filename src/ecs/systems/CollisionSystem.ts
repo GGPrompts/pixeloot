@@ -9,15 +9,15 @@ import { spawnItemDrop, spawnGoldDrop } from '../../entities/LootDrop';
 import { hasModifier } from '../../core/MapDevice';
 import { spawnMapDrop } from '../../entities/MapDrop';
 import { spawnGemDrop } from '../../entities/GemDrop';
-import { getComputedStats } from '../../core/ComputedStats';
+import { getDamageReduction } from '../../core/ComputedStats';
 import { spawnMiniSplitter } from '../../entities/Enemy';
 import { sfxPlayer } from '../../audio/SFXManager';
 import { spawnHitSparks } from '../../entities/HitSparks';
 import { shake } from './CameraSystem';
 
-/** Apply armor damage reduction to incoming damage. */
-function reduceDamage(rawDamage: number): number {
-  const dr = getComputedStats().damageReduction;
+/** Apply armor damage reduction to incoming damage, scaled by monster level. */
+function reduceDamage(rawDamage: number, monsterLevel = 1): number {
+  const dr = getDamageReduction(monsterLevel);
   return Math.max(1, Math.round(rawDamage * (1 - dr)));
 }
 
@@ -220,7 +220,7 @@ export function collisionSystem(dt: number): void {
         const edx = pl.position.x - enemy.position.x;
         const edy = pl.position.y - enemy.position.y;
         if (edx * edx + edy * edy < explosionRadius * explosionRadius) {
-          const reducedExplosion = reduceDamage(explosionDamage);
+          const reducedExplosion = reduceDamage(explosionDamage, enemy.level ?? 1);
           pl.health.current -= reducedExplosion;
           spawnDamageNumber(pl.position.x, pl.position.y - 10, reducedExplosion, 0xff6600);
         }
@@ -259,7 +259,7 @@ export function collisionSystem(dt: number): void {
     const distSq = dx * dx + dy * dy;
 
     if (distSq < CONTACT_RADIUS * CONTACT_RADIUS) {
-      const reducedContactDmg = reduceDamage(enemy.damage);
+      const reducedContactDmg = reduceDamage(enemy.damage, enemy.level ?? 1);
       player.health.current -= reducedContactDmg;
       spawnDamageNumber(player.position.x, player.position.y - 10, reducedContactDmg, 0xff3333);
       spawnHitSparks(player.position.x, player.position.y, 'physical');
@@ -298,7 +298,7 @@ export function collisionSystem(dt: number): void {
     const distSq = dx * dx + dy * dy;
 
     if (distSq < HIT_RADIUS * HIT_RADIUS) {
-      const reducedProjDmg = reduceDamage(proj.damage);
+      const reducedProjDmg = reduceDamage(proj.damage, proj.level ?? 1);
       player.health.current -= reducedProjDmg;
       spawnDamageNumber(player.position.x, player.position.y - 10, reducedProjDmg, 0xff44ff);
       spawnHitSparks(player.position.x, player.position.y, 'fire');

@@ -4,9 +4,9 @@ import { game } from '../Game';
 import { Fonts, FontSize } from '../ui/UITheme';
 import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder } from './Enemy';
 import { spawnBoss } from './Boss';
-import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
+import { getMonsterLevel } from '../core/MonsterScaling';
 import { autoSave } from '../save/SaveManager';
-import { hasModifier, getQuantityBonus, isMapActive } from '../core/MapDevice';
+import { hasModifier, getQuantityBonus, isMapActive, getActiveTierBonus } from '../core/MapDevice';
 import { getActiveThemeKey } from '../core/ZoneThemes';
 import { enterTown, isInTown } from '../core/TownManager';
 import { musicPlayer } from '../audio/MusicPlayer';
@@ -341,7 +341,10 @@ export class WaveSystem {
     // Compute monster level from current player level
     const playerQuery = world.with('player', 'level');
     const playerLevel = playerQuery.entities[0]?.level ?? 1;
-    this.currentMonsterLevel = getMonsterLevel(playerLevel, DEFAULT_SCALING_CONFIG);
+    this.currentMonsterLevel = getMonsterLevel(playerLevel, {
+      mapBaseLevel: 1,
+      mapTierBonus: getActiveTierBonus(),
+    });
 
     // Boss wave every 5 waves (5, 10, 15, ...)
     if (this.currentWave % 5 === 0) {

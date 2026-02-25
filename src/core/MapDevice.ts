@@ -21,6 +21,7 @@ import { musicPlayer } from '../audio/MusicPlayer';
 let activeModifiers: MapModifier[] = [];
 let activeQuantityBonus = 0;
 let activeRarityBonus = 0;
+let activeTierBonus = 0;
 let mapActive = false;
 
 /** Returns the list of currently active map modifiers. */
@@ -41,6 +42,11 @@ export function getQuantityBonus(): number {
 /** Returns the current rarity bonus (0 when no map is active). */
 export function getRarityBonus(): number {
   return activeRarityBonus;
+}
+
+/** Returns the tier bonus of the currently active map (0 when no map is active). */
+export function getActiveTierBonus(): number {
+  return activeTierBonus;
 }
 
 /** Returns true when a map dungeon is currently active. */
@@ -69,6 +75,7 @@ export function activateMap(mapItem: MapItem): void {
   activeModifiers = [...mapItem.modifiers];
   activeQuantityBonus = mapItem.quantityBonus;
   activeRarityBonus = mapItem.rarityBonus;
+  activeTierBonus = mapItem.tier;
   mapActive = true;
 
   // 2. Apply zone theme
@@ -127,6 +134,7 @@ export function clearMapModifiers(): void {
   activeModifiers = [];
   activeQuantityBonus = 0;
   activeRarityBonus = 0;
+  activeTierBonus = 0;
   mapActive = false;
 }
 

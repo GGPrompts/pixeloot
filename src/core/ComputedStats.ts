@@ -207,8 +207,8 @@ export function recalculateStats(): FinalStats {
   // Armor: base armor from gear + flat armor affixes
   const armor = totalBaseArmor + affixes.flatArmor;
 
-  // Damage reduction: armor / (armor + 100) -- diminishing returns
-  const damageReduction = armor / (armor + 100);
+  // Damage reduction for display (vs level 1): armor / (armor + 110)
+  const damageReduction = armor / (armor + 100 + 10 * 1);
 
   // HP regen
   const hpRegen = affixes.hpRegen;
@@ -266,6 +266,15 @@ export function getComputedStats(): FinalStats {
  * Apply computed stats to a player entity's health and movement.
  * Call after equip/unequip or stat allocation to sync entity state.
  */
+/**
+ * Get damage reduction against a specific monster level.
+ * Formula: armor / (armor + 100 + 10 * monsterLevel)
+ */
+export function getDamageReduction(monsterLevel: number): number {
+  const armor = getComputedStats().armor;
+  return armor / (armor + 100 + 10 * monsterLevel);
+}
+
 export function applyComputedToEntity(
   player: {
     health: { current: number; max: number };

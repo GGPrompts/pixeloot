@@ -1,7 +1,8 @@
 import { world } from '../ecs/world';
 import { game } from '../Game';
 import { spawnRusher, spawnSwarm, spawnTank, spawnSniper, spawnFlanker, spawnSplitter, spawnShielder } from './Enemy';
-import { getMonsterLevel, DEFAULT_SCALING_CONFIG } from '../core/MonsterScaling';
+import { getMonsterLevel } from '../core/MonsterScaling';
+import { getActiveTierBonus } from '../core/MapDevice';
 
 const MIN_PLAYER_DIST = 200;
 
@@ -34,7 +35,10 @@ export function spawnInitialEnemies(_count?: number): void {
 
   const px = player.position.x;
   const py = player.position.y;
-  const monsterLevel = getMonsterLevel(player.level, DEFAULT_SCALING_CONFIG);
+  const monsterLevel = getMonsterLevel(player.level, {
+    mapBaseLevel: 1,
+    mapTierBonus: getActiveTierBonus(),
+  });
 
   // 3 Rushers
   for (let i = 0; i < 3; i++) {

@@ -424,9 +424,19 @@ function buildCraftingSection(): void {
         const item = inventory.backpack[selectedCraftTargetIdx];
         if (!item) return;
 
+        // For Remove Gem, save the gem reference before the recipe clears it
+        const isRemoveGem = selectedRecipe.name === 'Remove Gem';
+        const savedGem = isRemoveGem && item.socket?.gem ? item.socket.gem : null;
+
         const result = craft(selectedRecipe, item);
         if (result) {
           inventory.backpack[selectedCraftTargetIdx] = result;
+
+          // Return the extracted gem to the player's gem inventory
+          if (isRemoveGem && savedGem) {
+            inventory.addGem(savedGem);
+          }
+
           markStatsDirty();
           showFeedback(`Crafted: ${selectedRecipe.name}!`, Colors.accentLime);
           selectedRecipe = null;

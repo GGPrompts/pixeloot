@@ -75,8 +75,24 @@ const addSocket: Recipe = {
   },
 };
 
+/**
+ * Remove Gem: 1 Essence
+ * Extracts a socketed gem, returning it to the player's gem inventory.
+ * The socket is preserved (empty) on the item.
+ */
+const removeGem: Recipe = {
+  name: 'Remove Gem',
+  description: '1 Essence: Extract a socketed gem (keeps socket)',
+  cost: { essence: 1 },
+  canApply: (item: BaseItem) =>
+    item.socket !== undefined && item.socket.gem !== undefined,
+  apply: (item: BaseItem): BaseItem => {
+    return { ...item, socket: {} };
+  },
+};
+
 /** All available crafting recipes */
-export const RECIPES: Recipe[] = [rerollAffixes, upgradeRarity, addSocket];
+export const RECIPES: Recipe[] = [rerollAffixes, upgradeRarity, addSocket, removeGem];
 
 /**
  * Attempt to craft using a recipe on a target item.

@@ -5,9 +5,10 @@ import { InputManager } from '../core/InputManager';
 import { applyStatEffects } from '../ecs/systems/StatEffects';
 import { getComputedStats, type FinalStats } from '../core/ComputedStats';
 import {
-  Colors, Fonts, FontSize, drawPanelBg, drawDivider, makeCloseButton,
+  Colors, Fonts, FontSize, drawPanelBg, drawDivider, drawPixelBorder, makeCloseButton,
 } from './UITheme';
 import { SCREEN_W, SCREEN_H } from '../core/constants';
+import { sfxPlayer } from '../audio/SFXManager';
 
 const PANEL_W = 540;
 const PANEL_H = 760;
@@ -25,7 +26,7 @@ const STAT_DESCRIPTIONS: Record<string, string> = {
   focus: '+5% cooldown reduction',
 };
 
-const players = world.with('player', 'statPoints', 'stats', 'level', 'health');
+const players = world.with('player', 'statPoints', 'stats', 'level', 'health', 'gold');
 
 let panel: Container | null = null;
 let visible = false;
@@ -36,6 +37,10 @@ let pointsText: Text;
 const statValueTexts: Text[] = [];
 const statBtnGraphics: Graphics[] = [];
 let computedStatsText: Text;
+let respecBtnGfx: Graphics;
+let respecBtnLabel: Text;
+let respecFeedback: Text;
+let respecFeedbackTimer = 0;
 
 function createPanel(): Container {
   const container = new Container();
@@ -175,6 +180,50 @@ function createPanel(): Container {
   computedStatsText.position.set(px + 16, dividerY + 30);
   container.addChild(computedStatsText);
 
+  // Respec button
+  const respecY = py + PANEL_H - 60;
+  const respecBtnW = 220;
+  const respecBtnH = 36;
+  const respecBtnX = px + (PANEL_W - respecBtnW) / 2;
+
+  respecBtnGfx = new Graphics();
+  respecBtnGfx.rect(respecBtnX, respecY, respecBtnW, respecBtnH).fill({ color: 0x2a1a0a });
+  drawPixelBorder(respecBtnGfx, respecBtnX, respecY, respecBtnW, respecBtnH, {
+    borderWidth: 2, highlight: Colors.accentGold, shadow: 0x7a5a00,
+  });
+  respecBtnGfx.eventMode = 'static';
+  respecBtnGfx.cursor = 'pointer';
+  respecBtnGfx.hitArea = {
+    contains: (x: number, y: number) =>
+      x >= respecBtnX && x <= respecBtnX + respecBtnW &&
+      y >= respecY && y <= respecY + respecBtnH,
+  };
+  respecBtnGfx.on('pointerdown', onRespecClick);
+  container.addChild(respecBtnGfx);
+
+  respecBtnLabel = new Text({
+    text: 'Respec (0g)',
+    style: new TextStyle({
+      fill: Colors.accentGold,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
+    }),
+  });
+  respecBtnLabel.position.set(respecBtnX + 10, respecY + 6);
+  container.addChild(respecBtnLabel);
+
+  // Feedback text (shown temporarily after respec)
+  respecFeedback = new Text({
+    text: '',
+    style: new TextStyle({
+      fill: Colors.accentRed,
+      fontSize: FontSize.sm,
+      fontFamily: Fonts.body,
+    }),
+  });
+  respecFeedback.position.set(px + 16, respecY - 22);
+  container.addChild(respecFeedback);
+
   // Close button
   const closeBtn = makeCloseButton(px + PANEL_W - 70, py + 16, () => {
     visible = false;
@@ -213,6 +262,48 @@ function allocateStat(stat: typeof STAT_NAMES[number]): void {
   refreshValues();
 }
 
+function getRespecCost(level: number): number {
+  return level * 50;
+}
+
+function getTotalAllocated(stats: { dexterity: number; intelligence: number; vitality: number; focus: number }): number {
+  return stats.dexterity + stats.intelligence + stats.vitality + stats.focus;
+}
+
+function showRespecFeedback(msg: string, color: number): void {
+  respecFeedback.text = msg;
+  respecFeedback.style.fill = color;
+  respecFeedbackTimer = 120; // ~2 seconds at 60fps
+}
+
+function onRespecClick(): void {
+  if (players.entities.length === 0) return;
+  const player = players.entities[0];
+  const totalAllocated = getTotalAllocated(player.stats);
+  if (totalAllocated === 0) return;
+
+  const cost = getRespecCost(player.level);
+  if (player.gold < cost) {
+    showRespecFeedback(`Not enough gold! Need ${cost}g`, Colors.accentRed);
+    return;
+  }
+
+  // Refund all stat points
+  player.statPoints += totalAllocated;
+  player.stats.dexterity = 0;
+  player.stats.intelligence = 0;
+  player.stats.vitality = 0;
+  player.stats.focus = 0;
+  player.gold -= cost;
+
+  // Recompute derived stats
+  applyStatEffects(player);
+
+  sfxPlayer.play('ui_click');
+  showRespecFeedback(`-${cost} gold - Stats refunded!`, Colors.accentGold);
+  refreshValues();
+}
+
 function refreshValues(): void {
   if (players.entities.length === 0) return;
   const player = players.entities[0];
@@ -233,6 +324,22 @@ function refreshValues(): void {
 
   const computed = getComputedStats();
   computedStatsText.text = formatComputedStats(computed);
+
+  // Update respec button
+  const totalAllocated = getTotalAllocated(player.stats);
+  const cost = getRespecCost(player.level);
+  respecBtnLabel.text = totalAllocated > 0 ? `Respec (${cost}g)` : 'Respec (no stats)';
+  const canRespec = totalAllocated > 0 && player.gold >= cost;
+  respecBtnGfx.alpha = canRespec ? 1 : 0.4;
+  respecBtnLabel.alpha = canRespec ? 1 : 0.4;
+
+  // Fade out feedback text
+  if (respecFeedbackTimer > 0) {
+    respecFeedbackTimer--;
+    if (respecFeedbackTimer <= 0) {
+      respecFeedback.text = '';
+    }
+  }
 }
 
 export function updateStatPanel(): void {
