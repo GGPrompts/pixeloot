@@ -1,5 +1,6 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { game } from '../Game';
+import { InputManager } from '../core/InputManager';
 import { skillSystem, type SkillDef, type SkillSlot } from '../core/SkillSystem';
 import {
   Colors, Fonts, FontSize, drawPanelBg, drawSlotBg, makeCloseButton,
@@ -14,6 +15,7 @@ const SKILL_SLOT_H = 72;
 
 let container: Container | null = null;
 let selectedSlot: 'rmb' | 'e' | null = null;
+let prevEscPressed = false;
 
 export function isSkillAssignOpen(): boolean {
   return container !== null;
@@ -276,5 +278,10 @@ function rebuildPanel(): void {
 }
 
 export function updateSkillAssignPanel(): void {
-  // Panel is event-driven, no per-frame updates needed
+  if (!isSkillAssignOpen()) return;
+  const escDown = InputManager.instance.isPressed('Escape');
+  if (escDown && !prevEscPressed) {
+    hideSkillAssignPanel();
+  }
+  prevEscPressed = escDown;
 }

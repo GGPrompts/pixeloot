@@ -14,6 +14,8 @@ import { applyTheme, getActiveTheme } from './ZoneThemes';
 import { clearMapModifiers } from './MapDevice';
 import { spawnTownNPCs, removeAllNPCs } from '../entities/NPC';
 import { autoSave } from '../save/SaveManager';
+import { inventory } from './Inventory';
+import { getComputedStats } from './ComputedStats';
 
 const TILE_SIZE = 32;
 
@@ -35,6 +37,9 @@ export function enterTown(): void {
 
   // Clear any active map modifiers
   clearMapModifiers();
+
+  // Auto-collect all ground loot before clearing
+  collectAllLoot();
 
   // Clear enemies, projectiles, loot
   clearAllEntities();
@@ -96,6 +101,42 @@ export function exitTown(): void {
 
 // ── Internal Helpers ────────────────────────────────────────────────
 
+/**
+ * Auto-collect all ground loot/gold before leaving the dungeon.
+ * Queries by drop component (not pickup) so loot-filtered items are also collected.
+ */
+function collectAllLoot(): void {
+  const players = world.with('player');
+  if (players.entities.length === 0) return;
+  const player = players.entities[0];
+  const stats = getComputedStats();
+
+  // Collect gold
+  for (const e of [...world.with('goldDrop').entities]) {
+    const amount = Math.round(e.goldDrop * stats.goldMultiplier);
+    if (player.gold !== undefined) {
+      player.gold += amount;
+    } else {
+      world.addComponent(player, 'gold', amount);
+    }
+  }
+
+  // Collect items (silently skip if backpack is full)
+  for (const e of [...world.with('lootDrop').entities]) {
+    inventory.addItem(e.lootDrop.item);
+  }
+
+  // Collect maps
+  for (const e of [...world.with('mapDrop').entities]) {
+    inventory.addMap(e.mapDrop.mapItem);
+  }
+
+  // Collect gems
+  for (const e of [...world.with('gemDrop').entities]) {
+    inventory.addGem(e.gemDrop.gem);
+  }
+}
+
 function clearAllEntities(): void {
   // Remove enemies
   const enemies = world.with('enemy');
@@ -118,11 +159,16 @@ function clearAllEntities(): void {
     world.remove(e);
   }
 
-  // Remove loot drops
-  const loot = world.with('pickup');
-  for (const e of [...loot.entities]) {
-    if (e.sprite) e.sprite.removeFromParent();
-    world.remove(e);
+  // Remove loot drops (including loot-filtered entities that lost their pickup component)
+  const dropComponents = ['pickup', 'goldDrop', 'lootDrop', 'mapDrop', 'gemDrop'] as const;
+  const seen = new Set<object>();
+  for (const comp of dropComponents) {
+    for (const e of [...world.with(comp).entities]) {
+      if (seen.has(e)) continue;
+      seen.add(e);
+      if (e.sprite) e.sprite.removeFromParent();
+      world.remove(e);
+    }
   }
 }
 

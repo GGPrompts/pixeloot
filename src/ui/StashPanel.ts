@@ -145,8 +145,7 @@ function createPanel(): Container {
 
   // Close button
   const closeBtn = makeCloseButton(PANEL_X + PANEL_W - 70, PANEL_Y + 16, () => {
-    visible = false;
-    if (container) container.visible = false;
+    closeStashPanel();
   });
   root.addChild(closeBtn);
 
