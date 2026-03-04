@@ -100,4 +100,4 @@ Controls: LMB (primary attack, hold-to-fire), RMB (assignable, single-press), Sp
 - Vite base path is `/pixeloot/` (GitHub Pages deployment)
 - 4-stat system: Dexterity, Intelligence, Vitality, Focus. No crit, no leech — by design (see GDD.md)
 - Enemy types distinguished by shape AND color (colorblind accessible)
-- Issue tracking uses `bd` (beads), not markdown files or TodoWrite
+- Issue tracking uses `ggbd` (beads), not markdown files or TodoWrite
